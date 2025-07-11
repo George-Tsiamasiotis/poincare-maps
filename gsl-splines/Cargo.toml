@@ -1,0 +1,11 @@
+[package]
+name = "gsl-splines"
+version = "0.1.0"
+edition = "2024"
+authors.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+
+[dependencies]
+GSL = "7.0.0"

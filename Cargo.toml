@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["tokamak-netcdf"]
+members = [ "gsl-splines","tokamak-netcdf"]
 
 [workspace.package]
 authors = ["George Tsiamasiotis"]
