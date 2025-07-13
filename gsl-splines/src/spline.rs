@@ -1,6 +1,8 @@
 use crate::{Accelerator, InterpolationType, Result, RgslInterpType, RgslSpline, SplineError};
 
 use ndarray::Array1;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// A Spline of a specific type that stores the data points and can share an Accelerator with other
 /// splines.
@@ -8,7 +10,7 @@ use ndarray::Array1;
 /// ## Note
 ///
 /// `gsl_interp_free()` is called inside `rgsl`.
-pub struct Spline<'a> {
+pub struct Spline {
     /// Interpolation Type.
     pub typ: InterpolationType,
     /// Array of x data points.
@@ -21,16 +23,16 @@ pub struct Spline<'a> {
     pub(crate) gsl_spline: RgslSpline,
     /// Reference to a common `Accelerator` that can be used by many splines that are to be evaluated
     /// at the same point.
-    pub(crate) acc: &'a mut Accelerator,
+    pub acc: Rc<RefCell<Accelerator>>,
 }
 
-impl<'a> Spline<'a> {
+impl Spline {
     /// Creates a new `Spline` with a common `Accelerator`
     pub fn build(
         typ: InterpolationType,
         xdata: &Array1<f64>,
         ydata: &Array1<f64>,
-        acc: &'a mut Accelerator,
+        acc: Rc<RefCell<Accelerator>>,
     ) -> Result<Self> {
         Spline::check_data(xdata, ydata, typ)?;
         let xdata = xdata.clone();
@@ -38,7 +40,7 @@ impl<'a> Spline<'a> {
         let size = xdata.len();
 
         // Alloc the gsl_spline, initialize it later
-        let gsl_spline = Spline::build_gsl_spline(&typ.into(), size)?;
+        let gsl_spline = Spline::build_gsl_spline(typ.into(), size)?;
 
         let mut interp = Spline {
             typ,
@@ -72,9 +74,9 @@ impl<'a> Spline<'a> {
     }
 
     /// Creates a new uninitialized `rgsl::Interp` object and returns it.
-    fn build_gsl_spline(typ: &RgslInterpType, size: usize) -> Result<RgslSpline> {
+    fn build_gsl_spline(typ: RgslInterpType, size: usize) -> Result<RgslSpline> {
         // Calls gsl_spline_alloc()
-        RgslSpline::new(*typ, size).ok_or(SplineError::GSLInterpAlloc)
+        RgslSpline::new(typ, size).ok_or(SplineError::GSLInterpAlloc)
     }
 
     /// Initializes the interpolation object
@@ -103,11 +105,11 @@ impl<'a> Spline<'a> {
 
     /// Resets the `Accelerator`'s cache and stats.
     pub fn reset_acc(&mut self) {
-        self.acc.reset();
+        self.acc.borrow_mut().reset();
     }
 }
 
-impl<'a> std::fmt::Debug for Spline<'a> {
+impl std::fmt::Debug for Spline {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Spline")
             .field("Interpolation Type", &self.typ)
@@ -129,7 +131,7 @@ impl<'a> std::fmt::Debug for Spline<'a> {
                     self.size
                 ),
             )
-            .field("Accelerator", &self.acc)
+            .field("Accelerator", &self.acc.borrow_mut())
             .finish()
     }
 }

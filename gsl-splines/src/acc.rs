@@ -1,5 +1,8 @@
 use crate::RgslInterpAccel;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 /// Thin wrapper around `rgsl::InterpAccel`. This object can be mutable and shared across many
 /// splines that evaluate at the same x point simultaneously.
 pub struct Accelerator {
@@ -7,23 +10,18 @@ pub struct Accelerator {
 }
 
 impl Accelerator {
-    /// Creates a new `Accelerator`
-    pub fn new() -> Self {
+    /// Creates a new `Accelerator`.
+    pub fn new() -> Rc<RefCell<Self>> {
         //Calls `gsl_interp_accel_alloc()`. The rest is taken care by `rgsl`.
-        Accelerator {
+
+        Rc::new(RefCell::new(Accelerator {
             gsl_iterp_accel: RgslInterpAccel::new(),
-        }
+        }))
     }
 
     /// Resets the `Accelerator`'s cache and stats.
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.gsl_iterp_accel.reset();
-    }
-}
-
-impl Default for Accelerator {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
