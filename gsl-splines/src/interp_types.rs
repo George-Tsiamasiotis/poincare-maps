@@ -68,3 +68,18 @@ impl From<InterpolationType> for RgslInterpType {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_interpolationtype_from() {
+        let _: RgslInterpType = InterpolationType::Linear.into();
+        let _: RgslInterpType = InterpolationType::Polynomial.into();
+        let _: RgslInterpType = InterpolationType::Cubic.into();
+        let _: RgslInterpType = InterpolationType::CubicPeriodic.into();
+        let _: RgslInterpType = InterpolationType::Akima.into();
+        let _: RgslInterpType = InterpolationType::AkimaPeriodic.into();
+    }
+}

@@ -51,3 +51,69 @@ impl Spline {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{Accelerator, InterpolationType, Spline, SplineError};
+    use ndarray::Array1;
+
+    fn some_spline() -> Spline {
+        let xdata = Array1::linspace(0.0, 3.0, 10);
+        let ydata = xdata.pow2();
+        let typ = InterpolationType::CubicPeriodic;
+        let acc = Accelerator::new();
+        Spline::build(typ, &xdata, &ydata, acc).unwrap()
+    }
+
+    #[test]
+    fn test_eval() {
+        assert!(some_spline().eval(2.0).is_ok());
+        assert!(matches!(
+            some_spline().eval(200.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ))
+    }
+
+    #[test]
+    fn test_deriv() {
+        assert!(some_spline().eval_deriv(2.0).is_ok());
+        assert!(matches!(
+            some_spline().eval_deriv(200.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ))
+    }
+
+    #[test]
+    fn test_deriv2() {
+        assert!(some_spline().eval_deriv2(2.0).is_ok());
+        assert!(matches!(
+            some_spline().eval_deriv2(200.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ))
+    }
+
+    #[test]
+    fn test_integ() {
+        assert!(some_spline().eval_integ(1.0, 2.0).is_ok());
+        // All checks that GSL does
+        assert!(matches!(
+            some_spline().eval_integ(2.0, 1.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ));
+        assert!(matches!(
+            some_spline().eval_integ(-2.0, 1.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ));
+        assert!(matches!(
+            some_spline().eval_integ(2.0, 100.0).unwrap_err(),
+            SplineError::GSLInputDomainError { .. }
+        ));
+        // Check that it prints
+        let _ = format!(
+            "{:?}",
+            SplineError::GSLInputDomainError {
+                err: rgsl::Value::Success
+            }
+        );
+    }
+}

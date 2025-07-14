@@ -33,3 +33,13 @@ impl std::fmt::Debug for Accelerator {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_accelarator() {
+        Accelerator::new();
+    }
+}

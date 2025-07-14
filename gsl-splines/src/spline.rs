@@ -150,6 +150,7 @@ mod test {
 
     #[test]
     fn test_check_data() {
+        // Also check that error messages print
         assert!(matches!(
             Spline::check_data(
                 &Array1::from_vec(vec![1.0]),
@@ -159,6 +160,7 @@ mod test {
             .unwrap_err(),
             SplineError::InvalidDataset
         ));
+        let _ = format!("{:?}", SplineError::InvalidDataset);
 
         assert!(matches!(
             Spline::check_data(
@@ -169,6 +171,7 @@ mod test {
             .unwrap_err(),
             SplineError::NotEnoughPoints
         ));
+        let _ = format!("{:?}", SplineError::NotEnoughPoints);
 
         assert!(matches!(
             Spline::check_data(
@@ -179,6 +182,7 @@ mod test {
             .unwrap_err(),
             SplineError::DatasetMismatch
         ));
+        let _ = format!("{:?}", SplineError::DatasetMismatch);
 
         assert!(matches!(
             Spline::check_data(
@@ -189,6 +193,7 @@ mod test {
             .unwrap_err(),
             SplineError::UnsortedDataset
         ));
+        let _ = format!("{:?}", SplineError::UnsortedDataset);
     }
 
     #[test]
