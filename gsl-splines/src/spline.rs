@@ -135,3 +135,93 @@ impl std::fmt::Debug for Spline {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn some_spline() -> Spline {
+        let xdata = Array1::linspace(0.0, 3.0, 10);
+        let ydata = xdata.pow2();
+        let typ = InterpolationType::Akima;
+        let acc = Accelerator::new();
+        Spline::build(typ, &xdata, &ydata, acc).unwrap()
+    }
+
+    #[test]
+    fn test_check_data() {
+        assert!(matches!(
+            Spline::check_data(
+                &Array1::from_vec(vec![1.0]),
+                &Array1::from_vec(vec![2.0]),
+                InterpolationType::Linear,
+            )
+            .unwrap_err(),
+            SplineError::InvalidDataset
+        ));
+
+        assert!(matches!(
+            Spline::check_data(
+                &Array1::from_vec(vec![1.0, 2.0]),
+                &Array1::from_vec(vec![2.0, 3.0]),
+                InterpolationType::Akima,
+            )
+            .unwrap_err(),
+            SplineError::NotEnoughPoints
+        ));
+
+        assert!(matches!(
+            Spline::check_data(
+                &Array1::from_vec(vec![1.0, 2.0]),
+                &Array1::from_vec(vec![2.0, 3.0, 4.0]),
+                InterpolationType::Linear,
+            )
+            .unwrap_err(),
+            SplineError::DatasetMismatch
+        ));
+
+        assert!(matches!(
+            Spline::check_data(
+                &Array1::from_vec(vec![2.0, 1.0]),
+                &Array1::from_vec(vec![2.0, 3.0]),
+                InterpolationType::Linear,
+            )
+            .unwrap_err(),
+            SplineError::UnsortedDataset
+        ));
+    }
+
+    #[test]
+    fn test_spline_build() {
+        let xdata = Array1::linspace(0.0, 3.0, 10);
+        let ydata = xdata.pow2();
+        let typ = InterpolationType::Akima;
+        let acc = Accelerator::new();
+        assert!(Spline::build(typ, &xdata, &ydata, acc).is_ok());
+    }
+
+    #[test]
+    fn test_name() {
+        let spline = some_spline();
+        spline.name();
+    }
+
+    #[test]
+    fn test_min_size() {
+        let spline = some_spline();
+        spline.min_size();
+    }
+
+    #[test]
+    fn test_reset_acc() {
+        let mut spline = some_spline();
+        spline.reset_acc();
+    }
+
+    #[test]
+    fn test_debug_trait() {
+        let spline = some_spline();
+        let _ = format!("{spline:?}");
+        let _ = format!("{spline:#?}");
+    }
+}
