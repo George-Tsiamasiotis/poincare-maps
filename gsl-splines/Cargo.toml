@@ -1,10 +1,16 @@
 [package]
 name = "gsl-splines"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
+description = """
+Wrapper functions around rgsl's wrapper functions. This crate provides a cleaner interface, but also 
+enables different splines to use the same Accelerator This provides a significant performance boost 
+when evalulating many splines with the same datapoints at the same point, a case which comes up a 
+lot in many physics calculations, such as ODE problems.
+"""
+documentation = "https://docs.rs/crate/gsl-splines/"
 authors.workspace = true
 license.workspace = true
-documentation.workspace = true
 repository.workspace = true
 
 [dependencies]

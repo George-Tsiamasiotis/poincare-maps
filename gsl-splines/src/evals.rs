@@ -1,13 +1,16 @@
+//! Wrappers around `rgsl`'s `eval_<>_e()' functions. These functions are prefered over their 'eval_<>()'
+//! alternatives, since they can catch GSL's errors. The overhead seems to be negligible.
+
 use std::f64;
 
 use crate::Result;
 use crate::{SplineError, spline::Spline};
 
-/// Wrappers around `rgsl`'s `eval_<>_e()' functions. These functions are prefered over their
-/// 'eval_<>()' alternatives, since they can catch GSL's errors. The overhead seems to be
-/// negligible.
 impl Spline {
     #[inline]
+    /// Returns the interpolated value of `y` for a given point `x`.
+    ///
+    /// Returns a `SplineError` when `x` is outside the range of the supplied data points.
     pub fn eval(&mut self, x: f64) -> Result<f64> {
         match self
             .gsl_spline
@@ -19,6 +22,9 @@ impl Spline {
     }
 
     #[inline]
+    /// Returns the derivative of an interpolated function for a given point `x`.
+    ///
+    /// Returns a `SplineError` when `x` is outside the range of the supplied data points.
     pub fn eval_deriv(&mut self, x: f64) -> Result<f64> {
         match self
             .gsl_spline
@@ -30,6 +36,9 @@ impl Spline {
     }
 
     #[inline]
+    /// Returns the second derivative of an interpolated function for a given point `x`.
+    ///
+    /// Returns a `SplineError` when `x` is outside the range of the supplied data points.
     pub fn eval_deriv2(&mut self, x: f64) -> Result<f64> {
         match self
             .gsl_spline
@@ -41,6 +50,10 @@ impl Spline {
     }
 
     #[inline]
+    /// Returns the numerical integral of an interpolated function over the range [a, b].
+    ///
+    /// Returns a `SplineError` if `a>b`, or if either `a` or `b` are outside the range of the supplied
+    /// data points.
     pub fn eval_integ(&mut self, a: f64, b: f64) -> Result<f64> {
         match self
             .gsl_spline

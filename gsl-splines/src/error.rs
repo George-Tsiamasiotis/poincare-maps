@@ -1,5 +1,5 @@
 #[derive(thiserror::Error)]
-//Custom Error types
+///Custom Error types
 pub enum SplineError {
     /// One of the supplied datasets is empty.
     #[error("Supplied datasets cannot be empty.")]

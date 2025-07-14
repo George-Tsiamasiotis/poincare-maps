@@ -3,8 +3,9 @@ use crate::RgslInterpAccel;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// Thin wrapper around `rgsl::InterpAccel`. This object can be mutable and shared across many
-/// splines that evaluate at the same x point simultaneously.
+/// Thin wrapper around `rgsl::InterpAccel`. This object is is mutable and can be shared across
+/// many splines defined over the same data points and evaluate at the same x point
+/// simultaneously.
 pub struct Accelerator {
     pub(crate) gsl_iterp_accel: RgslInterpAccel,
 }

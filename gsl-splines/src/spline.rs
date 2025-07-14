@@ -4,12 +4,29 @@ use ndarray::Array1;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A Spline of a specific type that stores the data points and can share an Accelerator with other
+/// A Spline of a specific type that stores the data points and can share an `Accelerator` with other
 /// splines.
 ///
-/// ## Note
+/// ## Example
 ///
-/// `gsl_interp_free()` is called inside `rgsl`.
+/// ```
+/// # use gsl_splines::{Accelerator, InterpolationType, Spline};
+/// # use ndarray::Array1;
+/// #
+/// # fn main() {
+/// // Data creation
+/// let xdata = Array1::linspace(0.0, 3.0, 100);
+/// let ydata1 = xdata.sin();
+/// let ydata2 = xdata.cos();
+///
+/// // Interpolation type and Accelerator
+/// let typ = InterpolationType::Cubic;
+/// let acc = Accelerator::new();
+///
+/// // Spline creation
+/// let mut spline1 = Spline::build(typ, &xdata, &ydata1, acc.clone()).unwrap();
+/// # }
+/// ```
 pub struct Spline {
     /// Interpolation Type.
     pub typ: InterpolationType,
@@ -18,7 +35,7 @@ pub struct Spline {
     /// Array of y data points.
     pub ydata: Array1<f64>,
     /// Size of x and y arrays.
-    pub size: usize,
+    pub(crate) size: usize,
     /// `rgsl`s Spline object
     pub(crate) gsl_spline: RgslSpline,
     /// Reference to a common `Accelerator` that can be used by many splines that are to be evaluated

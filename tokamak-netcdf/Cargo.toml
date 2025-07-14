@@ -5,10 +5,10 @@ edition = "2024"
 keywords = ["nc", "netcdf", "tokamak"]
 description = """A Package for handling NetCDF files and creating a more suitable interface for
 use with reconstructed equilibira."""
+documentation = "https://docs.rs/crate/tokamak-netcdf/"
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-documentation.workspace = true
 
 [dependencies]
 ndarray = "0.16.1"

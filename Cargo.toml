@@ -1,9 +1,8 @@
 [workspace]
 resolver = "3"
-members = [ "gsl-splines","tokamak-netcdf"]
+members = ["gsl-splines", "tokamak-netcdf"]
 
 [workspace.package]
 authors = ["George Tsiamasiotis"]
 license = " GPL-3.0-only"
-documentation = "https://docs.rs/crate/tokamak-netcdf/"
 repository = "https://github.com/George-Tsiamasiotis/poincare-maps.git"
