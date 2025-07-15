@@ -1,14 +1,16 @@
 [package]
 name = "tokamak-netcdf"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 keywords = ["nc", "netcdf", "tokamak"]
-description = """A Package for handling NetCDF files and creating a more suitable interface for
-use with reconstructed equilibira."""
 documentation = "https://docs.rs/crate/tokamak-netcdf/"
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = """
+A Package for handling NetCDF files and creating a more suitable interface for
+use with reconstructed equilibira. 
+"""
 
 [dependencies]
 ndarray = "0.16.1"
@@ -17,7 +19,7 @@ thiserror = "2.0.12"
 
 [features]
 default = []
-docs = ["netcdf/static"]
+static = ["netcdf/static"]
 
 [package.metadata.docs.rs]
-features = ["docs"]
+features = ["static"]

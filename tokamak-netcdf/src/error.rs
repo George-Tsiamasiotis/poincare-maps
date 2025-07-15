@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 #[derive(thiserror::Error)]
-/// Custom error types.
+/// The error type for opening and extracting data from NetCDF files.
 pub enum NcError {
     /// Catches errors from the wrapped netcdf library.
     /// Lower level error: netcdf::Error::Netcdf.
@@ -57,6 +57,6 @@ pub enum NcError {
 
 impl std::fmt::Debug for NcError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self)
+        writeln!(f, "{self}")
     }
 }

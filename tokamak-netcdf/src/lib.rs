@@ -1,5 +1,6 @@
-//! Provides a cleaner and more suitable NetCDF interface for use with reconstructed equilibria
-//! from tokamak devices.
+//! This crate provides a cleaner and more suitable [`NetCDF`] interface for use with reconstructed equilibria
+//! from [`Tokamak`] devices.
+//!
 //!
 //! ## Example
 //!
@@ -21,8 +22,14 @@
 //!
 //! ## Note
 //!
-//! [libnetcdf](https://github.com/Unidata/netcdf-c) is linked statically, since it is not
-//! available by default in most systems.
+//! This crate requires the [`netCDF-C`] library, which is available in most linux package managers. In
+//! case it is not, it can be statically linked with the 'static' feature, which is provided by the
+//! [`netcdf crate`].
+//!
+//! [`NetCDF`]: https://www.unidata.ucar.edu/software/netcdf
+//! [`netCDF-C`]: https://github.com/Unidata/netcdf-c
+//! [`netcdf crate`]: https://github.com/georust/netcdf
+//! [`Tokamak`]: https://en.wikipedia.org/wiki/Tokamak
 
 mod error;
 mod extract;
@@ -35,10 +42,5 @@ mod scalars;
 
 pub use error::NcError;
 pub use open::NcData;
-
-pub use bfield::Bfield;
-pub use coords::Coords;
-pub use currents::Currents;
-pub use scalars::Scalars;
 
 pub type Result<T> = std::result::Result<T, NcError>;

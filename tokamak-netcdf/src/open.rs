@@ -16,14 +16,31 @@ pub struct NcData {
     pub scalars: Scalars,
     /// Equilibrium's coordinate variables.
     pub coords: Coords,
-    /// Plasma toroidal (I) and poloidal (g) currents.
+    /// Representation of the plasma toroidal **I** and poloidal **g** currents.
     pub currents: Currents,
-    /// Magnetic field strength.
+    /// Representation of the equilibrium's magnetic field **B**.
     pub bfield: Bfield,
 }
 
 impl NcData {
     /// Creates an NcData from a NetCDF file.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use std::path::PathBuf;
+    /// # use tokamak_netcdf::NcError;
+    /// #
+    /// # fn main() -> Result<(), NcError> {
+    /// #
+    /// // Path must be relative to the directory where "cargo run" is called
+    /// let path = PathBuf::from(r"./reconstructed/data.nc");
+    /// let nc_data = tokamak_netcdf::NcData::open(path)?;
+    ///
+    /// println!("{:#?}", nc_data);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn open(path: PathBuf) -> Result<Self> {
         use NcError::*;
 
