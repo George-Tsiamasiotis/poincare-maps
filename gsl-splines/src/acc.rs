@@ -3,15 +3,28 @@ use crate::RgslInterpAccel;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// Thin wrapper around `rgsl::InterpAccel`. This object is is mutable and can be shared across
-/// many splines defined over the same data points and evaluate at the same x point
-/// simultaneously.
+/// An object that caches the previous interpolation lookup.
+///
+/// Splines that tend to evaluate around the same point frequently can get a significant
+/// performance boost (up to x10, depending on the number of points) with the use of an
+/// Accelerator.
+///
+/// This object is a thin wrapper around [`rgsl's InterpAccel`]. It is mutable and can be shared across
+/// many splines defined over the same data points and evaluate at the same x point simultaneously.
+///
+/// ## Example
+///
+/// See [`example`]
+///
+/// [`example`]: ./index.html
+/// [`rgsl's InterpAccel`]: https://docs.rs/GSL/latest/rgsl/types/interpolation/struct.InterpAccel.html
+
 pub struct Accelerator {
     pub(crate) gsl_iterp_accel: RgslInterpAccel,
 }
 
 impl Accelerator {
-    /// Creates a new `Accelerator`.
+    /// Creates a new Accelerator.
     pub fn new() -> Rc<RefCell<Self>> {
         //Calls `gsl_interp_accel_alloc()`. The rest is taken care by `rgsl`.
 

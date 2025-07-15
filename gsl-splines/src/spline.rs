@@ -4,29 +4,31 @@ use ndarray::Array1;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// A Spline of a specific type that stores the data points and can share an `Accelerator` with other
+/// A Spline of a specific [`type`] that stores the data points and can share an [`Accelerator`] with other
 /// splines.
 ///
 /// ## Example
 ///
 /// ```
-/// # use gsl_splines::{Accelerator, InterpolationType, Spline};
+/// # use gsl_splines::{Accelerator, InterpolationType, Spline, SplineError};
 /// # use ndarray::Array1;
 /// #
-/// # fn main() {
+/// # fn main() -> Result<(), SplineError> {
 /// // Data creation
 /// let xdata = Array1::linspace(0.0, 3.0, 100);
-/// let ydata1 = xdata.sin();
-/// let ydata2 = xdata.cos();
+/// let ydata = xdata.sin();
 ///
 /// // Interpolation type and Accelerator
 /// let typ = InterpolationType::Cubic;
 /// let acc = Accelerator::new();
 ///
 /// // Spline creation
-/// let mut spline1 = Spline::build(typ, &xdata, &ydata1, acc.clone()).unwrap();
+/// let mut spline1 = Spline::build(typ, &xdata, &ydata, acc.clone())?;
+/// # Ok(())
 /// # }
 /// ```
+/// [`type`]: enum.InterpolationType.html
+/// [`Accelerator`]: struct.Accelerator.html
 pub struct Spline {
     /// Interpolation Type.
     pub typ: InterpolationType,
@@ -38,13 +40,17 @@ pub struct Spline {
     pub(crate) size: usize,
     /// `rgsl`s Spline object
     pub(crate) gsl_spline: RgslSpline,
-    /// Reference to a common `Accelerator` that can be used by many splines that are to be evaluated
+    /// Reference to a common [`Accelerator`] that can be used by many splines that are to be evaluated
     /// at the same point.
+    ///
+    /// [`Accelerator`]: struct.Accelerator.html
     pub acc: Rc<RefCell<Accelerator>>,
 }
 
 impl Spline {
-    /// Creates a new `Spline` with a common `Accelerator`
+    /// Creates a new Spline with a common [`Accelerator`]
+    ///
+    /// [`Accelerator`]: struct.Accelerator.html
     pub fn build(
         typ: InterpolationType,
         xdata: &Array1<f64>,
@@ -110,17 +116,23 @@ impl Spline {
         }
     }
 
-    /// Retruns the Interpolation type's name.
+    /// Retruns the [`InterpolationType`]'s name.
+    ///
+    /// [`InterpolationType`]: enum.InterpolationType.html
     pub fn name(&self) -> String {
         self.gsl_spline.name()
     }
 
-    /// Returns the interpolation type's minimum required number of x points.
+    /// Returns the [`InterpolationType`]'s minimum required number of x points.
+    ///
+    /// [`InterpolationType`]: enum.InterpolationType.html
     pub fn min_size(&self) -> usize {
         self.gsl_spline.min_size() as usize
     }
 
-    /// Resets the `Accelerator`'s cache and stats.
+    /// Resets the [`Accelerator`]'s cache and stats.
+    ///
+    /// [`Accelerator`]: struct.Accelerator.html
     pub fn reset_acc(&mut self) {
         self.acc.borrow_mut().reset();
     }

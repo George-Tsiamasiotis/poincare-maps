@@ -1,19 +1,20 @@
 [package]
 name = "gsl-splines"
-version = "0.1.1"
+version = "0.1.1-pre.1"
 edition = "2024"
-description = """
-Wrapper functions around rgsl's wrapper functions. This crate provides a cleaner interface, but also 
-enables different splines to use the same Accelerator This provides a significant performance boost 
-when evalulating many splines with the same datapoints at the same point, a case which comes up a 
-lot in many physics calculations, such as ODE problems.
-"""
+keywords = ["spline", "interpolation", "gsl"]
 documentation = "https://docs.rs/crate/gsl-splines/"
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+description = """
+Wrapper functions around rust-GSL's wrapper functions. This crate provides a cleaner interface, but also 
+enables different splines to use the same Accelerator This provides a significant performance boost 
+when evalulating many splines with the same datapoints at the same point, a case which comes up a 
+lot in many physics calculations, such as ODE problems.
+"""
 
 [dependencies]
-GSL = "7.0.0"
+GSL = { git = "https://github.com/George-Tsiamasiotis/rust-GSL.git", tag = "interp2d-feat" }
 ndarray = "0.16.1"
 thiserror = "2.0.12"

@@ -1,5 +1,7 @@
+use crate::RgslValue;
+
 #[derive(thiserror::Error)]
-///Custom Error types
+/// The error type for spline creation and evaluation methods.
 pub enum SplineError {
     /// One of the supplied datasets is empty.
     #[error("Supplied datasets cannot be empty.")]
@@ -26,12 +28,14 @@ pub enum SplineError {
     GSLInterpAlloc,
 
     /// Error calling 'gsl_interp_init'.
+    #[allow(deprecated)]
     #[error("Error calling gsl_interp_init: {err:?}.")]
-    GSLSplineInit { err: rgsl::Value },
+    GSLSplineInit { err: RgslValue },
 
     /// Supplied x is out of bounds. GSL crashes hard when this happens so we catch it earlier.
+    #[allow(deprecated)]
     #[error("Supplied x out of bounds (GSL error: {err:?}).")]
-    GSLInputDomainError { err: rgsl::Value },
+    GSLInputDomainError { err: RgslValue },
 }
 
 impl std::fmt::Debug for SplineError {
