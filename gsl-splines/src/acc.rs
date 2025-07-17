@@ -18,7 +18,6 @@ use std::rc::Rc;
 ///
 /// [`example`]: ./index.html
 /// [`rgsl's InterpAccel`]: https://docs.rs/GSL/latest/rgsl/types/interpolation/struct.InterpAccel.html
-
 pub struct Accelerator {
     pub(crate) gsl_iterp_accel: RgslInterpAccel,
 }

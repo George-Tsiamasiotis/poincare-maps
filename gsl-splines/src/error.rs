@@ -28,12 +28,10 @@ pub enum SplineError {
     GSLInterpAlloc,
 
     /// Error calling 'gsl_interp_init'.
-    #[allow(deprecated)]
     #[error("Error calling gsl_interp_init: {err:?}.")]
     GSLSplineInit { err: RgslValue },
 
     /// Supplied x is out of bounds. GSL crashes hard when this happens so we catch it earlier.
-    #[allow(deprecated)]
     #[error("Supplied x out of bounds (GSL error: {err:?}).")]
     GSLInputDomainError { err: RgslValue },
 }

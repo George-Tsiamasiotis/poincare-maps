@@ -62,10 +62,12 @@ mod spline;
 // Types refering to rgsl's Interp and Spline types, to avoid confusion.
 pub(crate) type RgslSpline = rgsl::Spline;
 pub(crate) type RgslInterpType = rgsl::InterpType;
+pub(crate) type RgslInterp2dType = rgsl::Interp2dType;
 pub(crate) type RgslInterpAccel = rgsl::InterpAccel;
 
 pub use acc::Accelerator;
 pub use error::SplineError;
+pub use interp_types::Interpolation2dType;
 pub use interp_types::InterpolationType;
 pub use spline::Spline;
 

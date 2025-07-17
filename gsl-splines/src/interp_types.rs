@@ -1,4 +1,4 @@
-use crate::RgslInterpType;
+use crate::{RgslInterp2dType, RgslInterpType};
 
 /// Spline types supported by GSL.
 ///
@@ -69,6 +69,40 @@ impl From<InterpolationType> for RgslInterpType {
     }
 }
 
+/// Spline2D types supported by GSL.
+///
+/// This type is a thin wrapper around `rgsl`'s `Interp2dType`.
+///
+/// ## Example
+/// ```
+/// # use gsl_splines::Interpolation2dType;
+/// #
+/// # fn main() {
+/// let spline2d_type = gsl_splines::Interpolation2dType::Bicubic;
+/// # }
+/// ```
+/// Descriptions are taken directly from GSL's
+/// [interpolation](https://www.gnu.org/software/gsl/doc/html/interp.html#c.gsl_interp2d_type) page
+#[derive(Debug, Clone, Copy)]
+pub enum Interpolation2dType {
+    /// Bilinear interpolation. This interpolation method does not require any additional memory.
+    Bilinear,
+    /// Bicubic interpolation.
+    Bicubic,
+}
+
+impl From<Interpolation2dType> for RgslInterp2dType {
+    /// Get the corresponding gsl_interp2d_type.
+    fn from(value: Interpolation2dType) -> RgslInterp2dType {
+        use Interpolation2dType::*;
+
+        match value {
+            Bilinear => RgslInterp2dType::bilinear(),
+            Bicubic => RgslInterp2dType::bicubic(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -81,5 +115,11 @@ mod test {
         let _: RgslInterpType = InterpolationType::CubicPeriodic.into();
         let _: RgslInterpType = InterpolationType::Akima.into();
         let _: RgslInterpType = InterpolationType::AkimaPeriodic.into();
+    }
+
+    #[test]
+    fn test_interpolation2dtype_from() {
+        let _: RgslInterp2dType = Interpolation2dType::Bilinear.into();
+        let _: RgslInterp2dType = Interpolation2dType::Bicubic.into();
     }
 }
