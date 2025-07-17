@@ -65,7 +65,7 @@ impl Spline {
         // Alloc the gsl_spline, initialize it later
         let gsl_spline = Spline::build_gsl_spline(typ.into(), size)?;
 
-        let mut interp = Spline {
+        let mut spline = Spline {
             typ,
             xdata,
             ydata,
@@ -74,8 +74,8 @@ impl Spline {
             acc,
         };
 
-        interp.init_gsl_interp()?;
-        Ok(interp)
+        spline.init_gsl_interp()?;
+        Ok(spline)
     }
 
     /// Checks if supplied datasets are valid.
@@ -91,12 +91,12 @@ impl Spline {
             return Err(SplineError::DatasetMismatch);
         }
         if !x.iter().is_sorted() {
-            return Err(SplineError::UnsortedDataset);
+            return Err(SplineError::UnsortedDataset("x".into()));
         }
         Ok(())
     }
 
-    /// Creates a new uninitialized `rgsl::Interp` object and returns it.
+    /// Creates a new uninitialized `rgsl::Spline` object and returns it.
     fn build_gsl_spline(typ: RgslInterpType, size: usize) -> Result<RgslSpline> {
         // Calls gsl_spline_alloc()
         RgslSpline::new(typ, size).ok_or(SplineError::GSLInterpAlloc)
@@ -123,7 +123,8 @@ impl Spline {
         self.gsl_spline.name()
     }
 
-    /// Returns the [`InterpolationType`]'s minimum required number of x points.
+    /// Returns the [`InterpolationType`]'s minimum required number of x points. For example, Akima
+    /// spline interpolation requires a minimum of 5 points.
     ///
     /// [`InterpolationType`]: enum.InterpolationType.html
     pub fn min_size(&self) -> usize {
@@ -220,9 +221,9 @@ mod test {
                 InterpolationType::Linear,
             )
             .unwrap_err(),
-            SplineError::UnsortedDataset
+            SplineError::UnsortedDataset(_)
         ));
-        let _ = format!("{:?}", SplineError::UnsortedDataset);
+        let _ = format!("{:?}", SplineError::UnsortedDataset("x".into()));
     }
 
     #[test]

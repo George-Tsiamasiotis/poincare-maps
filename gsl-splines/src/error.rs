@@ -8,12 +8,16 @@ pub enum SplineError {
     InvalidDataset,
 
     /// `x` points dataset is not sorted.
-    #[error("Supplied x dataset must be sorted.")]
-    UnsortedDataset,
+    #[error("Supplied {0} dataset must be sorted.")]
+    UnsortedDataset(Box<str>),
 
     /// 'x' and `y` datasets have differnet length.
     #[error("Supplied datasets must be 1D and of equal length.")]
     DatasetMismatch,
+
+    /// 'x' and `y` datasets have differnet length.
+    #[error("Supplied x and y datasets must be 1D, and z must have shape (xsize, ysize)")]
+    Dataset2dMismatch,
 
     /// Supplied array size is less than the interpolation type's minimum size.
     #[error("Supplied array size is less than the interpolation type's minimum size.")]
@@ -27,9 +31,17 @@ pub enum SplineError {
     #[error("Error calling gsl_interp_alloc.")]
     GSLInterpAlloc,
 
+    /// Error calling `gsl_interp2d_alloc`. `rgsl`'s return an Option, so no error.
+    #[error("Error calling gsl_interp2d_alloc.")]
+    GSLInterp2dAlloc,
+
     /// Error calling 'gsl_interp_init'.
     #[error("Error calling gsl_interp_init: {err:?}.")]
     GSLSplineInit { err: RgslValue },
+
+    /// Error calling 'gsl_interp2d_init'.
+    #[error("Error calling gsl_interp2d_init: {err:?}.")]
+    GSLSpline2dInit { err: RgslValue },
 
     /// Supplied x is out of bounds. GSL crashes hard when this happens so we catch it earlier.
     #[error("Supplied x out of bounds (GSL error: {err:?}).")]
