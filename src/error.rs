@@ -4,22 +4,15 @@ pub enum MapError {
     #[error("Error Initializing System")]
     SystemInitError,
 
-    /// /// Equilibrium error.
-    /// #[error("Equilibrium Error: {msg}")]
-    /// EquilibriumError {
-    ///     #[source]
-    ///     source: tokamak_equilibria::EqError,
-    ///     msg: Box<str>,
-    /// },
+    /// Error from [`rsl_interpolation`].
+    #[error("Interpolation Error: {0}")]
+    InterpolationError(#[from] rsl_interpolation::InterpolationError),
 
-    #[error("Equilibrium Error")]
-    EquilibriumError(#[from] tokamak_equilibria::EqError), // TODO: fix msg
+    /// Interpolation domain error.
+    #[error("Interpolation domain error: {0}")]
+    DomainError(#[from] rsl_interpolation::DomainError),
 
-    /// Interpolaton Error.
-    #[error("Interpolation Error: {msg}")]
-    InterpolationError {
-        #[source]
-        source: rsl_interpolation::InterpolationError,
-        msg: Box<str>,
-    },
+    /// Error from [`tokamak_netcdf`].
+    #[error("netCDF error: {0}")]
+    NcError(#[from] tokamak_netcdf::NcError),
 }

@@ -1,7 +1,7 @@
 use core::f64;
 
+use crate::{Bfield, Current, Qfactor};
 use rsl_interpolation::Accelerator;
-use tokamak_equilibria::{Bfield, Current, Qfactor};
 
 use crate::{InitialConditions, Result};
 

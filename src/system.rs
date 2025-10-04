@@ -1,4 +1,4 @@
-use tokamak_equilibria::{Bfield, Current, Qfactor};
+use crate::{Bfield, Current, Qfactor};
 
 use crate::InitialConditions;
 use crate::Point;
@@ -142,9 +142,7 @@ impl<'a> System<'a> {
 mod test {
     use std::path::PathBuf;
 
-    use tokamak_equilibria::{Bfield, Current, Qfactor};
-
-    use crate::*;
+    use super::*;
 
     #[test]
     fn test_system_init() {
@@ -152,7 +150,6 @@ mod test {
         let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
         let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
         let current = Current::from_dataset(&path, "akima").unwrap();
-        // let initial = InitialConditions::new(0.1, 0.05, 0.01, 0.1);
         let initial = InitialConditions {
             t0: 0.0,
             theta0: 0.0,
