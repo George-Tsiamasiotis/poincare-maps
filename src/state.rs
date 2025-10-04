@@ -102,49 +102,21 @@ pub(crate) struct State {
 }
 
 impl State {
-    pub(crate) fn init(initial: &InitialConditions) -> Result<Self> {
-        // Set all derived quantities to NaN and use the corresponding methods to set them up
-        Ok(Self {
-            xacc: Accelerator::new(),
-            yacc: Accelerator::new(),
+    pub(crate) fn new_uninit() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn new(initial: &InitialConditions) -> Self {
+        Self {
             t: initial.t0,
             theta: initial.theta0,
             psip: initial.psip0,
             rho: initial.rho0,
             zeta: initial.zeta0,
             mu: initial.mu,
-            psi: f64::NAN,
-            ptheta: f64::NAN,
             pzeta: initial.pzeta,
-            theta_dot: f64::NAN,
-            psip_dot: f64::NAN,
-            rho_dot: f64::NAN,
-            zeta_dot: f64::NAN,
-            b: f64::NAN,
-            q: f64::NAN,
-            g: f64::NAN,
-            i: f64::NAN,
-            db_dtheta: f64::NAN,
-            db_dzeta: 0.0,
-            db_dpsip: f64::NAN,
-            dg_dpsip: f64::NAN,
-            di_dpsip: f64::NAN,
-            dterm: f64::NAN,
-            kterm: f64::NAN,
-            cterm: f64::NAN,
-            fterm: f64::NAN,
-            a: f64::NAN,
-            da_dpsip: f64::NAN,
-            da_dtheta: f64::NAN,
-            da_dzeta: f64::NAN,
-            mu_par: f64::NAN,
-            psip_brace: f64::NAN,
-            theta_brace: f64::NAN,
-            zeta_brace: f64::NAN,
-            rho_bsquared_d: f64::NAN,
-            g_over_d: f64::NAN,
-            i_over_d: f64::NAN,
-        })
+            ..Default::default()
+        }
     }
 
     #[allow(dead_code)]
@@ -166,6 +138,7 @@ impl State {
         self.calculate_mu_par();
         self.calculate_braces();
         self.calculate_extras();
+        self.calculate_canonical_momenta();
 
         self.calculate_theta_dot();
         self.calculate_psip_dot();
@@ -175,6 +148,7 @@ impl State {
     }
 
     fn calculate_qfactor_quantities(&mut self, qfactor: &Qfactor) -> Result<()> {
+        self.psi = qfactor.psi(self.psip, &mut self.xacc)?;
         self.q = qfactor.q(self.psip, &mut self.xacc)?;
         Ok(())
     }
@@ -204,7 +178,8 @@ impl State {
 
     #[allow(dead_code)]
     fn calculate_canonical_momenta(&mut self) {
-        self.ptheta = self.psi + self.rho * self.i; // TODO: find a way to calculate ψ
+        self.ptheta = self.psi + self.rho * self.i;
+        self.pzeta = self.rho * self.g - self.psip;
     }
 
     /// Calculates the matrix coefficients denoted with capital letters that appear in the
@@ -256,6 +231,53 @@ impl State {
         let parallel = (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2));
         let perpandicular = self.mu * self.b;
         parallel + perpandicular
+    }
+}
+
+impl Default for State {
+    /// Set all derived quantities to NaN and use the corresponding methods to set them up
+    fn default() -> Self {
+        Self {
+            xacc: Accelerator::new(),
+            yacc: Accelerator::new(),
+            t: f64::NAN,
+            theta: f64::NAN,
+            psip: f64::NAN,
+            rho: f64::NAN,
+            zeta: f64::NAN,
+            mu: f64::NAN,
+            psi: f64::NAN,
+            ptheta: f64::NAN,
+            pzeta: f64::NAN,
+            theta_dot: f64::NAN,
+            psip_dot: f64::NAN,
+            rho_dot: f64::NAN,
+            zeta_dot: f64::NAN,
+            b: f64::NAN,
+            q: f64::NAN,
+            g: f64::NAN,
+            i: f64::NAN,
+            db_dtheta: f64::NAN,
+            db_dzeta: f64::NAN,
+            db_dpsip: f64::NAN,
+            dg_dpsip: f64::NAN,
+            di_dpsip: f64::NAN,
+            dterm: f64::NAN,
+            kterm: f64::NAN,
+            cterm: f64::NAN,
+            fterm: f64::NAN,
+            a: f64::NAN,
+            da_dpsip: f64::NAN,
+            da_dtheta: f64::NAN,
+            da_dzeta: f64::NAN,
+            mu_par: f64::NAN,
+            psip_brace: f64::NAN,
+            theta_brace: f64::NAN,
+            zeta_brace: f64::NAN,
+            rho_bsquared_d: f64::NAN,
+            g_over_d: f64::NAN,
+            i_over_d: f64::NAN,
+        }
     }
 }
 

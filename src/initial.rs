@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 
 #[pyclass(frozen, get_all)]
+#[derive(Clone)]
 pub struct InitialConditions {
     /// The initial time.
     pub t0: f64,
