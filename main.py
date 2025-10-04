@@ -2,7 +2,7 @@ import poincare_maps as pm
 
 bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "akima")
-current = pm.Current("./data.nc", "bicubic")
+current = pm.Current("./data.nc", "akima")
 
 init = pm.InitialConditions(
     t0=0,
