@@ -6,10 +6,38 @@ use rsl_interpolation::{Accelerator, DynSpline2d};
 
 use crate::Result;
 
+use pyo3::exceptions::PyTypeError;
+use pyo3::prelude::*;
+
 /// Magnetic field reconstructed from a netCDF file.
+#[pyclass]
 pub struct Bfield {
+    /// Path to the netCDF file.
+    path: PathBuf,
+    /// Interpolation type.
+    typ: Box<str>,
     /// Spline over the magnetic field strength data, as a function of ψ_p.
     b_spline: DynSpline2d<f64>,
+}
+
+#[pymethods]
+impl Bfield {
+    #[new]
+    #[pyo3(signature = (path, typ))]
+    /// Wrapper around `Bfield::from_dataset`.
+    ///
+    /// This is a workaround to return a `PyErr`.
+    pub fn new(path: &str, typ: &str) -> PyResult<Self> {
+        let path = PathBuf::from(path);
+        match Self::from_dataset(&path, typ) {
+            Ok(bfield) => Ok(bfield),
+            Err(err) => Err(PyTypeError::new_err(err.to_string())),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:#?}", &self)
+    }
 }
 
 impl Bfield {
@@ -48,7 +76,11 @@ impl Bfield {
 
         let b_spline = make_spline2d(typ, &psip_data, &theta_data, &b_data_flat)?;
 
-        Ok(Self { b_spline })
+        Ok(Self {
+            path: path.to_owned(),
+            typ: typ.into(),
+            b_spline,
+        })
     }
 }
 
@@ -132,18 +164,17 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let db_dpsi = bfield.db_dpsi(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let db_dpsip = bfield.db_dpsip(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn db_dpsi(
+    pub fn db_dpsip(
         &self,
         psip: f64,
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
     ) -> Result<f64> {
-        // Ok(self.db_dpsi_spline.eval(psi, theta, xacc, yacc)?)
         Ok(self
             .b_spline
             .eval_deriv_x(psip, mod_theta(theta), xacc, yacc)?)
@@ -165,11 +196,11 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let d2b_dpsi2 = bfield.d2b_dpsi2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let d2b_dpsip2 = bfield.d2b_dpsip2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn d2b_dpsi2(
+    pub fn d2b_dpsip2(
         &self,
         psip: f64,
         theta: f64,
@@ -186,4 +217,14 @@ impl Bfield {
 fn mod_theta(theta: f64) -> f64 {
     use std::f64::consts::TAU;
     theta.rem_euclid(TAU)
+}
+
+impl std::fmt::Debug for Bfield {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Bfield")
+            .field("path", &self.path)
+            .field("typ", &self.typ)
+            .field("shape", &(self.b_spline.xa.len(), self.b_spline.ya.len()))
+            .finish()
+    }
 }

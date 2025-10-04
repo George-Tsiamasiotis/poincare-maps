@@ -4,12 +4,39 @@ use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
+use pyo3::exceptions::PyTypeError;
+use pyo3::prelude::*;
+
 /// Plasma current reconstructed from a netCDF file.
+#[pyclass]
 pub struct Current {
+    /// Path to the netCDF file.
+    path: PathBuf,
+    /// Interpolation type.
+    typ: Box<str>,
     /// Spline over the g-current data, as a function of ψ_p.
-    pub g_spline: DynSpline<f64>,
+    g_spline: DynSpline<f64>,
     /// Spline over the I-current data, as a function of ψ_p.
-    pub i_spline: DynSpline<f64>,
+    i_spline: DynSpline<f64>,
+}
+
+#[pymethods]
+impl Current {
+    #[new]
+    /// Wrapper around `Current::from_dataset`.
+    ///
+    /// This is a workaround to return a `PyErr`.
+    pub fn new(path: &str, typ: &str) -> PyResult<Self> {
+        let path = PathBuf::from(path);
+        match Self::from_dataset(&path, typ) {
+            Ok(current) => Ok(current),
+            Err(err) => Err(PyTypeError::new_err(err.to_string())),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:#?}", &self)
+    }
 }
 
 impl Current {
@@ -53,7 +80,12 @@ impl Current {
         let g_spline = make_spline(typ, &psip_data, &g_data)?;
         let i_spline = make_spline(typ, &psip_data, &i_data)?;
 
-        Ok(Self { g_spline, i_spline })
+        Ok(Self {
+            path: path.to_owned(),
+            typ: typ.into(),
+            g_spline,
+            i_spline,
+        })
     }
 }
 
@@ -142,5 +174,15 @@ impl Current {
     /// ```
     pub fn di_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
         Ok(self.i_spline.eval_deriv(psip, acc)?)
+    }
+}
+
+impl std::fmt::Debug for Current {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Current")
+            .field("path", &self.path)
+            .field("typ", &self.typ)
+            .field("len", &self.g_spline.xa.len())
+            .finish()
     }
 }

@@ -16,13 +16,12 @@ impl Rk45State {
 
 impl Default for Rk45State {
     fn default() -> Self {
-        use std::f64::NAN;
         Self {
-            k1: [NAN, NAN, NAN, NAN],
-            k2: [NAN, NAN, NAN, NAN],
-            k3: [NAN, NAN, NAN, NAN],
-            k4: [NAN, NAN, NAN, NAN],
-            k_add: [NAN, NAN, NAN, NAN],
+            k1: [f64::NAN, f64::NAN, f64::NAN, f64::NAN],
+            k2: [f64::NAN, f64::NAN, f64::NAN, f64::NAN],
+            k3: [f64::NAN, f64::NAN, f64::NAN, f64::NAN],
+            k4: [f64::NAN, f64::NAN, f64::NAN, f64::NAN],
+            k_add: [f64::NAN, f64::NAN, f64::NAN, f64::NAN],
         }
     }
 }

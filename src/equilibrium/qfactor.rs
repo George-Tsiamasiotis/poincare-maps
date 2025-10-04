@@ -4,13 +4,39 @@ use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
+use pyo3::exceptions::PyTypeError;
+use pyo3::prelude::*;
+
 /// q-factor reconstructed from a netCDF file.
-#[non_exhaustive]
+#[pyclass]
 pub struct Qfactor {
+    /// Path to the netCDF file.
+    path: PathBuf,
+    /// Interpolation type.
+    typ: Box<str>,
     /// Spline over the q-factor data, as a function of ψ_p.
-    pub q_spline: DynSpline<f64>,
+    q_spline: DynSpline<f64>,
     /// Spline over the toroidal flux data, as a function of ψ_p.
-    pub psi_spline: DynSpline<f64>,
+    psi_spline: DynSpline<f64>,
+}
+
+#[pymethods]
+impl Qfactor {
+    #[new]
+    /// Wrapper around `Qfactor::from_dataset`.
+    ///
+    /// This is a workaround to return a `PyErr`.
+    pub fn new(path: &str, typ: &str) -> PyResult<Self> {
+        let path = PathBuf::from(path);
+        match Self::from_dataset(&path, typ) {
+            Ok(qfactor) => Ok(qfactor),
+            Err(err) => Err(PyTypeError::new_err(err.to_string())),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:#?}", &self)
+    }
 }
 
 impl Qfactor {
@@ -55,6 +81,8 @@ impl Qfactor {
         let psi_spline = make_spline(typ, &psip_data, &psi_data)?;
 
         Ok(Self {
+            path: path.to_owned(),
+            typ: typ.into(),
             q_spline,
             psi_spline,
         })
@@ -106,5 +134,15 @@ impl Qfactor {
     pub fn psi(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
         debug_assert!(psip.is_sign_positive());
         Ok(self.psi_spline.eval(psip, acc)?)
+    }
+}
+
+impl std::fmt::Debug for Qfactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Qfactor")
+            .field("path", &self.path)
+            .field("typ", &self.typ)
+            .field("len", &self.q_spline.xa.len())
+            .finish()
     }
 }

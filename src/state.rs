@@ -10,7 +10,7 @@ use crate::{InitialConditions, Result};
 /// Corresponds to a single specific point in configuration space, e.g. all values are calculated
 /// at the same `θ`, `ψ_p`, `ρ`, `ζ` point.
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct State {
     /// The `ψ_p` coordinate [`Accelerator`].
     xacc: Accelerator,
@@ -167,8 +167,6 @@ impl State {
         self.calculate_braces();
         self.calculate_extras();
 
-        // TODO:
-        // And finally the derivatives.
         self.calculate_theta_dot();
         self.calculate_psip_dot();
         self.calculate_rho_dot();
@@ -192,7 +190,7 @@ impl State {
     fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
         self.b = bfield.b(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
         self.db_dtheta = bfield.db_dtheta(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
-        self.db_dpsip = bfield.db_dpsi(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
+        self.db_dpsip = bfield.db_dpsip(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
         Ok(())
     }
 
@@ -269,51 +267,5 @@ impl std::fmt::Display for State {
             .field("ρ", &self.rho)
             .field("ζ", &self.zeta)
             .finish_non_exhaustive()
-    }
-}
-
-impl Clone for State {
-    fn clone(&self) -> Self {
-        Self {
-            xacc: self.xacc.clone(),
-            yacc: self.yacc.clone(),
-            t: self.t.clone(),
-            theta: self.theta.clone(),
-            psip: self.psip.clone(),
-            rho: self.rho.clone(),
-            zeta: self.zeta.clone(),
-            mu: self.mu.clone(),
-            psi: self.psi.clone(),
-            ptheta: self.ptheta.clone(),
-            pzeta: self.pzeta.clone(),
-            a: self.a.clone(),
-            theta_dot: self.theta_dot.clone(),
-            psip_dot: self.psip_dot.clone(),
-            rho_dot: self.rho_dot.clone(),
-            zeta_dot: self.zeta_dot.clone(),
-            b: self.b.clone(),
-            q: self.q.clone(),
-            g: self.g.clone(),
-            i: self.i.clone(),
-            db_dtheta: self.db_dtheta.clone(),
-            db_dzeta: self.db_dzeta.clone(),
-            db_dpsip: self.db_dpsip.clone(),
-            dg_dpsip: self.dg_dpsip.clone(),
-            di_dpsip: self.di_dpsip.clone(),
-            da_dpsip: self.da_dpsip.clone(),
-            da_dtheta: self.da_dtheta.clone(),
-            da_dzeta: self.da_dzeta.clone(),
-            dterm: self.dterm.clone(),
-            kterm: self.kterm.clone(),
-            cterm: self.cterm.clone(),
-            fterm: self.fterm.clone(),
-            mu_par: self.mu_par.clone(),
-            psip_brace: self.psip_brace.clone(),
-            theta_brace: self.theta_brace.clone(),
-            zeta_brace: self.zeta_brace.clone(),
-            rho_bsquared_d: self.rho_bsquared_d.clone(),
-            g_over_d: self.g_over_d.clone(),
-            i_over_d: self.i_over_d.clone(),
-        }
     }
 }
