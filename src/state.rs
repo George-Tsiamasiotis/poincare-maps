@@ -115,6 +115,9 @@ impl State {
             zeta: initial.zeta0,
             mu: initial.mu,
             pzeta: initial.pzeta,
+            // Axisymmetric configuration
+            zeta_brace: 0.0,
+            db_dzeta: 0.0,
             ..Default::default()
         }
     }
@@ -176,7 +179,6 @@ impl State {
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn calculate_canonical_momenta(&mut self) {
         self.ptheta = self.psi + self.rho * self.i;
         self.pzeta = self.rho * self.g - self.psip;

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use ndarray::concatenate;
 use ndarray::{Array2, Axis};
+use numpy::{PyArray1, PyArray2, ToPyArray};
 use rsl_interpolation::{Accelerator, DynSpline2d};
 
 use crate::Result;
@@ -16,14 +17,17 @@ pub struct Bfield {
     path: PathBuf,
     /// Interpolation type.
     typ: Box<str>,
-    /// Spline over the magnetic field strength data, as a function of ψ_p.
+    /// Spline over the magnetic field strength data, as a function of ψ_p, θ.
     b_spline: DynSpline2d<f64>,
+    /// Spline over the R coordinate, as a function of ψ_p, θ.
+    r_spline: DynSpline2d<f64>,
+    /// Spline over the Z coordinate, as a function of ψ_p, θ.
+    z_spline: DynSpline2d<f64>,
 }
 
 #[pymethods]
 impl Bfield {
     #[new]
-    #[pyo3(signature = (path, typ))]
     /// Wrapper around `Bfield::from_dataset`.
     ///
     /// This is a workaround to return a `PyErr`.
@@ -33,6 +37,34 @@ impl Bfield {
             Ok(bfield) => Ok(bfield),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
+    }
+
+    fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.b_spline.xa.to_pyarray(py)
+    }
+
+    fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.b_spline.ya.to_pyarray(py)
+    }
+
+    fn rzb_grids<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> (
+        Bound<'py, PyArray2<f64>>,
+        Bound<'py, PyArray2<f64>>,
+        Bound<'py, PyArray2<f64>>,
+    ) {
+        let shape = (self.b_spline.xa.len(), self.b_spline.ya.len());
+        let rgrid = Array2::from_shape_vec(shape, self.r_spline.za.to_vec()).unwrap();
+        let zgrid = Array2::from_shape_vec(shape, self.z_spline.za.to_vec()).unwrap();
+        let bgrid = Array2::from_shape_vec(shape, self.b_spline.za.to_vec()).unwrap();
+
+        (
+            rgrid.to_pyarray(py),
+            zgrid.to_pyarray(py),
+            bgrid.to_pyarray(py),
+        )
     }
 
     fn __repr__(&self) -> String {
@@ -68,18 +100,34 @@ impl Bfield {
         let theta_data = eq.get_1d(THETA_COORD)?.to_vec();
 
         let b_data = eq.get_2d(B_FIELD)?;
+        let r_data = eq.get_2d(R)?;
+        let z_data = eq.get_2d(Z)?;
+        let raxis_val = eq.get_scalar(R_AXIS)?;
+        let zaxis_val = eq.get_scalar(Z_AXIS)?;
 
         // Transpose of gcmotion
         let b_axis_values = Array2::from_elem((1, b_data.ncols()), 1.0); // B0 = 1 [NU]
         let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
         let b_data_flat = b_data.flatten().to_vec();
 
+        let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
+        let r_data = concatenate![Axis(0), r_axis_values, r_data];
+        let r_data_flat = r_data.flatten().to_vec();
+
+        let z_axis_values = Array2::from_elem((1, z_data.ncols()), zaxis_val);
+        let z_data = concatenate![Axis(0), z_axis_values, z_data];
+        let z_data_flat = z_data.flatten().to_vec();
+
         let b_spline = make_spline2d(typ, &psip_data, &theta_data, &b_data_flat)?;
+        let r_spline = make_spline2d(typ, &psip_data, &theta_data, &r_data_flat)?;
+        let z_spline = make_spline2d(typ, &psip_data, &theta_data, &z_data_flat)?;
 
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             b_spline,
+            r_spline,
+            z_spline,
         })
     }
 }

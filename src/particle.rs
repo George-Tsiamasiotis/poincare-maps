@@ -59,7 +59,6 @@ impl Particle {
         steps: usize,
     ) -> Result<()> {
         self.state.evaluate(qfactor, current, bfield)?;
-        // dbg!(&self.rk45state.state1);
 
         let h = step_size;
         // TEMP
@@ -75,7 +74,6 @@ impl Particle {
             self.rk45state.calculate_add_terms();
             self.rk45state.calculate_next_state(h);
             self.state = self.rk45state.next.clone();
-            // dbg!(&self.rk45state);
 
             self.state.evaluate(qfactor, current, bfield)?;
 
