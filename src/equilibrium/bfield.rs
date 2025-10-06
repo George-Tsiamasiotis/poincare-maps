@@ -39,11 +39,11 @@ impl Bfield {
         }
     }
 
-    fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+    fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.b_spline.xa.to_pyarray(py)
     }
 
-    fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+    fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.b_spline.ya.to_pyarray(py)
     }
 
@@ -58,7 +58,11 @@ impl Bfield {
         let shape = (self.b_spline.xa.len(), self.b_spline.ya.len());
         let rgrid = Array2::from_shape_vec(shape, self.r_spline.za.to_vec()).unwrap();
         let zgrid = Array2::from_shape_vec(shape, self.z_spline.za.to_vec()).unwrap();
-        let bgrid = Array2::from_shape_vec(shape, self.b_spline.za.to_vec()).unwrap();
+
+        // `Spline.za` is in Fortran order.
+        let bshape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+        let bgrid = Array2::from_shape_vec(bshape, self.b_spline.za.to_vec()).unwrap();
+        let bgrid = bgrid.reversed_axes();
 
         (
             rgrid.to_pyarray(py),
@@ -108,7 +112,11 @@ impl Bfield {
         // Transpose of gcmotion
         let b_axis_values = Array2::from_elem((1, b_data.ncols()), 1.0); // B0 = 1 [NU]
         let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
-        let b_data_flat = b_data.flatten().to_vec();
+
+        // `Spline.za` is in Fortran order.
+        let b_data_flat = b_data
+            .flatten_with_order(ndarray::Order::ColumnMajor)
+            .to_vec();
 
         let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
         let r_data = concatenate![Axis(0), r_axis_values, r_data];
@@ -160,7 +168,7 @@ impl Bfield {
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
     ) -> Result<f64> {
-        Ok(self.b_spline.eval(psip, mod_theta(theta), xacc, yacc)?)
+        Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc)?)
     }
 
     /// Calculates `𝜕B(ψ_p, θ) /𝜕𝜃`.
@@ -193,7 +201,7 @@ impl Bfield {
         // Ok(self.db_dtheta_spline.eval(psi, theta, xacc, yacc)?)
         Ok(self
             .b_spline
-            .eval_deriv_y(psip, mod_theta(theta), xacc, yacc)?)
+            .eval_deriv_y(psip, mod2pi(theta), xacc, yacc)?)
     }
 
     /// Calculates `𝜕B(ψ_p, θ) /𝜕ψ_p`.
@@ -225,7 +233,7 @@ impl Bfield {
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_x(psip, mod_theta(theta), xacc, yacc)?)
+            .eval_deriv_x(psip, mod2pi(theta), xacc, yacc)?)
     }
 
     /// Calculates `𝜕²B(ψ_p, θ) /𝜕𝜓_p²`.
@@ -257,12 +265,12 @@ impl Bfield {
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_xx(psip, mod_theta(theta), xacc, yacc)?)
+            .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc)?)
     }
 }
 
 /// Returns θ % 2π.
-fn mod_theta(theta: f64) -> f64 {
+fn mod2pi(theta: f64) -> f64 {
     use std::f64::consts::TAU;
     theta.rem_euclid(TAU)
 }

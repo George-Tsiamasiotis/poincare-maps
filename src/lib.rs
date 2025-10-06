@@ -2,7 +2,6 @@ mod equilibrium;
 mod error;
 mod initial;
 mod particle;
-mod point;
 mod rk45;
 mod state;
 
@@ -14,7 +13,6 @@ pub use error::MapError;
 pub use initial::InitialConditions;
 pub use particle::Particle;
 
-pub(crate) use point::Point;
 pub(crate) use rk45::Rk45State;
 pub(crate) use state::State;
 

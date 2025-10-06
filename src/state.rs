@@ -13,9 +13,9 @@ use crate::{InitialConditions, Result};
 #[derive(Debug, Clone)]
 pub(crate) struct State {
     /// The `ψ_p` coordinate [`Accelerator`].
-    xacc: Accelerator,
+    pub(crate) xacc: Accelerator,
     /// The `θ_p` coordinate [`Accelerator`].
-    yacc: Accelerator,
+    pub(crate) yacc: Accelerator,
 
     /// The time of evaluation.
     pub(crate) t: f64,
@@ -75,6 +75,8 @@ pub(crate) struct State {
     pub(crate) da_dtheta: f64,
     /// Not sure yet, associated with the perturbations.
     pub(crate) da_dzeta: f64,
+    /// Not sure yet, associated with the perturbations.
+    pub(crate) da_dt: f64,
 
     /// The `D` coefficient.
     pub(crate) dterm: f64,
@@ -102,11 +104,13 @@ pub(crate) struct State {
 }
 
 impl State {
+    /// All fields set to NaN and Accelerator creation.
     pub(crate) fn new_uninit() -> Self {
         Self::default()
     }
 
-    pub(crate) fn new(initial: &InitialConditions) -> Self {
+    /// Set intial state variables, without evaluating anything else.
+    pub(crate) fn new_init(initial: &InitialConditions) -> Self {
         Self {
             t: initial.t0,
             theta: initial.theta0,
@@ -114,15 +118,11 @@ impl State {
             rho: initial.rho0,
             zeta: initial.zeta0,
             mu: initial.mu,
-            pzeta: initial.pzeta,
-            // Axisymmetric configuration
-            zeta_brace: 0.0,
-            db_dzeta: 0.0,
             ..Default::default()
         }
     }
 
-    #[allow(dead_code)]
+    /// Evaluation all quantites derived by (θ, ψ_p, ρ, ζ, μ)
     pub(crate) fn evaluate(
         &mut self,
         qfactor: &Qfactor,
@@ -143,6 +143,7 @@ impl State {
         self.calculate_extras();
         self.calculate_canonical_momenta();
 
+        // And finally the time derivatives.
         self.calculate_theta_dot();
         self.calculate_psip_dot();
         self.calculate_rho_dot();
@@ -168,6 +169,7 @@ impl State {
         self.b = bfield.b(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
         self.db_dtheta = bfield.db_dtheta(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
         self.db_dpsip = bfield.db_dpsip(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
+        self.db_dzeta = 0.0; // Axisymmetric configuration
         Ok(())
     }
 
@@ -176,6 +178,7 @@ impl State {
         self.da_dpsip = 0.0;
         self.da_dtheta = 0.0;
         self.da_dzeta = 0.0;
+        self.da_dt = 0.0;
         Ok(())
     }
 
@@ -210,7 +213,7 @@ impl State {
     }
 
     fn calculate_theta_dot(&mut self) {
-        self.theta_dot = -self.cterm * self.rho_bsquared_d + self.g / self.dterm * self.psip_brace;
+        self.theta_dot = -self.cterm * self.rho_bsquared_d + self.g_over_d * self.psip_brace;
     }
 
     fn calculate_psip_dot(&mut self) {
@@ -221,7 +224,8 @@ impl State {
     fn calculate_rho_dot(&mut self) {
         self.rho_dot = self.cterm / self.dterm * self.theta_brace
             - self.kterm / self.dterm * self.psip_brace
-            - self.fterm / self.dterm * self.zeta_brace;
+            - self.fterm / self.dterm * self.zeta_brace
+            - self.da_dt;
     }
 
     fn calculate_zeta_dot(&mut self) {
@@ -231,8 +235,8 @@ impl State {
     #[allow(dead_code)]
     pub(crate) fn energy(&self) -> f64 {
         let parallel = (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2));
-        let perpandicular = self.mu * self.b;
-        parallel + perpandicular
+        let perpendicular = self.mu * self.b;
+        parallel + perpendicular
     }
 }
 
@@ -272,6 +276,7 @@ impl Default for State {
             da_dpsip: f64::NAN,
             da_dtheta: f64::NAN,
             da_dzeta: f64::NAN,
+            da_dt: f64::NAN,
             mu_par: f64::NAN,
             psip_brace: f64::NAN,
             theta_brace: f64::NAN,
