@@ -1,6 +1,9 @@
+use std::time::{Duration, Instant};
+
+use crate::solver::Solver;
+use crate::Result;
 use crate::{Bfield, Current, Qfactor};
 use crate::{InitialConditions, State};
-use crate::{Result, Rk45State};
 
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -15,7 +18,7 @@ pub struct Particle {
     /// The current state of the particle.
     state: State,
     /// The current RK45 state.
-    rk45state: Rk45State,
+    solver: Solver,
     /// The calculated evaluation times.
     #[pyo3(get)]
     t: Vec<f64>,
@@ -37,16 +40,20 @@ pub struct Particle {
     /// The calculated Pθ values.
     #[pyo3(get)]
     ptheta: Vec<f64>,
+    initial_energy: f64,
+    final_energy: f64,
+    calculation_time: Duration,
 }
 
 #[pymethods]
 impl Particle {
     #[new]
+    #[cfg(all(any(feature = "rk45-classic"), not(feature = "rkf45")))]
     pub fn new(initial: InitialConditions) -> Self {
         Self {
             initial: initial.to_owned(),
             state: State::new_init(&initial),
-            rk45state: Rk45State::default(),
+            solver: Solver::default(),
             t: Vec::with_capacity(VEC_INIT_CAPACITY),
             theta: Vec::with_capacity(VEC_INIT_CAPACITY),
             psip: Vec::with_capacity(VEC_INIT_CAPACITY),
@@ -54,6 +61,29 @@ impl Particle {
             zeta: Vec::with_capacity(VEC_INIT_CAPACITY),
             pzeta: Vec::with_capacity(VEC_INIT_CAPACITY),
             ptheta: Vec::with_capacity(VEC_INIT_CAPACITY),
+            initial_energy: f64::NAN,
+            final_energy: f64::NAN,
+            calculation_time: Duration::ZERO,
+        }
+    }
+
+    #[new]
+    #[cfg(all(feature = "rk45-classic", feature = "rkf45"))]
+    pub fn new(initial: InitialConditions) -> Self {
+        Self {
+            initial: initial.to_owned(),
+            state: State::new_init(&initial),
+            solver: Solver::default(),
+            t: Vec::with_capacity(VEC_INIT_CAPACITY),
+            theta: Vec::with_capacity(VEC_INIT_CAPACITY),
+            psip: Vec::with_capacity(VEC_INIT_CAPACITY),
+            rho: Vec::with_capacity(VEC_INIT_CAPACITY),
+            zeta: Vec::with_capacity(VEC_INIT_CAPACITY),
+            pzeta: Vec::with_capacity(VEC_INIT_CAPACITY),
+            ptheta: Vec::with_capacity(VEC_INIT_CAPACITY),
+            initial_energy: f64::NAN,
+            final_energy: f64::NAN,
+            calculation_time: Duration::ZERO,
         }
     }
 
@@ -67,10 +97,10 @@ impl Particle {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
-        step_size: f64,
+        t_eval: (f64, f64),
         steps: usize,
     ) -> PyResult<()> {
-        match self.run(qfactor, bfield, current, step_size, steps) {
+        match self.run(qfactor, bfield, current, t_eval, steps) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
@@ -83,22 +113,30 @@ impl Particle {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
-        step_size: f64,
+        t_eval: (f64, f64),
         steps: usize,
     ) -> Result<()> {
         self.state.evaluate(qfactor, current, bfield)?;
+        self.initial_energy = self.state.energy();
 
-        let h = step_size;
+        let t0 = t_eval.0;
+        let tf = t_eval.1;
+        let step = (tf - t0) / (steps as f64);
+
+        let mut h = step;
         // TEMP
-        for _ in 0..steps {
-            self.rk45state = Rk45State::default();
-            self.rk45state.init(&self.state);
-            self.rk45state.start(h, qfactor, bfield, current)?;
-            self.state = self.rk45state.next_state();
+        self.calculation_time = Duration::ZERO;
+        let start = Instant::now();
+        while self.state.t < tf {
+            self.solver = Solver::default();
+            self.solver.init(&self.state);
+            self.solver.start(h, qfactor, bfield, current)?;
+            h = self.solver.calculate_optimal_step(h);
+            self.state = self.solver.next_state(h);
 
             self.state.evaluate(qfactor, current, bfield)?;
 
-            self.t.push(self.state.theta);
+            self.t.push(self.state.t);
             self.theta.push(self.state.theta);
             self.psip.push(self.state.psip);
             self.rho.push(self.state.rho);
@@ -106,6 +144,9 @@ impl Particle {
             self.pzeta.push(self.state.pzeta);
             self.ptheta.push(self.state.ptheta);
         }
+        self.calculation_time = start.elapsed();
+
+        self.final_energy = self.state.energy();
 
         Ok(())
     }
@@ -120,8 +161,19 @@ impl std::fmt::Debug for Particle {
         };
 
         f.debug_struct("Particle")
-            .field("initial", &self.initial)
+            .field("Initial", &self.initial)
+            .field(
+                "Interval",
+                &format!(
+                    "[{:.5}, {:.5}]",
+                    self.initial.t0,
+                    self.t.last().copied().unwrap_or(f64::NAN)
+                ),
+            )
             .field("Evolution", &evolution)
+            .field("Initial energy", &self.initial_energy)
+            .field("Final energy  ", &self.final_energy)
+            .field("Time", &self.calculation_time)
             .finish()
     }
 }
@@ -149,7 +201,8 @@ mod test {
         };
         let mut particle = Particle::new(initial);
         particle
-            .run(&qfactor, &bfield, &current, 1e-1, 5000)
+            .run(&qfactor, &bfield, &current, (0.0, 2100.0), 500000)
             .unwrap();
+        dbg!(&particle);
     }
 }

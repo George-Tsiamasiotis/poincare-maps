@@ -23,22 +23,23 @@ particle.run(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
-    step_size=1e-1,
-    steps=5000,
+    t_eval=(0.0, 20000),
+    steps=60000,
 )
 print(particle)
 
-t = particle.t
-theta = particle.theta
-psip = particle.psip
-rho = particle.rho
-zeta = particle.zeta
-pzeta = particle.pzeta
-ptheta = particle.ptheta
+point_jump = 10
+t = particle.t[::10]
+theta = particle.theta[::10]
+psip = particle.psip[::10]
+rho = particle.rho[::10]
+zeta = particle.zeta[::10]
+pzeta = particle.pzeta[::10]
+ptheta = particle.ptheta[::10]
 
 fig = plt.figure(**{"figsize": (9, 6), "layout": "constrained", "dpi": 120})
 ax = fig.subplots(6, 1, sharex=True)
-s, c = 0.08, "blue"
+s, c = 0.9, "blue"
 ax[0].scatter(t, theta, s, c)
 ax[1].scatter(t, psip, s, c)
 ax[2].scatter(t, rho, s, c)

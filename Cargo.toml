@@ -20,7 +20,9 @@ version = "0.26.0"
 features = ["abi3", "extension-module"]
 
 [features]
-default = ["rsl-interpolation/openblas-system"]
+default = ["rsl-interpolation/openblas-system", "rk45-classic"]
+rkf45 = []
+rk45-classic = []
 openblas-static = ["rsl-interpolation/openblas-static"]
 openblas-system = ["rsl-interpolation/openblas-system"]
 static_netcdf = ["tokamak-netcdf/static"]

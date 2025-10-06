@@ -2,7 +2,7 @@ mod equilibrium;
 mod error;
 mod initial;
 mod particle;
-mod rk45;
+mod solver;
 mod state;
 
 pub use equilibrium::Bfield;
@@ -13,7 +13,6 @@ pub use error::MapError;
 pub use initial::InitialConditions;
 pub use particle::Particle;
 
-pub(crate) use rk45::Rk45State;
 pub(crate) use state::State;
 
 pub type Result<T> = std::result::Result<T, MapError>;
