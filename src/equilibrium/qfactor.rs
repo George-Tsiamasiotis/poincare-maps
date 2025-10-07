@@ -18,6 +18,12 @@ pub struct Qfactor {
     q_spline: DynSpline<f64>,
     /// Spline over the toroidal flux data, as a function of ψ_p.
     psi_spline: DynSpline<f64>,
+    #[pyo3(get)]
+    /// The value of the poloidal angle ψ_p at the wall.
+    psip_wall: f64,
+    #[pyo3(get)]
+    /// The value of the toroidal angle ψ at the wall.
+    psi_wall: f64,
 }
 
 #[pymethods]
@@ -80,11 +86,16 @@ impl Qfactor {
         let q_spline = make_spline(typ, &psip_data, &q_data)?;
         let psi_spline = make_spline(typ, &psip_data, &psi_data)?;
 
+        let psip_wall = psip_data.last().copied().unwrap();
+        let psi_wall = psi_data.last().copied().unwrap();
+
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             q_spline,
             psi_spline,
+            psip_wall,
+            psi_wall,
         })
     }
 }

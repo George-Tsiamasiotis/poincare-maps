@@ -9,33 +9,36 @@ bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "cubic")
 current = pm.Current("./data.nc", "steffen")
 
+psip_wall = qfactor.psip_wall
+psi_wall = qfactor.psi_wall
+
 init = pm.InitialConditions(
     t0=0,
     theta0=3.14,
-    psip0=0.05,
+    psip0=0.02,
     rho0=0.05,
-    zeta0=0.1,
+    zeta0=0,
     mu=1e-4,
 )
 
 particle = pm.Particle(init)
-particle.run_ode(
+particle.run_henon_zeta(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
-    t_eval=(0.0, 200),
-    steps=50000,
+    angle=2,
+    turns=300,
 )
 print(particle)
 
-point_jump = 1
-t = particle.t[::point_jump]
-theta = particle.theta[::point_jump]
-psip = particle.psip[::point_jump]
-rho = particle.rho[::point_jump]
-zeta = particle.zeta[::point_jump]
-pzeta = particle.pzeta[::point_jump]
-ptheta = particle.ptheta[::point_jump]
+t = particle.t
+theta = particle.theta
+psip = particle.psip
+rho = particle.rho
+zeta = particle.zeta
+pzeta = particle.pzeta
+ptheta = particle.ptheta
+psi = particle.psi
 
 fig = plt.figure(**{"figsize": (9, 6), "layout": "constrained", "dpi": 120})
 ax = fig.subplots(6, 1, sharex=True)
@@ -58,10 +61,28 @@ ax[5].set_title("Pζ")
 plt.show()
 plt.close()
 
-fig = plt.figure(**{"figsize": (6, 4), "layout": "constrained"})
+
+# ==========================================================================
+
+
+def pi_mod(arr: np.ndarray):
+    a = np.mod(arr, 2 * np.pi)
+    a = a - 2 * np.pi * (a > np.pi)
+    return a
+
+
+fig = plt.figure(**{"figsize": (10, 7), "layout": "constrained", "dpi": 100})
 ax = fig.subplots()
-ax.scatter(np.mod(theta, 2 * np.pi), ptheta, s, c)
-ax.set_title("θ-Pθ")
+s, c, marker = 3, "black", "."
+ax.scatter(pi_mod(theta), psi, s, c, marker=marker)
+
+ax.set_title("θ-ψ")
+ax.set_xlim(-np.pi, np.pi)
+ax.set_ylim(0, psi_wall)
+ax.set_xticks(
+    np.linspace(-np.pi, np.pi, 5),
+    ["-π", "-π/2", "0", "π/2", "π"],
+)
 
 plt.show()
 plt.close()
