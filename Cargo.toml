@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "poincare_maps"
-crate-type = ["cdylib"] # Comment out to run all tests
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 ndarray = "0.16.1"
@@ -20,12 +21,21 @@ version = "0.26.0"
 features = ["abi3", "extension-module"]
 
 [features]
-default = ["rsl-interpolation/openblas-system", "rk45-classic"]
+default = ["rsl-interpolation/openblas-system"]
 rkf45 = []
-rk45-classic = []
 openblas-static = ["rsl-interpolation/openblas-static"]
 openblas-system = ["rsl-interpolation/openblas-system"]
 static_netcdf = ["tokamak-netcdf/static"]
 
 [package.metadata.docs.rs]
 features = ["static_netcdf"]
+
+# Bevy tip:
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3

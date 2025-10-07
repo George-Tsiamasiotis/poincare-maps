@@ -9,7 +9,7 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 /// Initial capacity of the vectors that store the evolution of the particle.
-const VEC_INIT_CAPACITY: usize = 500;
+const VEC_INIT_CAPACITY: usize = 2000;
 
 #[pyclass]
 pub struct Particle {
@@ -48,7 +48,7 @@ pub struct Particle {
 #[pymethods]
 impl Particle {
     #[new]
-    #[cfg(all(any(feature = "rk45-classic"), not(feature = "rkf45")))]
+    #[cfg(not(feature = "rkf45"))]
     pub fn new(initial: InitialConditions) -> Self {
         Self {
             initial: initial.to_owned(),
@@ -68,7 +68,7 @@ impl Particle {
     }
 
     #[new]
-    #[cfg(all(feature = "rk45-classic", feature = "rkf45"))]
+    #[cfg(feature = "rkf45")]
     pub fn new(initial: InitialConditions) -> Self {
         Self {
             initial: initial.to_owned(),
@@ -108,7 +108,7 @@ impl Particle {
 }
 
 impl Particle {
-    pub(crate) fn run(
+    pub fn run(
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
@@ -119,15 +119,12 @@ impl Particle {
         self.state.evaluate(qfactor, current, bfield)?;
         self.initial_energy = self.state.energy();
 
-        let t0 = t_eval.0;
-        let tf = t_eval.1;
-        let step = (tf - t0) / (steps as f64);
+        let mut h = first_step(t_eval, steps);
 
-        let mut h = step;
-        // TEMP
         self.calculation_time = Duration::ZERO;
         let start = Instant::now();
-        while self.state.t < tf {
+
+        while self.state.t < t_eval.1 {
             self.solver = Solver::default();
             self.solver.init(&self.state);
             self.solver.start(h, qfactor, bfield, current)?;
@@ -135,21 +132,53 @@ impl Particle {
             self.state = self.solver.next_state(h);
 
             self.state.evaluate(qfactor, current, bfield)?;
-
-            self.t.push(self.state.t);
-            self.theta.push(self.state.theta);
-            self.psip.push(self.state.psip);
-            self.rho.push(self.state.rho);
-            self.zeta.push(self.state.zeta);
-            self.pzeta.push(self.state.pzeta);
-            self.ptheta.push(self.state.ptheta);
+            self.update_vecs();
         }
         self.calculation_time = start.elapsed();
+        self.shrink_vecs();
 
         self.final_energy = self.state.energy();
 
         Ok(())
     }
+
+    fn shrink_vecs(&mut self) {
+        self.t.shrink_to_fit();
+        self.theta.shrink_to_fit();
+        self.psip.shrink_to_fit();
+        self.rho.shrink_to_fit();
+        self.zeta.shrink_to_fit();
+        self.pzeta.shrink_to_fit();
+        self.ptheta.shrink_to_fit();
+    }
+
+    fn update_vecs(&mut self) {
+        self.t.push(self.state.t);
+        self.theta.push(self.state.theta);
+        self.psip.push(self.state.psip);
+        self.rho.push(self.state.rho);
+        self.zeta.push(self.state.zeta);
+        self.pzeta.push(self.state.pzeta);
+        self.ptheta.push(self.state.ptheta);
+    }
+}
+
+#[cfg(not(feature = "rkf45"))]
+/// Returns the standard time step, which will be constant throughout the integration.
+fn first_step(t_eval: (f64, f64), steps: usize) -> f64 {
+    let t0 = t_eval.0;
+    let tf = t_eval.1;
+    let step = (tf - t0) / (steps as f64);
+
+    step
+}
+
+#[cfg(feature = "rkf45")]
+/// Returns the initial time step, and should be small enough to account for high energy particles.
+/// The value is empirical.
+#[allow(unused_variables)]
+fn first_step(t_eval: (f64, f64), steps: usize) -> f64 {
+    1e-4
 }
 
 impl std::fmt::Debug for Particle {
@@ -170,6 +199,8 @@ impl std::fmt::Debug for Particle {
                     self.t.last().copied().unwrap_or(f64::NAN)
                 ),
             )
+            .field("ψ-acc", &self.state.xacc)
+            .field("θ-acc", &self.state.xacc)
             .field("Evolution", &evolution)
             .field("Initial energy", &self.initial_energy)
             .field("Final energy  ", &self.final_energy)
@@ -201,7 +232,7 @@ mod test {
         };
         let mut particle = Particle::new(initial);
         particle
-            .run(&qfactor, &bfield, &current, (0.0, 2100.0), 500000)
+            .run(&qfactor, &bfield, &current, (0.0, 210.0), 50000)
             .unwrap();
         dbg!(&particle);
     }

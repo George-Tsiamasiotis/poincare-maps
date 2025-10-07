@@ -23,19 +23,19 @@ particle.run(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
-    t_eval=(0.0, 20000),
-    steps=60000,
+    t_eval=(0.0, 200),
+    steps=50000,
 )
 print(particle)
 
-point_jump = 10
-t = particle.t[::10]
-theta = particle.theta[::10]
-psip = particle.psip[::10]
-rho = particle.rho[::10]
-zeta = particle.zeta[::10]
-pzeta = particle.pzeta[::10]
-ptheta = particle.ptheta[::10]
+point_jump = 1
+t = particle.t[::point_jump]
+theta = particle.theta[::point_jump]
+psip = particle.psip[::point_jump]
+rho = particle.rho[::point_jump]
+zeta = particle.zeta[::point_jump]
+pzeta = particle.pzeta[::point_jump]
+ptheta = particle.ptheta[::point_jump]
 
 fig = plt.figure(**{"figsize": (9, 6), "layout": "constrained", "dpi": 120})
 ax = fig.subplots(6, 1, sharex=True)
