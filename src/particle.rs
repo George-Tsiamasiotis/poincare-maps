@@ -48,27 +48,6 @@ pub struct Particle {
 #[pymethods]
 impl Particle {
     #[new]
-    #[cfg(not(feature = "rkf45"))]
-    pub fn new(initial: InitialConditions) -> Self {
-        Self {
-            initial: initial.to_owned(),
-            state: State::new_init(&initial),
-            solver: Solver::default(),
-            t: Vec::with_capacity(VEC_INIT_CAPACITY),
-            theta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            psip: Vec::with_capacity(VEC_INIT_CAPACITY),
-            rho: Vec::with_capacity(VEC_INIT_CAPACITY),
-            zeta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            pzeta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            ptheta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            initial_energy: f64::NAN,
-            final_energy: f64::NAN,
-            calculation_time: Duration::ZERO,
-        }
-    }
-
-    #[new]
-    #[cfg(feature = "rkf45")]
     pub fn new(initial: InitialConditions) -> Self {
         Self {
             initial: initial.to_owned(),
@@ -163,7 +142,7 @@ impl Particle {
     }
 }
 
-#[cfg(not(feature = "rkf45"))]
+#[cfg(feature = "rk45")]
 /// Returns the standard time step, which will be constant throughout the integration.
 fn first_step(t_eval: (f64, f64), steps: usize) -> f64 {
     let t0 = t_eval.0;
@@ -173,7 +152,7 @@ fn first_step(t_eval: (f64, f64), steps: usize) -> f64 {
     step
 }
 
-#[cfg(feature = "rkf45")]
+#[cfg(not(feature = "rk45"))]
 /// Returns the initial time step, and should be small enough to account for high energy particles.
 /// The value is empirical.
 #[allow(unused_variables)]

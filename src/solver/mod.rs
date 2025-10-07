@@ -1,5 +1,5 @@
-#[cfg_attr(not(feature = "rkf45"), path = "rk45.rs")]
-#[cfg_attr(feature = "rkf45", path = "rkf45.rs")]
+#[cfg_attr(not(feature = "rk45"), path = "rkf45.rs")]
+#[cfg_attr(feature = "rk45", path = "rk45.rs")]
 mod rk;
 
 use crate::State;
