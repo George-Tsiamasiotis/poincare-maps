@@ -11,11 +11,11 @@ current = pm.Current("./data.nc", "steffen")
 
 init = pm.InitialConditions(
     t0=0,
-    theta0=3.14,
+    theta0=0,
     psip0=0.05,
-    rho0=0.05,
-    zeta0=0.1,
-    mu=1e-4,
+    rho0=0.2,
+    zeta0=0.0,
+    mu=1e-6,
 )
 
 particle = pm.Particle(init)
@@ -60,8 +60,10 @@ plt.close()
 
 fig = plt.figure(**{"figsize": (6, 4), "layout": "constrained"})
 ax = fig.subplots()
-ax.scatter(np.mod(theta, 2 * np.pi), ptheta, s, c)
-ax.set_title("θ-Pθ")
+# ax.scatter(np.mod(theta, 2 * np.pi), ptheta, s, c)
+ax.scatter(np.array(particle.t), np.array(zeta) / np.array(theta), s, c)
+# ax.scatter(np.array(particle.theta), np.array(zeta), s, c)
+# ax.set_title("θ-Pθ")
 
 plt.show()
 plt.close()

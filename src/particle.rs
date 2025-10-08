@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 /// Initial capacity of the vectors that store the evolution of the particle.
 const VEC_INIT_CAPACITY: usize = 2000;
 
-/// The initial time step for the RFK45 adaptive step method. Should be small
+/// The initial time step for the RKF45 adaptive step method. Should be small
 /// enough to account for fast particles. The value is empirical.
 const RKF45_FIRST_STEP: f64 = 1e-4;
 
@@ -21,8 +21,6 @@ pub struct Particle {
     initial: InitialConditions,
     /// The current state of the particle.
     state: State,
-    /// The current RK45 state.
-    solver: Solver,
     /// The calculated evaluation times.
     #[pyo3(get)]
     t: Vec<f64>,
@@ -59,7 +57,6 @@ impl Particle {
         Self {
             initial: initial.to_owned(),
             state: State::new_init(&initial),
-            solver: Solver::default(),
             t: Vec::with_capacity(VEC_INIT_CAPACITY),
             theta: Vec::with_capacity(VEC_INIT_CAPACITY),
             psip: Vec::with_capacity(VEC_INIT_CAPACITY),
@@ -127,11 +124,11 @@ impl Particle {
         let start = Instant::now();
 
         while self.state.t < t_eval.1 {
-            self.solver = Solver::default();
-            self.solver.init(&self.state);
-            self.solver.start(h, qfactor, bfield, current)?;
-            h = self.solver.calculate_optimal_step(h);
-            self.state = self.solver.next_state(h);
+            let mut solver = Solver::default();
+            solver.init(&self.state);
+            solver.start(h, qfactor, bfield, current)?;
+            h = solver.calculate_optimal_step(h);
+            self.state = solver.next_state(h);
 
             self.state.evaluate(qfactor, current, bfield)?;
             self.update_vecs();
@@ -157,25 +154,77 @@ impl Particle {
         self.initial_energy = self.state.energy();
 
         let mut h = RKF45_FIRST_STEP;
-        let angle = angle % TAU;
 
         self.calculation_time = Duration::ZERO;
         let start = Instant::now();
 
         while self.zeta.len() <= turns {
-            self.solver = Solver::default();
-            self.solver.init(&self.state);
-            self.solver.start(h, qfactor, bfield, current)?;
-            h = self.solver.calculate_optimal_step(h);
-            self.state = self.solver.next_state(h);
+            let mut solver = Solver::default();
+            solver.init(&self.state);
+            solver.start(h, qfactor, bfield, current)?;
+            h = solver.calculate_optimal_step(h);
 
-            self.state.evaluate(qfactor, current, bfield)?;
+            // State before the intersection
+            let old_state = self.state.clone();
 
-            let zeta_old = self.solver.state1.zeta;
-            let zeta_new = self.state.zeta;
-            if intersected(zeta_old, zeta_new, angle) {
-                // TODO: calculate state with Henon's trick
+            let mut next_state = solver.next_state(h);
+            next_state.evaluate(qfactor, current, bfield)?;
+
+            if intersected(old_state.zeta, next_state.zeta, angle) {
+                // Setup new system (6) and (9)
+                let kappa = 1.0 / old_state.zeta_dot;
+                let dtheta_dzeta = kappa * old_state.theta_dot;
+                let dpsip_dzeta = kappa * old_state.psip_dot;
+                let drho_dzeta = kappa * old_state.rho_dot;
+                let dt_dzeta = kappa;
+
+                let mod_state = State {
+                    t: old_state.zeta,
+                    zeta: old_state.t,
+                    theta_dot: dtheta_dzeta,
+                    psip_dot: dpsip_dzeta,
+                    rho_dot: drho_dzeta,
+                    zeta_dot: dt_dzeta,
+                    ..old_state
+                };
+
+                let direction = (next_state.t - old_state.t).signum();
+                // NOTE: unsure about where tho MOD should happen
+                let dz = direction * (angle - old_state.zeta % TAU);
+
+                let mut solver = Solver::default();
+                solver.init(&mod_state);
+                solver.start(dz, qfactor, bfield, current)?;
+                let new_mod_state = solver.next_state(dz);
+
+                let kappa = 1.0;
+                let dtheta_dt = kappa * new_mod_state.theta_dot;
+                let dpsip_dt = kappa * new_mod_state.psip_dot;
+                let drho_dt = kappa * new_mod_state.rho_dot;
+                let dt_dt = kappa;
+                let intersection_state = State {
+                    t: new_mod_state.zeta,
+                    zeta: new_mod_state.t,
+                    theta_dot: dtheta_dt,
+                    psip_dot: dpsip_dt,
+                    rho_dot: drho_dt,
+                    zeta_dot: dt_dt,
+                    ..new_mod_state
+                };
+
+                self.state = intersection_state.clone();
+                self.state.evaluate(qfactor, current, bfield)?;
                 self.update_vecs();
+
+                let temp_step = next_state.t - intersection_state.t;
+                let mut solver = Solver::default();
+                solver.init(&self.state);
+                solver.start(temp_step, qfactor, bfield, current)?;
+                self.state = solver.next_state(temp_step);
+                self.state.evaluate(qfactor, current, bfield)?;
+                h = RKF45_FIRST_STEP;
+            } else {
+                self.state = next_state;
             }
         }
 
@@ -183,7 +232,7 @@ impl Particle {
         assert!(self
             .zeta
             .windows(2)
-            .map(|w| (w[1] - w[0]).abs() - TAU <= 1e-2)
+            .map(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
             .all(|b| b));
 
         self.calculation_time = start.elapsed();
@@ -220,7 +269,14 @@ impl Particle {
 /// Checks when an angle has intersected with the surface at `angle`.
 /// (source: seems to work)
 fn intersected(old_angle: f64, new_angle: f64, surface_angle: f64) -> bool {
-    ((new_angle - surface_angle) / 2.0).sin() * ((old_angle - surface_angle) / 2.0).sin() <= 0.0
+    let diff1 = new_angle - surface_angle;
+    let diff2 = old_angle - surface_angle;
+    let cond = ((diff1) / 2.0).sin() * ((diff2) / 2.0).sin() < 0.0;
+    if cond {
+        assert!(diff1.sin() >= 0.0);
+        assert!(diff2.sin() <= 0.0);
+    }
+    cond
 }
 
 #[cfg(feature = "rk45")]
@@ -270,7 +326,7 @@ impl std::fmt::Debug for Particle {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::path::PathBuf;
+    use std::{f64::consts::PI, path::PathBuf};
 
     #[test]
     fn test_particle_run_ode() {
@@ -291,6 +347,29 @@ mod test {
         let mut particle = Particle::new(initial);
         particle
             .run_ode(&qfactor, &bfield, &current, (0.0, 210.0), 50000)
+            .unwrap();
+        dbg!(&particle);
+    }
+
+    #[test]
+    fn test_particle_run_henon_zeta() {
+        let path = PathBuf::from("./data.nc");
+        let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
+        let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
+        let current = Current::from_dataset(&path, "akima").unwrap();
+
+        // Normal passing particle
+        let initial = InitialConditions {
+            t0: 0.0,
+            theta0: 3.14,
+            psip0: 0.02,
+            rho0: 0.05,
+            zeta0: 0.0,
+            mu: 1e-4,
+        };
+        let mut particle = Particle::new(initial);
+        particle
+            .run_henon_zeta(&qfactor, &bfield, &current, PI / 2.0, 10)
             .unwrap();
         dbg!(&particle);
     }

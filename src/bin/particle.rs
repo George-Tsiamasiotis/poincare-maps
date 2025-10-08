@@ -18,7 +18,7 @@ fn main() {
     };
     let mut particle = Particle::new(initial);
     particle
-        .run(&qfactor, &bfield, &current, (0.0, 200.0), 5000)
+        .run_ode(&qfactor, &bfield, &current, (0.0, 200.0), 5000)
         .unwrap();
     dbg!(&particle);
 }
