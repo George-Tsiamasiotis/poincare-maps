@@ -132,7 +132,6 @@ pub(crate) fn henon_theta_loop(
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
-
     while particle.theta.len() <= turns {
         let (old_state, next_state) = get_step_stages(particle, qfactor, bfield, current, &mut h)?;
 

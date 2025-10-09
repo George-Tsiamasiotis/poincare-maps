@@ -15,7 +15,7 @@ psi_wall = qfactor.psi_wall
 init = pm.InitialConditions(
     t0=0,
     theta0=0,
-    psip0=0.02,
+    psip0=0.04,
     rho0=0.05,
     zeta0=0,
     mu=1e-6,
@@ -28,7 +28,7 @@ particle.run_henon(
     qfactor=qfactor,
     angle="theta",
     intersection=np.pi / 2,
-    turns=50,
+    turns=100,
 )
 print(particle)
 

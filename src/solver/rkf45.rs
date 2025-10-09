@@ -3,7 +3,7 @@ use crate::solver as common;
 use crate::*;
 
 const SAFETY_FACTOR: f64 = 0.9;
-const REL_TOL: f64 = 1e-12;
+const REL_TOL: f64 = 1e-13;
 
 /// Runge-kutta-Fehlberg method coefficients (Wikipedia)
 mod tableau {
@@ -276,8 +276,23 @@ impl Solver {
         }
     }
 
+    /// Adjust the error by calculating the relative difference in the energy at every step.
+    #[cfg(not(feature = "error-adaptive-step"))]
+    pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
+        let initial_energy = self.state1.energy();
+        let final_energy = self.state6.energy();
+        // // When the energy happens to be smaller than REL_TOL, the optimal step keeps getting
+        // // smaller due to the `REL_TOL/energy_diff` factor, so we need to bound it
+        let energy_diff = ((initial_energy - final_energy) / initial_energy)
+            .abs()
+            .max(REL_TOL / 2.0);
+        let exp = if energy_diff >= REL_TOL { 0.2 } else { 0.25 };
+        SAFETY_FACTOR * h * (REL_TOL / energy_diff).powf(exp)
+    }
+
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
+    #[cfg(feature = "error-adaptive-step")]
     pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
         // Using the max error vs each variable's error is equivalent.
 
