@@ -15,4 +15,8 @@ pub enum MapError {
     /// Error from [`tokamak_netcdf`].
     #[error("netCDF error: {0}")]
     NcError(#[from] tokamak_netcdf::NcError),
+
+    /// Supplied angle must be either "zeta" or "theta".
+    #[error("Supplied angle must be either 'zeta' or 'theta'")]
+    InvalidAngle,
 }

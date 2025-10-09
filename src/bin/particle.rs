@@ -16,7 +16,7 @@ fn main() {
         zeta0: 0.1,
         mu: 1e-4,
     };
-    let mut particle = Particle::new(initial);
+    let mut particle = Particle::new(&initial);
     particle
         .run_ode(&qfactor, &bfield, &current, (0.0, 200.0), 5000)
         .unwrap();

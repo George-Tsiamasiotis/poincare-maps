@@ -18,6 +18,14 @@ init = pm.InitialConditions(
     mu=1e-6,
 )
 
+init = pm.InitialConditions(
+    t0=0,
+    theta0=0,
+    psip0=0.02,
+    rho0=0.05,
+    zeta0=0,
+    mu=1e-6,
+)
 particle = pm.Particle(init)
 particle.run_ode(
     bfield=bfield,
