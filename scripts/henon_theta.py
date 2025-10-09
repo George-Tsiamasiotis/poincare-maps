@@ -16,9 +16,9 @@ init = pm.InitialConditions(
     t0=0,
     theta0=0,
     psip0=0.04,
-    rho0=0.05,
+    rho0=0.01,
     zeta0=0,
-    mu=1e-6,
+    mu=0,
 )
 
 particle = pm.Particle(init)

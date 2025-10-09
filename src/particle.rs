@@ -45,6 +45,8 @@ pub struct Particle {
     pub(crate) initial_energy: f64,
     pub(crate) final_energy: f64,
     pub(crate) calculation_time: Duration,
+    /// The total number of steps taken.
+    pub(crate) steps_taken: usize,
 }
 
 #[pymethods]
@@ -65,6 +67,7 @@ impl Particle {
             initial_energy: f64::NAN,
             final_energy: f64::NAN,
             calculation_time: Duration::ZERO,
+            steps_taken: 0,
         }
     }
 
@@ -130,6 +133,7 @@ impl Particle {
 
             self.state.evaluate(qfactor, current, bfield)?;
             self.update_vecs();
+            self.steps_taken += 1;
         }
         self.calculation_time = start.elapsed();
         self.shrink_vecs();
@@ -180,12 +184,6 @@ fn first_step(t_eval: (f64, f64), steps: usize) -> f64 {
 
 impl std::fmt::Debug for Particle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let evolution = if self.t.is_empty() {
-            "not calculated".to_string()
-        } else {
-            format!("{} steps", self.t.len())
-        };
-
         f.debug_struct("Particle")
             .field("Initial", &self.initial)
             .field(
@@ -196,9 +194,12 @@ impl std::fmt::Debug for Particle {
                     self.t.last().copied().unwrap_or(f64::NAN)
                 ),
             )
+            .field("Parallel energy", &self.state.parallel_energy())
+            .field("Perpendicular energy", &self.state.perpendicular_energy())
             .field("ψ-acc", &self.state.xacc)
             .field("θ-acc", &self.state.xacc)
-            .field("Evolution", &evolution)
+            .field("Steps taken", &self.steps_taken)
+            .field("Steps stored", &self.t.len())
             .field("Initial energy", &self.initial_energy)
             .field("Final energy  ", &self.final_energy)
             .field("Time", &self.calculation_time)

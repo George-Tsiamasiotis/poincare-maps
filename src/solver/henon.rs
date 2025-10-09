@@ -64,8 +64,9 @@ pub(crate) fn henon_zeta_loop(
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
 
-    while particle.zeta.len() <= turns {
+    while particle.zeta.len() < turns {
         let (old_state, next_state) = get_step_stages(particle, qfactor, bfield, current, &mut h)?;
+        particle.steps_taken += 1;
 
         if intersected(old_state.zeta, next_state.zeta, intersection) {
             // Setup new system (6) and (9)
@@ -132,8 +133,9 @@ pub(crate) fn henon_theta_loop(
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
-    while particle.theta.len() <= turns {
+    while particle.theta.len() < turns {
         let (old_state, next_state) = get_step_stages(particle, qfactor, bfield, current, &mut h)?;
+        particle.steps_taken += 1;
 
         if intersected(old_state.theta, next_state.theta, intersection) {
             // Setup new system (6) and (9)

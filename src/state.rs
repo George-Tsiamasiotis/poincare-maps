@@ -232,11 +232,18 @@ impl State {
         self.zeta_dot = self.fterm * self.rho_bsquared_d - self.i_over_d * self.psip_brace
     }
 
-    #[allow(dead_code)]
     pub(crate) fn energy(&self) -> f64 {
-        let parallel = (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2));
-        let perpendicular = self.mu * self.b;
+        let parallel = self.parallel_energy();
+        let perpendicular = self.perpendicular_energy();
         parallel + perpendicular
+    }
+
+    pub(crate) fn parallel_energy(&self) -> f64 {
+        (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2))
+    }
+
+    pub(crate) fn perpendicular_energy(&self) -> f64 {
+        self.mu * self.b
     }
 }
 
