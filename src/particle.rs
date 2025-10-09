@@ -13,6 +13,7 @@ use pyo3::prelude::*;
 const VEC_INIT_CAPACITY: usize = 2000;
 
 #[pyclass]
+#[derive(Clone)]
 pub struct Particle {
     /// The initial (θ, ψ_p, ρ, ζ, μ) of the particle.
     pub(crate) initial: InitialConditions,

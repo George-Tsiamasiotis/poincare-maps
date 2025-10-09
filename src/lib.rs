@@ -2,6 +2,7 @@ mod equilibrium;
 mod error;
 mod initial;
 mod particle;
+mod poincare;
 mod solver;
 mod state;
 
@@ -12,6 +13,7 @@ pub use equilibrium::Qfactor;
 pub use error::MapError;
 pub use initial::InitialConditions;
 pub use particle::Particle;
+pub use poincare::Poincare;
 
 pub(crate) use state::State;
 
@@ -28,5 +30,6 @@ fn poincare_maps(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Qfactor>()?;
     m.add_class::<Current>()?;
     m.add_class::<Particle>()?;
+    m.add_class::<Poincare>()?;
     Ok(())
 }
