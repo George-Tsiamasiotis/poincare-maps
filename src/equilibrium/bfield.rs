@@ -296,6 +296,70 @@ impl Bfield {
             .b_spline
             .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc)?)
     }
+
+    /// Calculates `𝜕²B(ψ_p, θ) /𝜕θ²`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use poincare_maps::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("./data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let d2b_dpsip2 = bfield.d2b_dtheta2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn d2b_dtheta2(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc)?)
+    }
+
+    /// Calculates `𝜕²B(ψ_p, θ) /𝜕ψ_p𝜕θ`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use poincare_maps::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("./data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let d2b_dpsip2 = bfield.d2b_dpsip_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn d2b_dpsip_dtheta(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_xy(psip, mod2pi(theta), xacc, yacc)?)
+    }
 }
 
 /// Returns θ % 2π.
