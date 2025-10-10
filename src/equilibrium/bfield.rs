@@ -39,36 +39,65 @@ impl Bfield {
         }
     }
 
-    fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.b_spline.xa.to_pyarray(py)
     }
 
-    fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+    pub fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.b_spline.ya.to_pyarray(py)
     }
 
-    fn rzb_grids<'py>(
+    pub fn rz_grid<'py>(
         &self,
         py: Python<'py>,
-    ) -> (
-        Bound<'py, PyArray2<f64>>,
-        Bound<'py, PyArray2<f64>>,
-        Bound<'py, PyArray2<f64>>,
-    ) {
+    ) -> (Bound<'py, PyArray2<f64>>, Bound<'py, PyArray2<f64>>) {
         let shape = (self.b_spline.xa.len(), self.b_spline.ya.len());
         let rgrid = Array2::from_shape_vec(shape, self.r_spline.za.to_vec()).unwrap();
         let zgrid = Array2::from_shape_vec(shape, self.z_spline.za.to_vec()).unwrap();
 
+        (rgrid.to_pyarray(py), zgrid.to_pyarray(py))
+    }
+
+    /// Returns a 2d grid with the B values as a function of the R and Z coordinates
+    pub fn b_grid<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         // `Spline.za` is in Fortran order.
-        let bshape = (self.b_spline.ya.len(), self.b_spline.xa.len());
-        let bgrid = Array2::from_shape_vec(bshape, self.b_spline.za.to_vec()).unwrap();
+        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+        let bgrid = Array2::from_shape_vec(shape, self.b_spline.za.to_vec()).unwrap();
         let bgrid = bgrid.reversed_axes();
 
-        (
-            rgrid.to_pyarray(py),
-            zgrid.to_pyarray(py),
-            bgrid.to_pyarray(py),
-        )
+        bgrid.to_pyarray(py)
+    }
+
+    /// Returns two 2d grids with the `𝜕B(ψ_p, θ)/𝜕ψ_p` and `𝜕B(ψ_p, θ)/𝜕𝜃` values as functions
+    /// of the R and Z coordinates
+    pub fn db_grids<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> (Bound<'py, PyArray2<f64>>, Bound<'py, PyArray2<f64>>) {
+        // `Spline.za` is in Fortran order.
+        let mut xacc = Accelerator::new();
+        let mut yacc = Accelerator::new();
+        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+
+        let mut db_dpsip_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
+        let mut db_dtheta_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
+        for j in 0..shape.0 {
+            for i in 0..shape.1 {
+                let psip = self.b_spline.xa[i];
+                let theta = self.b_spline.ya[j];
+                let db_dpsip = self.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
+                let db_dtheta = self.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
+                db_dpsip_vec.push(db_dpsip);
+                db_dtheta_vec.push(db_dtheta);
+            }
+        }
+
+        let db_dpsip_grid = Array2::from_shape_vec(shape, db_dpsip_vec).unwrap();
+        let db_dtheta_grid = Array2::from_shape_vec(shape, db_dtheta_vec).unwrap();
+        let db_dpsip_grid = db_dpsip_grid.reversed_axes();
+        let db_dtheta_grid = db_dtheta_grid.reversed_axes();
+
+        (db_dpsip_grid.to_pyarray(py), db_dtheta_grid.to_pyarray(py))
     }
 
     fn __repr__(&self) -> String {
