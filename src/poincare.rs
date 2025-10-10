@@ -1,7 +1,8 @@
 use crate::Particle;
 use crate::{Bfield, Current, Qfactor};
 
-use ndarray::{Array1, Array2, Axis};
+use indicatif::{ProgressBar, ProgressStyle};
+use ndarray::{Array1, Array2};
 use numpy::{PyArray2, ToPyArray};
 
 use pyo3::exceptions::PyTypeError;
@@ -35,9 +36,8 @@ impl Poincare {
         intersection: f64,
         turns: usize,
     ) -> PyResult<()> {
-        dbg!(self.particles.len());
-        self.angles = Array2::zeros((self.particles.len(), turns));
-        self.fluxes = Array2::zeros((self.particles.len(), turns));
+        self.angles = Array2::zeros((0, turns));
+        self.fluxes = Array2::zeros((0, turns));
 
         match self.run(qfactor, bfield, current, angle, intersection, turns) {
             Ok(()) => Ok(()),
@@ -68,20 +68,38 @@ impl Poincare {
         intersection: f64,
         turns: usize,
     ) -> PyResult<()> {
+        let style = ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+        )
+        .unwrap();
+        let pbar = ProgressBar::new(self.particles.len() as u64).with_style(style);
         for p in self.particles.iter_mut() {
             match p.run_henon_py(qfactor, bfield, current, angle, intersection, turns) {
                 Ok(()) => (),
                 Err(err) => return Err(PyTypeError::new_err(err.to_string())),
             };
-            dbg!(self.angles.view());
-            dbg!(&p.theta.len());
-            self.angles
-                .push(Axis(1), Array1::from_vec(p.theta.to_owned()).view())
-                .unwrap(); // FIXME:
-            self.fluxes
-                .push(Axis(1), Array1::from_vec(p.psi.to_owned()).view())
-                .unwrap(); // FIXME:
+            match angle {
+                "theta" => {
+                    self.angles
+                        .push_row(Array1::from_vec(p.zeta.to_owned()).view())
+                        .unwrap();
+                    self.fluxes
+                        .push_row(Array1::from_vec(p.psip.to_owned()).view())
+                        .unwrap();
+                }
+                "zeta" => {
+                    self.angles
+                        .push_row(Array1::from_vec(p.theta.to_owned()).view())
+                        .unwrap();
+                    self.fluxes
+                        .push_row(Array1::from_vec(p.psi.to_owned()).view())
+                        .unwrap();
+                }
+                _ => unreachable!(),
+            }
+            pbar.inc(1);
         }
+
         Ok(())
     }
 }

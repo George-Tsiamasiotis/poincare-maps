@@ -151,12 +151,14 @@ impl State {
         Ok(())
     }
 
+    #[cfg(not(feature = "lar"))]
     fn calculate_qfactor_quantities(&mut self, qfactor: &Qfactor) -> Result<()> {
         self.psi = qfactor.psi(self.psip, &mut self.xacc)?;
         self.q = qfactor.q(self.psip, &mut self.xacc)?;
         Ok(())
     }
 
+    #[cfg(not(feature = "lar"))]
     fn calculate_current_quantities(&mut self, current: &Current) -> Result<()> {
         self.i = current.i(self.psip, &mut self.xacc)?;
         self.g = current.g(self.psip, &mut self.xacc)?;
@@ -165,6 +167,7 @@ impl State {
         Ok(())
     }
 
+    #[cfg(not(feature = "lar"))]
     fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
         self.b = bfield.b(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
         self.db_dtheta = bfield.db_dtheta(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
@@ -181,6 +184,22 @@ impl State {
         self.da_dt = 0.0;
         Ok(())
     }
+
+    // fn calculate_perturbation(&mut self) -> Result<()> {
+    //     let m = 7.0;
+    //     let n = 1.0;
+    //     let psip_wall = 0.07;
+    //     let width = psip_wall / 5.0;
+    //     let exponent = ((self.psip - psip_wall / 2.0) / width).powi(2);
+    //     let cos = (m * self.theta - n * self.zeta).cos();
+    //     let v = 1e-3;
+    //     self.a = v * (exponent.exp()) * cos;
+    //     self.da_dpsip = -v * 2.0 * self.psip * exponent;
+    //     self.da_dtheta = -v * exponent * m * (m * self.theta - n * self.zeta).sin();
+    //     self.da_dzeta = v * exponent * n * (m * self.theta - n * self.zeta).sin();
+    //     self.da_dt = 0.0;
+    //     Ok(())
+    // }
 
     fn calculate_canonical_momenta(&mut self) {
         self.ptheta = self.psi + self.rho * self.i;
@@ -244,6 +263,39 @@ impl State {
 
     pub(crate) fn perpendicular_energy(&self) -> f64 {
         self.mu * self.b
+    }
+}
+
+/// Alternative Large Aspect Ratio configuration (much faster)
+impl State {
+    #[cfg(feature = "lar")]
+    #[allow(unused_variables)]
+    fn calculate_qfactor_quantities(&mut self, qfactor: &Qfactor) -> Result<()> {
+        self.psi = self.psip;
+        self.q = 1.0;
+        Ok(())
+    }
+
+    #[cfg(feature = "lar")]
+    #[allow(unused_variables)]
+    fn calculate_current_quantities(&mut self, current: &Current) -> Result<()> {
+        self.i = 0.0;
+        self.g = 1.0;
+        self.di_dpsip = 0.0;
+        self.dg_dpsip = 0.0;
+        Ok(())
+    }
+
+    #[cfg(feature = "lar")]
+    #[allow(unused_variables)]
+    fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
+        let root = (2.0 * self.psi).sqrt();
+        let cos_theta = self.theta.cos();
+        self.b = 1.0 - root * cos_theta;
+        self.db_dtheta = root * self.theta.sin();
+        self.db_dpsip = -cos_theta / root;
+        self.db_dzeta = 0.0; // Axisymmetric configuration
+        Ok(())
     }
 }
 

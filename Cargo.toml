@@ -10,6 +10,7 @@ path = "src/lib.rs"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
+indicatif = "0.18.0"
 ndarray = "0.16.1"
 numpy = "0.26.0"
 rsl-interpolation = "0.1.13"
@@ -22,6 +23,7 @@ features = ["abi3", "extension-module"]
 
 [features]
 default = ["rsl-interpolation/openblas-system"]
+lar = []
 rk45 = []
 error-adaptive-step = []
 openblas-static = ["rsl-interpolation/openblas-static"]

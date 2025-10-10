@@ -9,12 +9,15 @@ bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "cubic")
 current = pm.Current("./data.nc", "steffen")
 
-psip_wall = qfactor.psip_wall
-psi_wall = qfactor.psi_wall
+# psip_wall = qfactor.psip_wall
+# psi_wall = qfactor.psi_wall
+psip_wall = 0.1
+psi_wall = 0.1
 
-points = 5
+points = 30
 psips = np.linspace(0.01, 0.9 * psip_wall, points)
 thetas = np.array([0] * points)
+zetas = np.array([0] * points)
 
 poincare = pm.Poincare()
 
@@ -25,8 +28,8 @@ for i in range(points):
         theta0=thetas[i],
         psip0=psips[i],
         rho0=0.01,
-        zeta0=0.0,
-        mu=1e-6,
+        zeta0=0,
+        mu=0,
     )
 
     particle = pm.Particle(init)
@@ -38,7 +41,7 @@ poincare.run(
     qfactor=qfactor,
     angle="zeta",
     intersection=np.pi / 2,
-    turns=10,
+    turns=200,
 )
 
 angles = poincare.get_angles()
