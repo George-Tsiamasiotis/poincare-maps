@@ -1,7 +1,7 @@
 import poincare_maps as pm
 import matplotlib
 
-from plot_orbit import plot_orbit
+from plots import plot_orbit
 
 matplotlib.use("gtk3agg")
 
