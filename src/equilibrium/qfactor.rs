@@ -4,6 +4,7 @@ use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
+use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -38,6 +39,18 @@ impl Qfactor {
             Ok(qfactor) => Ok(qfactor),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
+    }
+
+    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.q_spline.xa.to_pyarray(py)
+    }
+
+    pub fn q_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.q_spline.ya.to_pyarray(py)
+    }
+
+    pub fn psi_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psi_spline.ya.to_pyarray(py)
     }
 
     fn __repr__(&self) -> String {

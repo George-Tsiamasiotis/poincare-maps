@@ -1,9 +1,11 @@
 use std::path::PathBuf;
 
+use ndarray::Array1;
 use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
+use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -32,6 +34,44 @@ impl Current {
             Ok(current) => Ok(current),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
+    }
+
+    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.g_spline.xa.to_pyarray(py)
+    }
+
+    pub fn g_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.g_spline.ya.to_pyarray(py)
+    }
+
+    pub fn i_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.i_spline.ya.to_pyarray(py)
+    }
+
+    pub fn dg_dpsip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let mut acc = Accelerator::new();
+        let psip_data = &self.g_spline.xa;
+        let dg_dpsip_vec: Vec<f64> = psip_data
+            .iter()
+            .map(|psip| self.dg_dpsip(*psip, &mut acc).unwrap())
+            .collect();
+
+        let dg_dpsip = Array1::from_vec(dg_dpsip_vec);
+
+        dg_dpsip.to_pyarray(py)
+    }
+
+    pub fn di_dpsip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        let mut acc = Accelerator::new();
+        let psip_data = &self.g_spline.xa;
+        let di_dpsip_vec: Vec<f64> = psip_data
+            .iter()
+            .map(|psip| self.di_dpsip(*psip, &mut acc).unwrap())
+            .collect();
+
+        let di_dpsip = Array1::from_vec(di_dpsip_vec);
+
+        di_dpsip.to_pyarray(py)
     }
 
     fn __repr__(&self) -> String {
