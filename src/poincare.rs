@@ -69,7 +69,7 @@ impl Poincare {
         turns: usize,
     ) -> PyResult<()> {
         let style = ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
+            "[{elapsed_precise}] {wide_bar:.cyan/blue} {spinner} {pos:>4}/{len:4} {msg}",
         )
         .unwrap();
         let pbar = ProgressBar::new(self.particles.len() as u64).with_style(style);
@@ -99,6 +99,7 @@ impl Poincare {
             }
             pbar.inc(1);
         }
+        pbar.finish_with_message("Done");
 
         Ok(())
     }

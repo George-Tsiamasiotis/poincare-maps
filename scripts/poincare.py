@@ -14,7 +14,7 @@ current = pm.Current("./data.nc", "steffen")
 psip_wall = 0.1
 psi_wall = 0.1
 
-points = 30
+points = 60
 psips = np.linspace(0.01, 0.9 * psip_wall, points)
 thetas = np.array([0] * points)
 zetas = np.array([0] * points)
@@ -56,9 +56,9 @@ def pi_mod(arr: np.ndarray):
     return a
 
 
-fig = plt.figure(**{"figsize": (10, 7), "layout": "constrained", "dpi": 100})
+fig = plt.figure(**{"figsize": (11, 6), "layout": "constrained", "dpi": 150})
 ax = fig.subplots()
-s, c, marker = 3, "black", "."
+s, c, marker = 0.5, "black", "."
 for i in range(len(angles)):
 
     ax.scatter(pi_mod(angles[i]), fluxes[i], s, c, marker=marker)
