@@ -6,6 +6,7 @@ use crate::Result;
 use crate::{Bfield, Current, Qfactor};
 use crate::{InitialConditions, State};
 
+use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -16,42 +17,49 @@ const VEC_INIT_CAPACITY: usize = 2000;
 #[derive(Clone)]
 pub struct Particle {
     /// The initial (θ, ψ_p, ρ, ζ, μ) of the particle.
-    pub(crate) initial: InitialConditions,
+    #[pyo3(get)]
+    pub initial: InitialConditions,
     /// The current state of the particle.
     pub(crate) state: State,
     /// The calculated evaluation times.
     #[pyo3(get)]
-    pub(crate) t: Vec<f64>,
+    pub t: Vec<f64>,
     /// The calculated θ values.
     #[pyo3(get)]
-    pub(crate) theta: Vec<f64>,
+    pub theta: Vec<f64>,
     /// The calculated ψ_p values.
     #[pyo3(get)]
-    pub(crate) psip: Vec<f64>,
+    pub psip: Vec<f64>,
     /// The calculated ρ values.
     #[pyo3(get)]
-    pub(crate) rho: Vec<f64>,
+    pub rho: Vec<f64>,
     /// The calculated ζ values.
     #[pyo3(get)]
-    pub(crate) zeta: Vec<f64>,
+    pub zeta: Vec<f64>,
     /// The calculated Pζ values.
     #[pyo3(get)]
-    pub(crate) pzeta: Vec<f64>,
+    pub pzeta: Vec<f64>,
     /// The calculated Pθ values.
     #[pyo3(get)]
-    pub(crate) ptheta: Vec<f64>,
+    pub ptheta: Vec<f64>,
     /// The calculated ψ values.
     #[pyo3(get)]
-    pub(crate) psi: Vec<f64>,
-    pub(crate) initial_energy: f64,
-    pub(crate) final_energy: f64,
+    pub psi: Vec<f64>,
+    /// The starting energy of the particle.
+    #[pyo3(get)]
+    pub initial_energy: f64,
+    /// The final energy of the particle.
+    #[pyo3(get)]
+    pub final_energy: f64,
+    /// The total compute time.
     pub(crate) calculation_time: Duration,
-    /// The total number of steps taken.
+    /// The total number of integration steps.
     pub(crate) steps_taken: usize,
 }
 
 #[pymethods]
 impl Particle {
+    /// Creates a new particle from the initial conditions.
     #[new]
     pub fn new(initial: &InitialConditions) -> Self {
         Self {
@@ -76,6 +84,7 @@ impl Particle {
         format!("{:#?}", &self)
     }
 
+    /// Calculates the particle's trajectory.
     #[pyo3(name = "run_ode")]
     pub fn run_ode_py(
         &mut self,
@@ -92,6 +101,8 @@ impl Particle {
     }
 
     #[pyo3(name = "run_henon")]
+    /// Calculates the particle's trajectory, by also stepping exactly at the `intersection`
+    /// surface, with respect to `angle`, which can be either "theta" or "zeta".
     pub fn run_henon_py(
         &mut self,
         qfactor: &Qfactor,
@@ -105,6 +116,41 @@ impl Particle {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
+    }
+
+    #[getter]
+    pub fn t<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.t.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn theta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.theta.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn psip<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psip.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn rho<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.rho.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn zeta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.zeta.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn ptheta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.ptheta.to_pyarray(py)
+    }
+
+    #[getter]
+    pub fn pzeta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.pzeta.to_pyarray(py)
     }
 }
 
@@ -122,7 +168,6 @@ impl Particle {
 
         let mut h = first_step(t_eval, steps);
 
-        self.calculation_time = Duration::ZERO;
         let start = Instant::now();
 
         while self.state.t < t_eval.1 {
@@ -131,16 +176,14 @@ impl Particle {
             solver.start(h, qfactor, bfield, current)?;
             h = solver.calculate_optimal_step(h);
             self.state = solver.next_state(h);
-
             self.state.evaluate(qfactor, current, bfield)?;
             self.update_vecs();
             self.steps_taken += 1;
         }
+
         self.calculation_time = start.elapsed();
         self.shrink_vecs();
-
         self.final_energy = self.state.energy();
-
         Ok(())
     }
 
@@ -205,66 +248,5 @@ impl std::fmt::Debug for Particle {
             .field("Final energy  ", &self.final_energy)
             .field("Time", &self.calculation_time)
             .finish()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use std::f64::consts::TAU;
-    use std::{f64::consts::PI, path::PathBuf};
-
-    #[test]
-    fn test_particle_run_ode() {
-        let path = PathBuf::from("./data.nc");
-        let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
-        let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
-        let current = Current::from_dataset(&path, "akima").unwrap();
-
-        // Normal passing particle
-        let initial = InitialConditions {
-            t0: 0.0,
-            theta0: 3.14,
-            psip0: 0.05,
-            rho0: 0.05,
-            zeta0: 0.1,
-            mu: 1e-4,
-        };
-        let mut particle = Particle::new(&initial);
-        particle
-            .run_ode(&qfactor, &bfield, &current, (0.0, 210.0), 50000)
-            .unwrap();
-        dbg!(&particle);
-    }
-
-    #[test]
-    fn test_particle_run_henon_zeta() {
-        let path = PathBuf::from("./data.nc");
-        let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
-        let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
-        let current = Current::from_dataset(&path, "akima").unwrap();
-
-        // Normal passing particle
-        let initial = InitialConditions {
-            t0: 0.0,
-            theta0: 3.14,
-            psip0: 0.02,
-            rho0: 0.05,
-            zeta0: 0.0,
-            mu: 1e-4,
-        };
-        let mut particle = Particle::new(&initial);
-        particle
-            .run_henon_py(&qfactor, &bfield, &current, "zeta", PI / 2.0, 10)
-            .unwrap();
-        dbg!(&particle.zeta.iter().map(|z| z % TAU).collect::<Vec<f64>>());
-        dbg!(&particle);
-
-        let mut particle = Particle::new(&initial);
-        particle
-            .run_henon_py(&qfactor, &bfield, &current, "theta", PI / 2.0, 10)
-            .unwrap();
-        dbg!(&particle.zeta.iter().map(|z| z % TAU).collect::<Vec<f64>>());
-        dbg!(&particle);
     }
 }
