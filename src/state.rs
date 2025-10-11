@@ -11,106 +11,106 @@ use crate::{InitialConditions, Result};
 /// at the same `θ`, `ψ_p`, `ρ`, `ζ` point.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub(crate) struct State {
+pub struct State {
     /// The `ψ_p` coordinate [`Accelerator`].
-    pub(crate) xacc: Accelerator,
+    pub xacc: Accelerator,
     /// The `θ_p` coordinate [`Accelerator`].
-    pub(crate) yacc: Accelerator,
+    pub yacc: Accelerator,
 
     /// The time of evaluation.
-    pub(crate) t: f64,
+    pub t: f64,
 
     /// The `θ` angle.
-    pub(crate) theta: f64,
+    pub theta: f64,
     /// The poloidal magnetic flux `ψ_p`.
-    pub(crate) psip: f64,
+    pub psip: f64,
     /// The parallel gyro radius `ρ`.
-    pub(crate) rho: f64,
+    pub rho: f64,
     /// The `ζ` angle.
-    pub(crate) zeta: f64,
+    pub zeta: f64,
 
     /// The magnetic moment.
-    pub(crate) mu: f64,
+    pub mu: f64,
     /// The toroidal magnetic flux `ψ`.
-    pub(crate) psi: f64,
+    pub psi: f64,
     /// The canonical momentum `Pθ`,
-    pub(crate) ptheta: f64,
+    pub ptheta: f64,
     /// The canonical momentum `Pζ`,
-    pub(crate) pzeta: f64,
+    pub pzeta: f64,
     /// Not sure yet, associated with the perturbations.
-    pub(crate) a: f64,
+    pub a: f64,
 
     /// The `θ` angle time derivative.
-    pub(crate) theta_dot: f64,
+    pub theta_dot: f64,
     /// The magnetic flux `ψ` time derivative.
-    pub(crate) psip_dot: f64,
+    pub psip_dot: f64,
     /// The parallel gyro radius `ρ` time derivative.
-    pub(crate) rho_dot: f64,
+    pub rho_dot: f64,
     /// The `ζ` angle time derivative.
-    pub(crate) zeta_dot: f64,
+    pub zeta_dot: f64,
 
     /// The magnetic field strength.
-    pub(crate) b: f64,
+    pub b: f64,
     /// The safety factor `q`.
-    pub(crate) q: f64,
+    pub q: f64,
     /// The toroidal plasma current.
-    pub(crate) g: f64,
+    pub g: f64,
     /// The poloidal plasma current.
-    pub(crate) i: f64,
+    pub i: f64,
 
     /// The magnetic field strength derivative with respect to `θ`.
-    pub(crate) db_dtheta: f64,
+    pub db_dtheta: f64,
     /// The magnetic field strength derivative with respect to `ζ`. Should always be 0, since we
     /// are dealing with axisymmetric equilibria.
-    pub(crate) db_dzeta: f64,
+    pub db_dzeta: f64,
     /// The magnetic field strength derivative with respect to `ψ`.
-    pub(crate) db_dpsip: f64,
+    pub db_dpsip: f64,
     /// The toroidal plasma current derivative with respect to `ψ`
-    pub(crate) dg_dpsip: f64,
+    pub dg_dpsip: f64,
     /// The poloidal plasma current derivative with respect to `ψ`
-    pub(crate) di_dpsip: f64,
+    pub di_dpsip: f64,
     /// Not sure yet, associated with the perturbations.
-    pub(crate) da_dpsip: f64,
+    pub da_dpsip: f64,
     /// Not sure yet, associated with the perturbations.
-    pub(crate) da_dtheta: f64,
+    pub da_dtheta: f64,
     /// Not sure yet, associated with the perturbations.
-    pub(crate) da_dzeta: f64,
+    pub da_dzeta: f64,
     /// Not sure yet, associated with the perturbations.
-    pub(crate) da_dt: f64,
+    pub da_dt: f64,
 
     /// The `D` coefficient.
-    pub(crate) dterm: f64,
+    pub dterm: f64,
     /// The `K` coefficient.
-    pub(crate) kterm: f64,
+    pub kterm: f64,
     /// The `C` coefficient.
-    pub(crate) cterm: f64,
+    pub cterm: f64,
     /// The `F` coefficient.
-    pub(crate) fterm: f64,
+    pub fterm: f64,
 
-    /// The intermediate value (μ+ρ^2Β).
-    pub(crate) mu_par: f64,
+    /// The intermediate value .
+    pub mu_par: f64,
     /// The intermediate value [<psip derivatives>].
-    pub(crate) psip_brace: f64,
+    pub psip_brace: f64,
     /// The intermediate value [<theta derivatives>].
-    pub(crate) theta_brace: f64,
+    pub theta_brace: f64,
     /// The intermediate value [<zeta derivatives>].
-    pub(crate) zeta_brace: f64,
+    pub zeta_brace: f64,
     /// The intermediate value ρ*B^2/D.
-    pub(crate) rho_bsquared_d: f64,
+    pub rho_bsquared_d: f64,
     /// The intermediate value g/D.
-    pub(crate) g_over_d: f64,
+    pub g_over_d: f64,
     /// The intermediate value i/D.
-    pub(crate) i_over_d: f64,
+    pub i_over_d: f64,
 }
 
 impl State {
     /// All fields set to NaN and Accelerator creation.
-    pub(crate) fn new_uninit() -> Self {
+    pub fn new_uninit() -> Self {
         Self::default()
     }
 
     /// Set intial state variables, without evaluating anything else.
-    pub(crate) fn new_init(initial: &InitialConditions) -> Self {
+    pub fn new_init(initial: &InitialConditions) -> Self {
         Self {
             t: initial.t0,
             theta: initial.theta0,
@@ -123,7 +123,7 @@ impl State {
     }
 
     /// Evaluation all quantites derived by (θ, ψ_p, ρ, ζ, μ)
-    pub(crate) fn evaluate(
+    pub fn evaluate(
         &mut self,
         qfactor: &Qfactor,
         current: &Current,
@@ -251,17 +251,17 @@ impl State {
         self.zeta_dot = self.fterm * self.rho_bsquared_d - self.i_over_d * self.psip_brace
     }
 
-    pub(crate) fn energy(&self) -> f64 {
+    pub fn energy(&self) -> f64 {
         let parallel = self.parallel_energy();
         let perpendicular = self.perpendicular_energy();
         parallel + perpendicular
     }
 
-    pub(crate) fn parallel_energy(&self) -> f64 {
+    pub fn parallel_energy(&self) -> f64 {
         (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2))
     }
 
-    pub(crate) fn perpendicular_energy(&self) -> f64 {
+    pub fn perpendicular_energy(&self) -> f64 {
         self.mu * self.b
     }
 }

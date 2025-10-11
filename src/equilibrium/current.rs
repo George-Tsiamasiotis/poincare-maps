@@ -13,13 +13,13 @@ use pyo3::prelude::*;
 #[pyclass]
 pub struct Current {
     /// Path to the netCDF file.
-    path: PathBuf,
+    pub path: PathBuf,
     /// Interpolation type.
-    typ: Box<str>,
+    pub typ: Box<str>,
     /// Spline over the g-current data, as a function of ψ_p.
-    g_spline: DynSpline<f64>,
+    pub g_spline: DynSpline<f64>,
     /// Spline over the I-current data, as a function of ψ_p.
-    i_spline: DynSpline<f64>,
+    pub i_spline: DynSpline<f64>,
 }
 
 #[pymethods]
@@ -74,7 +74,7 @@ impl Current {
         di_dpsip.to_pyarray(py)
     }
 
-    fn __repr__(&self) -> String {
+    pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
 }

@@ -34,6 +34,10 @@ static_netcdf = ["tokamak-netcdf/static"]
 [package.metadata.docs.rs]
 features = ["static_netcdf"]
 
+[[bin]]
+name = "poincare-full"
+path = "src/bin/poincare-full.rs"
+
 # Bevy tip:
 
 # Enable a small amount of optimization in the dev profile.

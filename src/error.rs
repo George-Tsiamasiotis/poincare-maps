@@ -19,4 +19,8 @@ pub enum MapError {
     /// Supplied angle must be either "zeta" or "theta".
     #[error("Supplied angle must be either 'zeta' or 'theta'")]
     InvalidAngle,
+
+    /// Error running particle
+    #[error("Error running particle: {0}")]
+    OrbitError(Box<str>),
 }

@@ -14,15 +14,15 @@ use pyo3::prelude::*;
 #[pyclass]
 pub struct Bfield {
     /// Path to the netCDF file.
-    path: PathBuf,
+    pub path: PathBuf,
     /// Interpolation type.
-    typ: Box<str>,
+    pub typ: Box<str>,
     /// Spline over the magnetic field strength data, as a function of ψ_p, θ.
-    b_spline: DynSpline2d<f64>,
+    pub b_spline: DynSpline2d<f64>,
     /// Spline over the R coordinate, as a function of ψ_p, θ.
-    r_spline: DynSpline2d<f64>,
+    pub r_spline: DynSpline2d<f64>,
     /// Spline over the Z coordinate, as a function of ψ_p, θ.
-    z_spline: DynSpline2d<f64>,
+    pub z_spline: DynSpline2d<f64>,
 }
 
 #[pymethods]
@@ -100,7 +100,7 @@ impl Bfield {
         (db_dpsip_grid.to_pyarray(py), db_dtheta_grid.to_pyarray(py))
     }
 
-    fn __repr__(&self) -> String {
+    pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
 }

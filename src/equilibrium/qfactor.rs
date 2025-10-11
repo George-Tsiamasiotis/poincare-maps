@@ -12,19 +12,19 @@ use pyo3::prelude::*;
 #[pyclass]
 pub struct Qfactor {
     /// Path to the netCDF file.
-    path: PathBuf,
+    pub path: PathBuf,
     /// Interpolation type.
-    typ: Box<str>,
+    pub typ: Box<str>,
     /// Spline over the q-factor data, as a function of ψ_p.
-    q_spline: DynSpline<f64>,
+    pub q_spline: DynSpline<f64>,
     /// Spline over the toroidal flux data, as a function of ψ_p.
-    psi_spline: DynSpline<f64>,
+    pub psi_spline: DynSpline<f64>,
     #[pyo3(get)]
     /// The value of the poloidal angle ψ_p at the wall.
-    psip_wall: f64,
+    pub psip_wall: f64,
     #[pyo3(get)]
     /// The value of the toroidal angle ψ at the wall.
-    psi_wall: f64,
+    pub psi_wall: f64,
 }
 
 #[pymethods]
@@ -53,7 +53,7 @@ impl Qfactor {
         self.psi_spline.ya.to_pyarray(py)
     }
 
-    fn __repr__(&self) -> String {
+    pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
 }

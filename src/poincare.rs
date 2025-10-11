@@ -1,4 +1,5 @@
 use crate::Particle;
+use crate::Result;
 use crate::solver::henon;
 use crate::{Bfield, Current, Qfactor};
 
@@ -35,7 +36,7 @@ impl Poincare {
     }
 
     #[pyo3(name = "run")]
-    fn run_py(
+    pub fn run_py(
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
@@ -44,11 +45,6 @@ impl Poincare {
         intersection: f64,
         turns: usize,
     ) -> PyResult<()> {
-        self.angles = Array2::zeros((0, turns));
-        self.fluxes = Array2::zeros((0, turns));
-        self.angle = angle.into();
-        self.intersection = intersection;
-
         match self.run(qfactor, bfield, current, angle, intersection, turns) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
@@ -73,7 +69,7 @@ impl Poincare {
 }
 
 impl Poincare {
-    fn run(
+    pub fn run(
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
@@ -81,7 +77,12 @@ impl Poincare {
         angle: &str,
         intersection: f64,
         turns: usize,
-    ) -> PyResult<()> {
+    ) -> Result<()> {
+        self.angles = Array2::zeros((0, turns));
+        self.fluxes = Array2::zeros((0, turns));
+        self.angle = angle.into();
+        self.intersection = intersection;
+
         let style = ProgressStyle::with_template(
             "[{elapsed_precise}] {wide_bar:.cyan/blue} {spinner} {pos:>4}/{len:4} {msg}",
         )
@@ -94,7 +95,7 @@ impl Poincare {
             henon::run_henon(p, qfactor, bfield, current, angle, intersection, turns)
                 .inspect(|()| pbar.inc(1))
         }) {
-            return Err(PyTypeError::new_err(err.to_string()));
+            return Err(err);
         };
 
         // Store points

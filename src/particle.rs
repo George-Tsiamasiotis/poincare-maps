@@ -20,7 +20,7 @@ pub struct Particle {
     #[pyo3(get)]
     pub initial: InitialConditions,
     /// The current state of the particle.
-    pub(crate) state: State,
+    pub state: State,
     /// The calculated evaluation times.
     #[pyo3(get)]
     pub t: Vec<f64>,
@@ -52,9 +52,9 @@ pub struct Particle {
     #[pyo3(get)]
     pub final_energy: f64,
     /// The total compute time.
-    pub(crate) calculation_time: Duration,
+    pub calculation_time: Duration,
     /// The total number of integration steps.
-    pub(crate) steps_taken: usize,
+    pub steps_taken: usize,
 }
 
 #[pymethods]
