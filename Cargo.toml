@@ -1,7 +1,7 @@
 [package]
 name = "poincare-maps"
 version = "0.1.4"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -13,6 +13,7 @@ crate-type = ["lib", "cdylib"]
 indicatif = "0.18.0"
 ndarray = "0.16.1"
 numpy = "0.26.0"
+rayon = "1.11.0"
 rsl-interpolation = "0.1.13"
 thiserror = "2.0.17"
 tokamak-netcdf = { git = "https://github.com/George-Tsiamasiotis/tokamak-netcdf", version = "0.1.3" }

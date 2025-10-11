@@ -1,4 +1,5 @@
 use crate::Particle;
+use crate::solver::henon;
 use crate::{Bfield, Current, Qfactor};
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -7,6 +8,7 @@ use numpy::{PyArray2, ToPyArray};
 
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 #[pyclass]
 pub struct Poincare {
@@ -53,6 +55,10 @@ impl Poincare {
         }
     }
 
+    pub fn get_particles(&self) -> Vec<Particle> {
+        self.particles.clone()
+    }
+
     pub fn add_particle(&mut self, particle: &Particle) {
         self.particles.push(particle.to_owned())
     }
@@ -81,32 +87,39 @@ impl Poincare {
         )
         .unwrap();
         let pbar = ProgressBar::new(self.particles.len() as u64).with_style(style);
+        pbar.force_draw();
+
+        // Start a new thread for each particle
+        if let Err(err) = self.particles.par_iter_mut().try_for_each(|p| {
+            henon::run_henon(p, qfactor, bfield, current, angle, intersection, turns)
+                .inspect(|()| pbar.inc(1))
+        }) {
+            return Err(PyTypeError::new_err(err.to_string()));
+        };
+
+        // Store points
         for p in self.particles.iter_mut() {
-            match p.run_henon_py(qfactor, bfield, current, angle, intersection, turns) {
-                Ok(()) => (),
-                Err(err) => return Err(PyTypeError::new_err(err.to_string())),
-            };
             match angle {
                 "theta" => {
                     self.angles
-                        .push_row(Array1::from_vec(p.zeta.to_owned()).view())
+                        .push_row(Array1::from_vec(p.zeta.clone()).view())
                         .unwrap();
                     self.fluxes
-                        .push_row(Array1::from_vec(p.psip.to_owned()).view())
-                        .unwrap();
+                        .push_row(Array1::from_vec(p.psip.clone()).view())
+                        .unwrap()
                 }
                 "zeta" => {
                     self.angles
-                        .push_row(Array1::from_vec(p.theta.to_owned()).view())
+                        .push_row(Array1::from_vec(p.theta.clone()).view())
                         .unwrap();
                     self.fluxes
-                        .push_row(Array1::from_vec(p.psi.to_owned()).view())
-                        .unwrap();
+                        .push_row(Array1::from_vec(p.psi.clone()).view())
+                        .unwrap()
                 }
                 _ => unreachable!(),
             }
-            pbar.inc(1);
         }
+
         pbar.finish_with_message("Done");
 
         Ok(())
