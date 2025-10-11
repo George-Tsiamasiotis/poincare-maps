@@ -13,6 +13,10 @@ pub struct Poincare {
     pub particles: Vec<Particle>,
     pub angles: Array2<f64>,
     pub fluxes: Array2<f64>,
+    #[pyo3(get)]
+    pub angle: String,
+    #[pyo3(get)]
+    pub intersection: f64,
 }
 
 #[pymethods]
@@ -23,6 +27,8 @@ impl Poincare {
             particles: Vec::new(),
             angles: Array2::zeros((1, 1)),
             fluxes: Array2::zeros((1, 1)),
+            angle: "".into(),
+            intersection: f64::NAN,
         }
     }
 
@@ -38,6 +44,8 @@ impl Poincare {
     ) -> PyResult<()> {
         self.angles = Array2::zeros((0, turns));
         self.fluxes = Array2::zeros((0, turns));
+        self.angle = angle.into();
+        self.intersection = intersection;
 
         match self.run(qfactor, bfield, current, angle, intersection, turns) {
             Ok(()) => Ok(()),

@@ -62,17 +62,33 @@ impl Particle {
     /// Creates a new particle from the initial conditions.
     #[new]
     pub fn new(initial: &InitialConditions) -> Self {
+        let mut t = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut theta = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut psip = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut rho = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut zeta = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut psi = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut ptheta = Vec::with_capacity(VEC_INIT_CAPACITY);
+        let mut pzeta = Vec::with_capacity(VEC_INIT_CAPACITY);
+        t.push(initial.t0);
+        theta.push(initial.theta0);
+        psip.push(initial.psip0);
+        rho.push(initial.rho0);
+        zeta.push(initial.zeta0);
+        psi.push(f64::NAN);
+        ptheta.push(f64::NAN);
+        pzeta.push(f64::NAN);
         Self {
             initial: initial.to_owned(),
             state: State::new_init(&initial),
-            t: Vec::with_capacity(VEC_INIT_CAPACITY),
-            theta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            psip: Vec::with_capacity(VEC_INIT_CAPACITY),
-            rho: Vec::with_capacity(VEC_INIT_CAPACITY),
-            zeta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            pzeta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            ptheta: Vec::with_capacity(VEC_INIT_CAPACITY),
-            psi: Vec::with_capacity(VEC_INIT_CAPACITY),
+            t,
+            theta,
+            psip,
+            rho,
+            zeta,
+            psi,
+            ptheta,
+            pzeta,
             initial_energy: f64::NAN,
             final_energy: f64::NAN,
             calculation_time: Duration::ZERO,
