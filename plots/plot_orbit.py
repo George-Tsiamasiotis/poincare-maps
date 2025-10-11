@@ -34,12 +34,12 @@ def plot_orbit(particle: pm.Particle, percentage: float = 100):
     current_ylim = np.array(ax[5].get_ylim())
     ax[5].set_ylim(np.sort([current_ylim[0] / 3, current_ylim[1] * 3]))
 
-    ax[0].set_title("θ")
-    ax[1].set_title("ψp")
-    ax[2].set_title("ρ")
-    ax[3].set_title("ζ")
-    ax[4].set_title("Pθ")
-    ax[5].set_title("Pζ")
+    ax[0].set_title(r"$\theta$")
+    ax[1].set_title(r"$\psi_p$")
+    ax[2].set_title(r"$\rho_{||}$")
+    ax[3].set_title(r"$\zeta$")
+    ax[4].set_title(r"$P_\theta$")
+    ax[5].set_title(r"$P_\zeta$")
 
     plt.show()
     plt.close()

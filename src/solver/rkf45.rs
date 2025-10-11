@@ -3,7 +3,7 @@ use crate::solver as common;
 use crate::*;
 
 const SAFETY_FACTOR: f64 = 0.9;
-const REL_TOL: f64 = 1e-10;
+const REL_TOL: f64 = 1e-12;
 
 /// Runge-kutta-Fehlberg method coefficients (Wikipedia)
 mod tableau {

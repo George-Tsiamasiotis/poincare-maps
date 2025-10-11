@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
-use crate::solver::henon;
-use crate::solver::Solver;
 use crate::Result;
+use crate::solver::Solver;
+use crate::solver::henon;
 use crate::{Bfield, Current, Qfactor};
 use crate::{InitialConditions, State};
 
