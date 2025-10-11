@@ -26,6 +26,9 @@ pub struct Poincare {
 impl Poincare {
     #[new]
     pub fn new() -> Self {
+        #[cfg(feature = "rk45")]
+        compile_error!("Feature rk45 must be disabled for Poincare maps.");
+
         Poincare {
             particles: Vec::new(),
             angles: Array2::zeros((1, 1)),

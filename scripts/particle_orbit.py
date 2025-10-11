@@ -12,10 +12,10 @@ current = pm.Current("./data.nc", "steffen")
 init = pm.InitialConditions(
     t0=0,
     theta0=0,
-    psip0=0.05,
-    rho0=0.2,
+    psip0=0.5 * qfactor.psip_wall,
+    rho0=0.01,
     zeta0=0.0,
-    mu=1e-6,
+    mu=0,
 )
 
 particle = pm.Particle(init)
@@ -23,8 +23,8 @@ particle.run_ode(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
-    t_eval=(0.0, 200),
-    steps=5000,
+    t_eval=(0.0, 2000),
+    steps=0,
 )
 print(particle)
 

@@ -8,8 +8,10 @@ edition = "2024"
 name = "poincare_maps"
 path = "src/lib.rs"
 crate-type = ["lib", "cdylib"]
+bench = false # Needed for Criterion
 
 [dependencies]
+criterion = "0.7.0"
 indicatif = "0.18.0"
 ndarray = "0.16.1"
 numpy = "0.26.0"
@@ -37,6 +39,14 @@ features = ["static_netcdf"]
 [[bin]]
 name = "poincare-full"
 path = "src/bin/poincare-full.rs"
+
+[[bin]]
+name = "rkf45-orbit"
+path = "src/bin/rkf45-orbit.rs"
+
+[[bench]]
+name = "rkf45-orbit"
+harness = false
 
 # Bevy tip:
 
