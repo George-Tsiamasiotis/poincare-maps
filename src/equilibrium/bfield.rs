@@ -92,7 +92,7 @@ impl Bfield {
         self.z_data().to_pyarray(py)
     }
 
-    /// Retruns the `𝜕B(ψp, θ) /𝜕ψp` data as a Numpy 2D array.
+    /// Returns the `𝜕B(ψp, θ) /𝜕ψp` data as a Numpy 2D array.
     ///
     /// # Note:
     ///
@@ -104,7 +104,7 @@ impl Bfield {
         self.db_dpsip_data().to_pyarray(py)
     }
 
-    /// Retruns the `𝜕B(ψp, θ) /𝜕𝜃` data as a Numpy 2D array.
+    /// Returns the `𝜕B(ψp, θ) /𝜕𝜃` data as a Numpy 2D array.
     ///
     /// # Note:
     ///
@@ -237,7 +237,7 @@ impl Bfield {
         }
     }
 
-    /// Retruns the `𝜕B(ψp, θ) /𝜕ψp` data as a 2D array.
+    /// Returns the `𝜕B(ψp, θ) /𝜕ψp` data as a 2D array.
     ///
     /// # Note:
     ///
@@ -263,7 +263,7 @@ impl Bfield {
         db_dpsip_grid.reversed_axes()
     }
 
-    /// Retruns the `𝜕B(ψp, θ) /𝜕𝜃` data as a 2D array.
+    /// Returns the `𝜕B(ψp, θ) /𝜕𝜃` data as a 2D array.
     ///
     /// # Note:
     ///

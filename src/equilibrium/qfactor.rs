@@ -4,35 +4,41 @@ use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
+use ndarray::Array1;
 use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 /// q-factor reconstructed from a netCDF file.
-#[pyclass]
+#[pyclass(frozen, immutable_type)]
 pub struct Qfactor {
     /// Path to the netCDF file.
+    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    pub typ: Box<str>,
+    #[pyo3(get)]
+    pub typ: String,
+
     /// Spline over the q-factor data, as a function of ψ_p.
     pub q_spline: DynSpline<f64>,
     /// Spline over the toroidal flux data, as a function of ψ_p.
     pub psi_spline: DynSpline<f64>,
-    #[pyo3(get)]
     /// The value of the poloidal angle ψ_p at the wall.
-    pub psip_wall: f64,
+    ///
     #[pyo3(get)]
+    pub psip_wall: f64,
     /// The value of the toroidal angle ψ at the wall.
+    #[pyo3(get)]
     pub psi_wall: f64,
 }
 
 #[pymethods]
 impl Qfactor {
-    #[new]
-    /// Wrapper around `Qfactor::from_dataset`.
+    /// Creates a new [`Qfactor`]
     ///
-    /// This is a workaround to return a `PyErr`.
+    /// Wrapper around [`Qfactor::from_dataset`]. This is a workaround to return a [`PyErr`].
+    #[coverage(off)]
+    #[new]
     pub fn new(path: &str, typ: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
         match Self::from_dataset(&path, typ) {
@@ -41,18 +47,28 @@ impl Qfactor {
         }
     }
 
-    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.q_spline.xa.to_pyarray(py)
+    /// Returns the `psip` coordinate data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "psip_data")]
+    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psip_data().to_pyarray(py)
     }
 
-    pub fn q_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.q_spline.ya.to_pyarray(py)
+    /// Returns the `q` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "q_data")]
+    pub fn q_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.q_data().to_pyarray(py)
     }
 
-    pub fn psi_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.psi_spline.ya.to_pyarray(py)
+    /// Returns the `psi` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "psi_data")]
+    pub fn psi_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psi_data().to_pyarray(py)
     }
 
+    #[coverage(off)]
     pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
@@ -82,7 +98,10 @@ impl Qfactor {
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        let eq = Equilibrium::from_file(path)?;
+        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
+        let path = std::path::absolute(path).unwrap();
+
+        let eq = Equilibrium::from_file(&path)?;
 
         // Add 0.0 manualy, which corresponds to q0.
         let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
@@ -110,6 +129,21 @@ impl Qfactor {
             psip_wall,
             psi_wall,
         })
+    }
+
+    /// Returns the `psip` coordinate data as a 1D array.
+    pub fn psip_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.q_spline.xa.to_vec())
+    }
+
+    /// Returns the `q` data as a 1D array.
+    pub fn q_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.q_spline.ya.to_vec())
+    }
+
+    /// Returns the `psi` data as a 1D array.
+    pub fn psi_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.psi_spline.ya.to_vec())
     }
 }
 
@@ -166,7 +200,44 @@ impl std::fmt::Debug for Qfactor {
         f.debug_struct("Qfactor")
             .field("path", &self.path)
             .field("typ", &self.typ)
+            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
+            .field("ψ_wall", &format!("{:.7}", self.psi_wall))
             .field("len", &self.q_spline.xa.len())
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn create_qfactor() -> Qfactor {
+        let path = PathBuf::from("./data.nc");
+        Qfactor::from_dataset(&path, "akima").unwrap()
+    }
+
+    #[test]
+    fn test_bfield_creation() {
+        create_qfactor();
+    }
+
+    #[test]
+    fn test_extraction_methods() {
+        let q = create_qfactor();
+        let _ = format!("{q:?}");
+
+        assert_eq!(q.psip_data().shape(), [101]);
+        assert_eq!(q.q_data().shape(), [101]);
+        assert_eq!(q.psi_data().shape(), [101]);
+    }
+
+    #[test]
+    fn test_spline_evaluation() {
+        let q = create_qfactor();
+        let mut acc = Accelerator::new();
+
+        let psip = 0.015;
+        q.q(psip, &mut acc).unwrap();
+        q.psi(psip, &mut acc).unwrap();
     }
 }

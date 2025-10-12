@@ -6,3 +6,9 @@ import pytest
 def bfield():
     """Creates a Bfield object from "./data.nc" netCDF file."""
     return pm.Bfield("./data.nc", "bicubic")
+
+
+@pytest.fixture(scope="session")
+def qfactor():
+    """Creates a Qfactor object from "./data.nc" netCDF file."""
+    return pm.Qfactor("./data.nc", "akima")
