@@ -5,13 +5,13 @@ use ndarray::{Array1, Array2, Axis};
 use numpy::{PyArray1, PyArray2, ToPyArray};
 use rsl_interpolation::{Accelerator, DynSpline2d};
 
-use crate::{MapError, Result};
+use crate::Result;
 
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 /// Magnetic field reconstructed from a netCDF file.
-#[pyclass]
+#[pyclass(frozen, immutable_type)]
 pub struct Bfield {
     /// Path to the netCDF file.
     #[pyo3(get)]
@@ -41,11 +41,12 @@ pub struct Bfield {
     pub psi_wall: f64,
 }
 
+/// Wrapper methods exposed to Python.
 #[pymethods]
 impl Bfield {
     /// Creates a new [`Bfield`]
     ///
-    /// Wrapper around `Bfield::from_dataset`. This is a workaround to return a `PyErr`.
+    /// Wrapper around [`Bfield::from_dataset`]. This is a workaround to return a [`PyErr`].
     #[new]
     pub fn new_py(path: &str, typ: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
@@ -67,6 +68,12 @@ impl Bfield {
         self.theta_data().to_pyarray(py)
     }
 
+    /// Returns the `B` data grid as a Numpy 1D array.
+    #[pyo3(name = "b_data")]
+    pub fn b_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.b_data().to_pyarray(py)
+    }
+
     /// Returns the `R` data grid as  Numpy 1D array.
     #[pyo3(name = "r_data")]
     pub fn r_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
@@ -77,12 +84,6 @@ impl Bfield {
     #[pyo3(name = "z_data")]
     pub fn z_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.z_data().to_pyarray(py)
-    }
-
-    /// Returns the `B` data grid as a Numpy 1D array.
-    #[pyo3(name = "b_data")]
-    pub fn b_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.b_data().to_pyarray(py)
     }
 
     /// Retruns the `𝜕B(ψp, θ) /𝜕ψp` data as a Numpy 2D array.
@@ -131,16 +132,8 @@ impl Bfield {
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        // Make path absolute
-        let path = match std::path::absolute(path) {
-            Ok(path) => path,
-            Err(err) => {
-                return Err(MapError::PathError {
-                    source: err,
-                    path: path.to_owned(),
-                });
-            }
-        };
+        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
+        let path = std::path::absolute(path).unwrap();
 
         let eq = Equilibrium::from_file(&path)?;
 
@@ -241,7 +234,7 @@ impl Bfield {
     ///
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
-    pub fn db_dpsip_data<'py>(&self) -> Array2<f64> {
+    pub fn db_dpsip_data(&self) -> Array2<f64> {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
@@ -267,7 +260,7 @@ impl Bfield {
     ///
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
-    pub fn db_dtheta_data<'py>(&self) -> Array2<f64> {
+    pub fn db_dtheta_data(&self) -> Array2<f64> {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
@@ -498,5 +491,51 @@ impl std::fmt::Debug for Bfield {
             .field("ψ_wall", &format!("{:.7}", self.psi_wall))
             .field("shape", &(self.b_spline.xa.len(), self.b_spline.ya.len()))
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn create_bfield() -> Bfield {
+        let path = PathBuf::from("./data.nc");
+        Bfield::from_dataset(&path, "bicubic").unwrap()
+    }
+
+    #[test]
+    fn test_bfield_creation() {
+        create_bfield();
+    }
+
+    #[test]
+    fn test_extraction_methods() {
+        let b = create_bfield();
+        let _ = format!("{b:?}");
+
+        assert_eq!(b.psip_data().shape(), [101]);
+        assert_eq!(b.theta_data().shape(), [3620]);
+        assert_eq!(b.r_data().shape(), [101, 3620]);
+        assert_eq!(b.z_data().shape(), [101, 3620]);
+        assert_eq!(b.b_data().shape(), [101, 3620]);
+        assert_eq!(b.db_dpsip_data().shape(), [101, 3620]);
+        assert_eq!(b.db_dtheta_data().shape(), [101, 3620]);
+    }
+
+    #[test]
+    fn test_spline_evaluation() {
+        let b = create_bfield();
+        let mut xacc = Accelerator::new();
+        let mut yacc = Accelerator::new();
+
+        let psip = 0.015;
+        let theta = 0.0;
+        b.b(psip, theta, &mut xacc, &mut yacc).unwrap();
+        b.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
+        b.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
+        b.d2b_dpsip2(psip, theta, &mut xacc, &mut yacc).unwrap();
+        b.d2b_dtheta2(psip, theta, &mut xacc, &mut yacc).unwrap();
+        b.d2b_dpsip_dtheta(psip, theta, &mut xacc, &mut yacc)
+            .unwrap();
     }
 }
