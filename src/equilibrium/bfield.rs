@@ -47,6 +47,7 @@ impl Bfield {
     /// Creates a new [`Bfield`]
     ///
     /// Wrapper around [`Bfield::from_dataset`]. This is a workaround to return a [`PyErr`].
+    #[coverage(off)]
     #[new]
     pub fn new_py(path: &str, typ: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
@@ -57,30 +58,35 @@ impl Bfield {
     }
 
     /// Returns the `psip` coordinate data as a Numpy 1D array.
+    #[coverage(off)]
     #[pyo3(name = "psip_data")]
     pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.psip_data().to_pyarray(py)
     }
 
     /// Returns the `theta` coordinate data as a Numpy 1D array.
+    #[coverage(off)]
     #[pyo3(name = "theta_data")]
     pub fn theta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.theta_data().to_pyarray(py)
     }
 
     /// Returns the `B` data grid as a Numpy 1D array.
+    #[coverage(off)]
     #[pyo3(name = "b_data")]
     pub fn b_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.b_data().to_pyarray(py)
     }
 
     /// Returns the `R` data grid as  Numpy 1D array.
+    #[coverage(off)]
     #[pyo3(name = "r_data")]
     pub fn r_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.r_data().to_pyarray(py)
     }
 
     /// Returns the `Z` data grid as  Numpy 1D array.
+    #[coverage(off)]
     #[pyo3(name = "z_data")]
     pub fn z_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.z_data().to_pyarray(py)
@@ -93,6 +99,7 @@ impl Bfield {
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
     #[pyo3(name = "db_dpsip_data")]
+    #[coverage(off)]
     pub fn db_dspip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.db_dpsip_data().to_pyarray(py)
     }
@@ -104,10 +111,12 @@ impl Bfield {
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
     #[pyo3(name = "db_dtheta_data")]
+    #[coverage(off)]
     pub fn db_dtheta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.db_dtheta_data().to_pyarray(py)
     }
 
+    #[coverage(off)]
     pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }

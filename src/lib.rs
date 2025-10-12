@@ -1,3 +1,5 @@
+#![feature(coverage_attribute)]
+
 mod equilibrium;
 mod error;
 mod initial;
