@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use ndarray::concatenate;
-use ndarray::{Array2, Axis};
+use ndarray::{Array1, Array2, Axis};
 use numpy::{PyArray1, PyArray2, ToPyArray};
 use rsl_interpolation::{Accelerator, DynSpline2d};
 
-use crate::Result;
+use crate::{MapError, Result};
 
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -14,24 +14,40 @@ use pyo3::prelude::*;
 #[pyclass]
 pub struct Bfield {
     /// Path to the netCDF file.
+    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    pub typ: Box<str>,
-    /// Spline over the magnetic field strength data, as a function of ψ_p, θ.
+    #[pyo3(get)]
+    pub typ: String,
+
+    /// Spline over the magnetic field strength data, as a function of ψp, θ.
     pub b_spline: DynSpline2d<f64>,
-    /// Spline over the R coordinate, as a function of ψ_p, θ.
+    /// Spline over the R coordinate, as a function of ψp, θ.
     pub r_spline: DynSpline2d<f64>,
-    /// Spline over the Z coordinate, as a function of ψ_p, θ.
+    /// Spline over the Z coordinate, as a function of ψp, θ.
     pub z_spline: DynSpline2d<f64>,
+
+    /// Magnetic field strength on the axis **in \[T\]**.
+    #[pyo3(get)]
+    pub baxis: f64,
+    /// The tokamak's major radius **in \[m\]**.
+    #[pyo3(get)]
+    pub raxis: f64,
+    /// The value of the poloidal angle ψp at the wall.
+    #[pyo3(get)]
+    pub psip_wall: f64,
+    /// The value of the toroidal angle ψ at the wall.
+    #[pyo3(get)]
+    pub psi_wall: f64,
 }
 
 #[pymethods]
 impl Bfield {
-    #[new]
-    /// Wrapper around `Bfield::from_dataset`.
+    /// Creates a new [`Bfield`]
     ///
-    /// This is a workaround to return a `PyErr`.
-    pub fn new(path: &str, typ: &str) -> PyResult<Self> {
+    /// Wrapper around `Bfield::from_dataset`. This is a workaround to return a `PyErr`.
+    #[new]
+    pub fn new_py(path: &str, typ: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
         match Self::from_dataset(&path, typ) {
             Ok(bfield) => Ok(bfield),
@@ -39,65 +55,56 @@ impl Bfield {
         }
     }
 
-    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.b_spline.xa.to_pyarray(py)
+    /// Returns the `psip` coordinate data as a Numpy 1D array.
+    #[pyo3(name = "psip_data")]
+    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psip_data().to_pyarray(py)
     }
 
-    pub fn theta_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.b_spline.ya.to_pyarray(py)
+    /// Returns the `theta` coordinate data as a Numpy 1D array.
+    #[pyo3(name = "theta_data")]
+    pub fn theta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.theta_data().to_pyarray(py)
     }
 
-    pub fn rz_grid<'py>(
-        &self,
-        py: Python<'py>,
-    ) -> (Bound<'py, PyArray2<f64>>, Bound<'py, PyArray2<f64>>) {
-        let shape = (self.b_spline.xa.len(), self.b_spline.ya.len());
-        let rgrid = Array2::from_shape_vec(shape, self.r_spline.za.to_vec()).unwrap();
-        let zgrid = Array2::from_shape_vec(shape, self.z_spline.za.to_vec()).unwrap();
-
-        (rgrid.to_pyarray(py), zgrid.to_pyarray(py))
+    /// Returns the `R` data grid as  Numpy 1D array.
+    #[pyo3(name = "r_data")]
+    pub fn r_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.r_data().to_pyarray(py)
     }
 
-    /// Returns a 2d grid with the B values as a function of the R and Z coordinates
-    pub fn b_grid<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        // `Spline.za` is in Fortran order.
-        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
-        let bgrid = Array2::from_shape_vec(shape, self.b_spline.za.to_vec()).unwrap();
-        let bgrid = bgrid.reversed_axes();
-
-        bgrid.to_pyarray(py)
+    /// Returns the `Z` data grid as  Numpy 1D array.
+    #[pyo3(name = "z_data")]
+    pub fn z_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.z_data().to_pyarray(py)
     }
 
-    /// Returns two 2d grids with the `𝜕B(ψ_p, θ)/𝜕ψ_p` and `𝜕B(ψ_p, θ)/𝜕𝜃` values as functions
-    /// of the R and Z coordinates
-    pub fn db_grids<'py>(
-        &self,
-        py: Python<'py>,
-    ) -> (Bound<'py, PyArray2<f64>>, Bound<'py, PyArray2<f64>>) {
-        // `Spline.za` is in Fortran order.
-        let mut xacc = Accelerator::new();
-        let mut yacc = Accelerator::new();
-        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+    /// Returns the `B` data grid as a Numpy 1D array.
+    #[pyo3(name = "b_data")]
+    pub fn b_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.b_data().to_pyarray(py)
+    }
 
-        let mut db_dpsip_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
-        let mut db_dtheta_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
-        for j in 0..shape.0 {
-            for i in 0..shape.1 {
-                let psip = self.b_spline.xa[i];
-                let theta = self.b_spline.ya[j];
-                let db_dpsip = self.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
-                let db_dtheta = self.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
-                db_dpsip_vec.push(db_dpsip);
-                db_dtheta_vec.push(db_dtheta);
-            }
-        }
+    /// Retruns the `𝜕B(ψp, θ) /𝜕ψp` data as a Numpy 2D array.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
+    #[pyo3(name = "db_dpsip_data")]
+    pub fn db_dspip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.db_dpsip_data().to_pyarray(py)
+    }
 
-        let db_dpsip_grid = Array2::from_shape_vec(shape, db_dpsip_vec).unwrap();
-        let db_dtheta_grid = Array2::from_shape_vec(shape, db_dtheta_vec).unwrap();
-        let db_dpsip_grid = db_dpsip_grid.reversed_axes();
-        let db_dtheta_grid = db_dtheta_grid.reversed_axes();
-
-        (db_dpsip_grid.to_pyarray(py), db_dtheta_grid.to_pyarray(py))
+    /// Retruns the `𝜕B(ψp, θ) /𝜕𝜃` data as a Numpy 2D array.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
+    #[pyo3(name = "db_dtheta_data")]
+    pub fn db_dtheta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.db_dtheta_data().to_pyarray(py)
     }
 
     pub fn __repr__(&self) -> String {
@@ -124,10 +131,25 @@ impl Bfield {
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        let eq = Equilibrium::from_file(path)?;
+        // Make path absolute
+        let path = match std::path::absolute(path) {
+            Ok(path) => path,
+            Err(err) => {
+                return Err(MapError::PathError {
+                    source: err,
+                    path: path.to_owned(),
+                });
+            }
+        };
+
+        let eq = Equilibrium::from_file(&path)?;
 
         // Add 0.0 manualy, which corresponds to the axis value.
         let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
+            .as_standard_layout()
+            .to_vec();
+        // For `psi_wall`
+        let psi_data = extract_var_with_axis_value(&eq.file, PSI_COORD, 0.0)?
             .as_standard_layout()
             .to_vec();
         let theta_data = eq.get_1d(THETA_COORD)?.to_vec();
@@ -135,6 +157,7 @@ impl Bfield {
         let b_data = eq.get_2d(B_FIELD)?;
         let r_data = eq.get_2d(R)?;
         let z_data = eq.get_2d(Z)?;
+        let baxis_val = eq.get_scalar(B_AXIS)?;
         let raxis_val = eq.get_scalar(R_AXIS)?;
         let zaxis_val = eq.get_scalar(Z_AXIS)?;
 
@@ -143,21 +166,23 @@ impl Bfield {
         let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
 
         // `Spline.za` is in Fortran order.
-        let b_data_flat = b_data
-            .flatten_with_order(ndarray::Order::ColumnMajor)
-            .to_vec();
+        let order = ndarray::Order::ColumnMajor;
+        let b_data_flat = b_data.flatten_with_order(order).to_vec();
 
         let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
         let r_data = concatenate![Axis(0), r_axis_values, r_data];
-        let r_data_flat = r_data.flatten().to_vec();
+        let r_data_flat = r_data.flatten_with_order(order).to_vec();
 
         let z_axis_values = Array2::from_elem((1, z_data.ncols()), zaxis_val);
         let z_data = concatenate![Axis(0), z_axis_values, z_data];
-        let z_data_flat = z_data.flatten().to_vec();
+        let z_data_flat = z_data.flatten_with_order(order).to_vec();
 
         let b_spline = make_spline2d(typ, &psip_data, &theta_data, &b_data_flat)?;
         let r_spline = make_spline2d(typ, &psip_data, &theta_data, &r_data_flat)?;
         let z_spline = make_spline2d(typ, &psip_data, &theta_data, &z_data_flat)?;
+
+        let psip_wall = psip_data.last().copied().unwrap();
+        let psi_wall = psi_data.last().copied().unwrap();
 
         Ok(Self {
             path: path.to_owned(),
@@ -165,12 +190,106 @@ impl Bfield {
             b_spline,
             r_spline,
             z_spline,
+            baxis: baxis_val,
+            raxis: raxis_val,
+            psip_wall,
+            psi_wall,
         })
+    }
+
+    /// Returns the `psip` coordinate data as a 1D array.
+    pub fn psip_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.b_spline.xa.to_vec())
+    }
+
+    /// Returns the `theta` coordinate data as a 1D array.
+    pub fn theta_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.b_spline.ya.to_vec())
+    }
+
+    /// Returns the `R` data grid as a 2D array.
+    pub fn r_data(&self) -> Array2<f64> {
+        let shape = (self.r_spline.ya.len(), self.r_spline.xa.len());
+        match Array2::from_shape_vec(shape, self.r_spline.za.to_vec()) {
+            Ok(r_grid) => r_grid.reversed_axes(),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    /// Returns the `Z` data grid as a 2D array.
+    pub fn z_data(&self) -> Array2<f64> {
+        let shape = (self.z_spline.ya.len(), self.z_spline.xa.len());
+        match Array2::from_shape_vec(shape, self.z_spline.za.to_vec()) {
+            Ok(z_grid) => z_grid.reversed_axes(),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    /// Returns the `B` data grid as a 2D array.
+    pub fn b_data(&self) -> Array2<f64> {
+        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+        match Array2::from_shape_vec(shape, self.b_spline.za.to_vec()) {
+            // `Spline.za` is in Fortran order.
+            Ok(b_grid) => b_grid.reversed_axes(),
+            Err(_) => unreachable!(),
+        }
+    }
+
+    /// Retruns the `𝜕B(ψp, θ) /𝜕ψp` data as a 2D array.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
+    pub fn db_dpsip_data<'py>(&self) -> Array2<f64> {
+        // `Spline.za` is in Fortran order.
+        let mut xacc = Accelerator::new();
+        let mut yacc = Accelerator::new();
+        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+
+        let mut db_dpsip_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
+        for j in 0..shape.0 {
+            for i in 0..shape.1 {
+                let psip = self.b_spline.xa[i];
+                let theta = self.b_spline.ya[j];
+                let db_dtheta = self.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
+                db_dpsip_vec.push(db_dtheta);
+            }
+        }
+
+        let db_dpsip_grid = Array2::from_shape_vec(shape, db_dpsip_vec).unwrap();
+        db_dpsip_grid.reversed_axes()
+    }
+
+    /// Retruns the `𝜕B(ψp, θ) /𝜕𝜃` data as a 2D array.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
+    pub fn db_dtheta_data<'py>(&self) -> Array2<f64> {
+        // `Spline.za` is in Fortran order.
+        let mut xacc = Accelerator::new();
+        let mut yacc = Accelerator::new();
+        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
+
+        let mut db_dtheta_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
+        for j in 0..shape.0 {
+            for i in 0..shape.1 {
+                let psip = self.b_spline.xa[i];
+                let theta = self.b_spline.ya[j];
+                let db_dtheta = self.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
+                db_dtheta_vec.push(db_dtheta);
+            }
+        }
+
+        let db_dtheta_grid = Array2::from_shape_vec(shape, db_dtheta_vec).unwrap();
+        db_dtheta_grid.reversed_axes()
     }
 }
 
 impl Bfield {
-    /// Calculates `B(ψ_p, θ)`,
+    /// Calculates `B(ψp, θ)`,
     ///
     /// # Example
     ///
@@ -200,7 +319,7 @@ impl Bfield {
         Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc)?)
     }
 
-    /// Calculates `𝜕B(ψ_p, θ) /𝜕𝜃`.
+    /// Calculates `𝜕B(ψp, θ) /𝜕𝜃`.
     ///
     /// # Example
     ///
@@ -233,7 +352,7 @@ impl Bfield {
             .eval_deriv_y(psip, mod2pi(theta), xacc, yacc)?)
     }
 
-    /// Calculates `𝜕B(ψ_p, θ) /𝜕ψ_p`.
+    /// Calculates `𝜕B(ψp, θ) /𝜕ψp`.
     ///
     /// # Example
     ///
@@ -265,7 +384,7 @@ impl Bfield {
             .eval_deriv_x(psip, mod2pi(theta), xacc, yacc)?)
     }
 
-    /// Calculates `𝜕²B(ψ_p, θ) /𝜕𝜓_p²`.
+    /// Calculates `𝜕²B(ψp, θ) /𝜕𝜓p²`.
     ///
     /// # Example
     ///
@@ -297,7 +416,7 @@ impl Bfield {
             .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc)?)
     }
 
-    /// Calculates `𝜕²B(ψ_p, θ) /𝜕θ²`.
+    /// Calculates `𝜕²B(ψp, θ) /𝜕θ²`.
     ///
     /// # Example
     ///
@@ -329,7 +448,7 @@ impl Bfield {
             .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc)?)
     }
 
-    /// Calculates `𝜕²B(ψ_p, θ) /𝜕ψ_p𝜕θ`.
+    /// Calculates `𝜕²B(ψp, θ) /𝜕ψp𝜕θ`.
     ///
     /// # Example
     ///
@@ -373,6 +492,10 @@ impl std::fmt::Debug for Bfield {
         f.debug_struct("Bfield")
             .field("path", &self.path)
             .field("typ", &self.typ)
+            .field("Baxis [T]", &format!("{:.7}", self.baxis))
+            .field("Raxis [m]", &format!("{:.7}", self.raxis))
+            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
+            .field("ψ_wall", &format!("{:.7}", self.psi_wall))
             .field("shape", &(self.b_spline.xa.len(), self.b_spline.ya.len()))
             .finish()
     }

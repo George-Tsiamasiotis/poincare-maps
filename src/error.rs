@@ -1,5 +1,15 @@
+use std::path::PathBuf;
+
 #[derive(thiserror::Error, Debug)]
 pub enum MapError {
+    /// Cannot file netCDF file at `path`
+    #[error("Cannot find netCDF file at `{path}`: {source}")]
+    PathError {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+
     /// Error Initializing System.
     #[error("Error Initializing System")]
     SystemInitError,

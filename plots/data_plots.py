@@ -12,11 +12,12 @@ def b_plot(ax, bfield: pm.Bfield):
 
     theta_data = bfield.theta_data()
     psip_data = bfield.psip_data()
-    rgrid, zgrid = bfield.rz_grid()
-    bgrid = bfield.b_grid()
+    r_data = bfield.r_data()
+    z_data = bfield.z_data()
+    b_data = bfield.b_data()
     _, psi_grid = np.meshgrid(theta_data, psip_data)
 
-    contour = ax.contourf(rgrid, zgrid, bgrid, **{"levels": levels, "cmap": cmap})
+    contour = ax.contourf(r_data, z_data, b_data, **{"levels": levels, "cmap": cmap})
     ax.axis("equal")
     ax.set_title("Magnetic flux surfaces")
     ax.set_xlabel(r"$R[m]$")
@@ -28,14 +29,16 @@ def db_plots(axx, axy, bfield: pm.Bfield):
 
     theta_data = bfield.theta_data()
     psip_data = bfield.psip_data()
-    rgrid, zgrid = bfield.rz_grid()
-    db_dpsip_grid, db_dtheta_grid = bfield.db_grids()
+    r_data = bfield.r_data()
+    z_data = bfield.z_data()
+    db_dpsip_grid = bfield.db_dpsip_data()
+    db_dtheta_grid = bfield.db_dtheta_data()
     _, psi_grid = np.meshgrid(theta_data, psip_data)
 
     contour_kw = {"levels": levels, "cmap": cmap}
 
-    contourx = axx.contourf(rgrid, zgrid, db_dpsip_grid, **contour_kw)
-    contoury = axy.contourf(rgrid, zgrid, db_dtheta_grid, **contour_kw)
+    contourx = axx.contourf(r_data, z_data, db_dpsip_grid, **contour_kw)
+    contoury = axy.contourf(r_data, z_data, db_dtheta_grid, **contour_kw)
     plt.colorbar(contourx, ax=axx)
     plt.colorbar(contoury, ax=axy)
     axx.axis("equal")
