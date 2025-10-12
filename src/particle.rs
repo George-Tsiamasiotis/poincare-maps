@@ -80,7 +80,7 @@ impl Particle {
         pzeta.push(f64::NAN);
         Self {
             initial: initial.to_owned(),
-            state: State::new_init(&initial),
+            state: State::new_init(initial),
             t,
             theta,
             psip,

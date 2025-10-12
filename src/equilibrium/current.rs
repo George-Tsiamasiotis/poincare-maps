@@ -10,24 +10,35 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 /// Plasma current reconstructed from a netCDF file.
-#[pyclass]
+#[pyclass(frozen, immutable_type)]
 pub struct Current {
     /// Path to the netCDF file.
+    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    pub typ: Box<str>,
-    /// Spline over the g-current data, as a function of ψ_p.
+    #[pyo3(get)]
+    pub typ: String,
+
+    /// Spline over the g-current data, as a function of ψp.
     pub g_spline: DynSpline<f64>,
-    /// Spline over the I-current data, as a function of ψ_p.
+    /// Spline over the I-current data, as a function of ψp.
     pub i_spline: DynSpline<f64>,
+
+    /// The value of the poloidal angle ψp at the wall.
+    #[pyo3(get)]
+    pub psip_wall: f64,
+    /// The value of the toroidal angle ψ at the wall.
+    #[pyo3(get)]
+    pub psi_wall: f64,
 }
 
 #[pymethods]
 impl Current {
-    #[new]
-    /// Wrapper around `Current::from_dataset`.
+    /// Creates a new [`Current`]
     ///
-    /// This is a workaround to return a `PyErr`.
+    /// Wrapper around [`Current::from_dataset`]. This is a workaround to return a [`PyErr`].
+    #[coverage(off)]
+    #[new]
     pub fn new(path: &str, typ: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
         match Self::from_dataset(&path, typ) {
@@ -36,44 +47,42 @@ impl Current {
         }
     }
 
-    pub fn psip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.g_spline.xa.to_pyarray(py)
+    /// Returns the `psip` coordinate data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "psip_data")]
+    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.psip_data().to_pyarray(py)
     }
 
-    pub fn g_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.g_spline.ya.to_pyarray(py)
+    /// Returns the `g` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "g_data")]
+    pub fn g_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.g_data().to_pyarray(py)
     }
 
-    pub fn i_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.i_spline.ya.to_pyarray(py)
+    /// Returns the `I` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "i_data")]
+    pub fn i_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.i_data().to_pyarray(py)
     }
 
-    pub fn dg_dpsip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        let mut acc = Accelerator::new();
-        let psip_data = &self.g_spline.xa;
-        let dg_dpsip_vec: Vec<f64> = psip_data
-            .iter()
-            .map(|psip| self.dg_dpsip(*psip, &mut acc).unwrap())
-            .collect();
-
-        let dg_dpsip = Array1::from_vec(dg_dpsip_vec);
-
-        dg_dpsip.to_pyarray(py)
+    /// Returns the `𝜕g(ψp)/𝜕ψp` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "dg_dpsip_data")]
+    pub fn dg_dpsip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.dg_dpsip_data().to_pyarray(py)
     }
 
-    pub fn di_dpsip_data<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        let mut acc = Accelerator::new();
-        let psip_data = &self.g_spline.xa;
-        let di_dpsip_vec: Vec<f64> = psip_data
-            .iter()
-            .map(|psip| self.di_dpsip(*psip, &mut acc).unwrap())
-            .collect();
-
-        let di_dpsip = Array1::from_vec(di_dpsip_vec);
-
-        di_dpsip.to_pyarray(py)
+    /// Returns the `𝜕I(ψp)/𝜕ψp` data as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "di_dpsip_data")]
+    pub fn di_dpsip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.di_dpsip_data().to_pyarray(py)
     }
 
+    #[coverage(off)]
     pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
@@ -103,10 +112,17 @@ impl Current {
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        let eq = Equilibrium::from_file(path)?;
+        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
+        let path = std::path::absolute(path).unwrap();
+
+        let eq = Equilibrium::from_file(&path)?;
 
         // Add 0.0 manualy, which corresponds to q0.
         let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
+            .as_standard_layout()
+            .to_vec();
+        // For `psi_wall`
+        let psi_data = extract_var_with_axis_value(&eq.file, PSI_COORD, 0.0)?
             .as_standard_layout()
             .to_vec();
         // Manually add q0 to the array.
@@ -120,17 +136,61 @@ impl Current {
         let g_spline = make_spline(typ, &psip_data, &g_data)?;
         let i_spline = make_spline(typ, &psip_data, &i_data)?;
 
+        let psip_wall = psip_data.last().copied().unwrap();
+        let psi_wall = psi_data.last().copied().unwrap();
+
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             g_spline,
             i_spline,
+            psip_wall,
+            psi_wall,
         })
+    }
+
+    /// Returns the `psip` coordinate data as a 1D array.
+    pub fn psip_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.g_spline.xa.to_vec())
+    }
+
+    /// Returns the `g` data as a 1D array.
+    pub fn g_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.g_spline.ya.to_vec())
+    }
+
+    /// Returns the `I` data as a 1D array.
+    pub fn i_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.i_spline.ya.to_vec())
+    }
+
+    /// Returns the `𝜕g(ψp)/𝜕ψp` data as a 1D array.
+    pub fn dg_dpsip_data(&self) -> Array1<f64> {
+        let mut acc = Accelerator::new();
+        let psip_data = &self.g_spline.xa;
+        let dg_dpsip_vec: Vec<f64> = psip_data
+            .iter()
+            .map(|psip| self.dg_dpsip(*psip, &mut acc).unwrap())
+            .collect();
+
+        Array1::from_vec(dg_dpsip_vec)
+    }
+
+    /// Returns the `𝜕I(ψp)/𝜕ψp` data as a 1D array.
+    pub fn di_dpsip_data(&self) -> Array1<f64> {
+        let mut acc = Accelerator::new();
+        let psip_data = &self.i_spline.xa;
+        let di_dpsip_vec: Vec<f64> = psip_data
+            .iter()
+            .map(|psip| self.di_dpsip(*psip, &mut acc).unwrap())
+            .collect();
+
+        Array1::from_vec(di_dpsip_vec)
     }
 }
 
 impl Current {
-    /// Calculates `g(ψ_p)`
+    /// Calculates `g(ψp)`
     ///
     /// # Example
     /// ```
@@ -151,7 +211,7 @@ impl Current {
         Ok(self.g_spline.eval(psip, acc)?)
     }
 
-    /// Calculates `I(ψ_p)`
+    /// Calculates `I(ψp)`
     ///
     /// # Example
     /// ```
@@ -174,7 +234,7 @@ impl Current {
 }
 
 impl Current {
-    /// Calculates `𝜕g(ψ_p)/𝜕ψ_p`
+    /// Calculates `𝜕g(ψp)/𝜕ψp`
     ///
     /// # Example
     /// ```
@@ -195,7 +255,7 @@ impl Current {
         Ok(self.g_spline.eval_deriv(psip, acc)?)
     }
 
-    /// Calculates `𝜕I(ψ_p)/𝜕ψ_p`
+    /// Calculates `𝜕I(ψp)/𝜕ψp`
     ///
     /// # Example
     /// ```
@@ -222,7 +282,48 @@ impl std::fmt::Debug for Current {
         f.debug_struct("Current")
             .field("path", &self.path)
             .field("typ", &self.typ)
+            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
+            .field("ψ_wall", &format!("{:.7}", self.psi_wall))
             .field("len", &self.g_spline.xa.len())
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn create_current() -> Current {
+        let path = PathBuf::from("./data.nc");
+        Current::from_dataset(&path, "akima").unwrap()
+    }
+
+    #[test]
+    fn test_current_creation() {
+        create_current();
+    }
+
+    #[test]
+    fn test_extraction_methods() {
+        let c = create_current();
+        let _ = format!("{c:?}");
+
+        assert_eq!(c.psip_data().shape(), [101]);
+        assert_eq!(c.g_data().shape(), [101]);
+        assert_eq!(c.i_data().shape(), [101]);
+        assert_eq!(c.dg_dpsip_data().shape(), [101]);
+        assert_eq!(c.di_dpsip_data().shape(), [101]);
+    }
+
+    #[test]
+    fn test_spline_evaluation() {
+        let c = create_current();
+        let mut acc = Accelerator::new();
+
+        let psip = 0.015;
+        c.g(psip, &mut acc).unwrap();
+        c.i(psip, &mut acc).unwrap();
+        c.di_dpsip(psip, &mut acc).unwrap();
+        c.dg_dpsip(psip, &mut acc).unwrap();
     }
 }

@@ -94,12 +94,10 @@ impl Poincare {
         pbar.force_draw();
 
         // Start a new thread for each particle
-        if let Err(err) = self.particles.par_iter_mut().try_for_each(|p| {
+        self.particles.par_iter_mut().try_for_each(|p| {
             henon::run_henon(p, qfactor, bfield, current, angle, intersection, turns)
                 .inspect(|()| pbar.inc(1))
-        }) {
-            return Err(err);
-        };
+        })?;
 
         // Store points
         for p in self.particles.iter_mut() {
@@ -127,5 +125,11 @@ impl Poincare {
         pbar.finish_with_message("Done");
 
         Ok(())
+    }
+}
+
+impl Default for Poincare {
+    fn default() -> Self {
+        Self::new()
     }
 }

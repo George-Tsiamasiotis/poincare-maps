@@ -24,7 +24,8 @@ pub struct Qfactor {
     /// Spline over the toroidal flux data, as a function of ψ_p.
     pub psi_spline: DynSpline<f64>,
     /// The value of the poloidal angle ψ_p at the wall.
-    ///
+
+    /// The value of the poloidal angle ψp at the wall.
     #[pyo3(get)]
     pub psip_wall: f64,
     /// The value of the toroidal angle ψ at the wall.

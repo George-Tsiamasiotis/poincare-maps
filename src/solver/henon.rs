@@ -1,10 +1,10 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::solver::Solver;
 use crate::Particle;
 use crate::Result;
 use crate::State;
+use crate::solver::Solver;
 use crate::{Bfield, Current, Qfactor};
 use std::f64::consts::TAU;
 
@@ -29,19 +29,21 @@ pub(crate) fn run_henon(
     match angle {
         "zeta" => {
             henon_zeta_loop(particle, qfactor, bfield, current, intersection, turns)?;
-            assert!(particle
-                .zeta
-                .windows(2)
-                .map(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
-                .all(|b| b));
+            assert!(
+                particle
+                    .zeta
+                    .windows(2)
+                    .all(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
+            );
         }
         "theta" => {
             henon_theta_loop(particle, qfactor, bfield, current, intersection, turns)?;
-            assert!(particle
-                .theta
-                .windows(2)
-                .map(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
-                .all(|b| b));
+            assert!(
+                particle
+                    .theta
+                    .windows(2)
+                    .all(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
+            );
         }
         _ => return Err(crate::MapError::InvalidAngle),
     };

@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "poincare-maps"
-version = "0.1.4-pre.1"
+version = "0.1.5"
 dependencies = [
  "criterion",
  "indicatif",
