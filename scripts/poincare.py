@@ -10,6 +10,7 @@ matplotlib.use("gtk3agg")
 bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "akima")
 current = pm.Current("./data.nc", "akima")
+per = pm.Perturbation("./data.nc", "akima", 1, -8)
 
 psip_wall = qfactor.psip_wall
 psi_wall = qfactor.psi_wall
@@ -18,7 +19,7 @@ psi_wall = qfactor.psi_wall
 # psi_wall = 0.1
 
 points = 60
-psips = np.linspace(0.01 * psip_wall, 0.99 * psip_wall, points)
+psips = np.linspace(0.02 * psip_wall, 0.98 * psip_wall, points)
 thetas = np.array([0] * points)
 zetas = np.array([0] * points)
 
@@ -42,9 +43,10 @@ poincare.run(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
+    per=per,
     angle="theta",
     intersection=np.pi,
-    turns=200,
+    turns=600,
 )
 
 fig = plt.figure(**{"figsize": (10, 6), "layout": "constrained"})

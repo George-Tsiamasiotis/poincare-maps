@@ -1,7 +1,7 @@
 use crate::Particle;
 use crate::Result;
 use crate::solver::henon;
-use crate::{Bfield, Current, Qfactor};
+use crate::{Bfield, Current, Perturbation, Qfactor};
 
 use indicatif::{ProgressBar, ProgressStyle};
 use ndarray::{Array1, Array2};
@@ -44,11 +44,12 @@ impl Poincare {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
         angle: &str,
         intersection: f64,
         turns: usize,
     ) -> PyResult<()> {
-        match self.run(qfactor, bfield, current, angle, intersection, turns) {
+        match self.run(qfactor, bfield, current, per, angle, intersection, turns) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
@@ -77,6 +78,7 @@ impl Poincare {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
         angle: &str,
         intersection: f64,
         turns: usize,
@@ -95,7 +97,7 @@ impl Poincare {
 
         // Start a new thread for each particle
         self.particles.par_iter_mut().try_for_each(|p| {
-            henon::run_henon(p, qfactor, bfield, current, angle, intersection, turns)
+            henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns)
                 .inspect(|()| pbar.inc(1))
         })?;
 

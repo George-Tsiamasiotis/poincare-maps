@@ -5,9 +5,10 @@ use poincare_maps::*;
 
 fn main() -> Result<()> {
     let path = PathBuf::from("./data.nc");
+    let bfield = Bfield::from_dataset(&path, "bicubic")?;
     let qfactor = Qfactor::from_dataset(&path, "akima")?;
     let current = Current::from_dataset(&path, "akima")?;
-    let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    let per = Perturbation::from_dataset(&path, "akima", 1.0, -8.0)?;
     let psip_wall = qfactor.psip_wall;
 
     let n = 60;
@@ -22,8 +23,7 @@ fn main() -> Result<()> {
         map.add_particle(&particle);
     }
 
-    map.run(&qfactor, &bfield, &current, "theta", PI, turns)
-        .unwrap();
+    map.run(&qfactor, &bfield, &current, &per, "theta", PI, turns)?;
 
     Ok(())
 }

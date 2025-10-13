@@ -1,6 +1,6 @@
 use core::f64;
 
-use crate::{Bfield, Current, Qfactor};
+use crate::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::Accelerator;
 
 use crate::{InitialConditions, Result};
@@ -128,13 +128,14 @@ impl State {
         qfactor: &Qfactor,
         current: &Current,
         bfield: &Bfield,
+        per: &Perturbation,
     ) -> Result<()> {
         // First do all the interpolations.
         self.calculate_qfactor_quantities(qfactor)?;
         self.calculate_current_quantities(current)?;
         self.calculate_bfield_quantities(bfield)?;
 
-        self.calculate_perturbation()?; // TODO: when?
+        self.calculate_perturbation(per)?; // TODO: when?
 
         // Then intermediate quantities that only depend on the already calculated interpolations.
         self.calculate_capitals();
@@ -176,12 +177,12 @@ impl State {
         Ok(())
     }
 
-    fn calculate_perturbation(&mut self) -> Result<()> {
-        self.a = 0.0;
-        self.da_dpsip = 0.0;
-        self.da_dtheta = 0.0;
-        self.da_dzeta = 0.0;
-        self.da_dt = 0.0;
+    fn calculate_perturbation(&mut self, per: &Perturbation) -> Result<()> {
+        self.a = per.a(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.da_dpsip = per.da_dpsip(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.da_dtheta = per.da_dtheta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.da_dzeta = per.da_dzeta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.da_dt = per.da_dt(self.psip, self.theta, self.zeta, &mut self.xacc)?;
         Ok(())
     }
 

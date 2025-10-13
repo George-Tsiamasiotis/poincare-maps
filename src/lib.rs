@@ -10,6 +10,7 @@ mod state;
 
 pub use equilibrium::Bfield;
 pub use equilibrium::Current;
+pub use equilibrium::Perturbation;
 pub use equilibrium::Qfactor;
 
 pub use error::MapError;
@@ -31,6 +32,7 @@ fn poincare_maps(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Bfield>()?;
     m.add_class::<Qfactor>()?;
     m.add_class::<Current>()?;
+    m.add_class::<Perturbation>()?;
     m.add_class::<Particle>()?;
     m.add_class::<Poincare>()?;
     Ok(())

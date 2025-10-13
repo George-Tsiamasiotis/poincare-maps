@@ -55,11 +55,12 @@ impl Solver {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
     ) -> Result<()> {
         self.calculate_k1();
-        self.calculate_state_k2(h, qfactor, bfield, current)?;
-        self.calculate_state_k3(h, qfactor, bfield, current)?;
-        self.calculate_state_k4(h, qfactor, bfield, current)?;
+        self.calculate_state_k2(h, qfactor, bfield, current, per)?;
+        self.calculate_state_k3(h, qfactor, bfield, current, per)?;
+        self.calculate_state_k4(h, qfactor, bfield, current, per)?;
         self.calculate_weights();
         self.calculate_next_state(h);
         Ok(())
@@ -75,6 +76,7 @@ impl Solver {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A21 * self.k1[0],
@@ -89,7 +91,7 @@ impl Solver {
         self.state2.psip = self.state1.psip + coef[1] * h;
         self.state2.rho = self.state1.rho + coef[2] * h;
         self.state2.zeta = self.state1.zeta + coef[3] * h;
-        self.state2.evaluate(qfactor, current, bfield)?;
+        self.state2.evaluate(qfactor, current, bfield, per)?;
         self.k2 = [
             self.state2.theta_dot,
             self.state2.psip_dot,
@@ -105,6 +107,7 @@ impl Solver {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A31 * self.k1[0] + A32 * self.k2[0],
@@ -118,7 +121,7 @@ impl Solver {
         self.state3.psip = self.state1.psip + coef[1] * h;
         self.state3.rho = self.state1.rho + coef[2] * h;
         self.state3.zeta = self.state1.zeta + coef[3] * h;
-        self.state3.evaluate(qfactor, current, bfield)?;
+        self.state3.evaluate(qfactor, current, bfield, per)?;
         self.k3 = [
             self.state3.theta_dot,
             self.state3.psip_dot,
@@ -134,6 +137,7 @@ impl Solver {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A41 * self.k1[0] + A42 * self.k2[0] + A43 * self.k3[0],
@@ -147,7 +151,7 @@ impl Solver {
         self.state4.psip = self.state1.psip + coef[1] * h;
         self.state4.rho = self.state1.rho + coef[2] * h;
         self.state4.zeta = self.state1.zeta + coef[3] * h;
-        self.state4.evaluate(qfactor, current, bfield)?;
+        self.state4.evaluate(qfactor, current, bfield, per)?;
         self.k4 = [
             self.state4.theta_dot,
             self.state4.psip_dot,

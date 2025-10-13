@@ -14,9 +14,9 @@ def poincare_plot(ax, p: pm.Poincare, walls):
 
     for i in range(len(angles)):
 
-        ax.scatter(pi_mod(angles[i]), fluxes[i], s, c)
-        angle0, flux0 = angles[i, 0], fluxes[i, 0]
-        ax.scatter(pi_mod(angle0), flux0, marker="_", s=10, color="k")
+        ax.scatter(pi_mod(angles[i][1:]), fluxes[i][1:], s, c)
+        # angle0, flux0 = angles[i, 0], fluxes[i, 0]
+        # ax.scatter(pi_mod(angle0), flux0, marker="_", s=10, color="k")
 
     if p.angle == "theta":
         ax.set_xlabel(r"$\zeta$")

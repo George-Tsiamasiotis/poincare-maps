@@ -8,11 +8,12 @@ matplotlib.use("gtk3agg")
 bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "cubic")
 current = pm.Current("./data.nc", "steffen")
+per = pm.Perturbation("./data.nc", "akima", 1, -8)
 
 init = pm.InitialConditions(
     t0=0,
     theta0=0,
-    psip0=0.5 * qfactor.psip_wall,
+    psip0=0.025,
     rho0=0.01,
     zeta0=0.0,
     mu=0,
@@ -23,7 +24,8 @@ particle.run_ode(
     bfield=bfield,
     current=current,
     qfactor=qfactor,
-    t_eval=(0.0, 2000),
+    per=per,
+    t_eval=(0.0, 10000),
     steps=0,
 )
 print(particle)

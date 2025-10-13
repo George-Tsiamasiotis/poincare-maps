@@ -5,7 +5,7 @@ use crate::Particle;
 use crate::Result;
 use crate::State;
 use crate::solver::Solver;
-use crate::{Bfield, Current, Qfactor};
+use crate::{Bfield, Current, Perturbation, Qfactor};
 use std::f64::consts::TAU;
 
 use crate::solver::RKF45_FIRST_STEP;
@@ -15,12 +15,13 @@ pub(crate) fn run_henon(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     angle: &str,
     intersection: f64,
     turns: usize,
 ) -> Result<()> {
     use std::f64::consts::TAU;
-    particle.state.evaluate(qfactor, current, bfield)?;
+    particle.state.evaluate(qfactor, current, bfield, per)?;
     particle.initial_energy = particle.state.energy();
 
     particle.calculation_time = Duration::ZERO;
@@ -28,7 +29,7 @@ pub(crate) fn run_henon(
 
     match angle {
         "zeta" => {
-            henon_zeta_loop(particle, qfactor, bfield, current, intersection, turns)?;
+            henon_zeta_loop(particle, qfactor, bfield, current, per, intersection, turns)?;
             assert!(
                 particle
                     .zeta
@@ -37,7 +38,7 @@ pub(crate) fn run_henon(
             );
         }
         "theta" => {
-            henon_theta_loop(particle, qfactor, bfield, current, intersection, turns)?;
+            henon_theta_loop(particle, qfactor, bfield, current, per, intersection, turns)?;
             assert!(
                 particle
                     .theta
@@ -61,13 +62,15 @@ pub(crate) fn henon_zeta_loop(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     intersection: f64,
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
 
     while particle.zeta.len() < turns {
-        let (old_state, next_state) = get_step_stages(particle, qfactor, bfield, current, &mut h)?;
+        let (old_state, next_state) =
+            get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
 
         if intersected(old_state.zeta, next_state.zeta, intersection) {
@@ -93,7 +96,7 @@ pub(crate) fn henon_zeta_loop(
             let dzeta = direction * (intersection - old_state.zeta % TAU);
 
             let next_mod_state =
-                calculate_next_mod_state(qfactor, bfield, current, old_mod_state, dzeta)?;
+                calculate_next_mod_state(qfactor, bfield, current, per, old_mod_state, dzeta)?;
 
             let kappa = 1.0;
             let dtheta_dt = kappa * next_mod_state.theta_dot;
@@ -115,6 +118,7 @@ pub(crate) fn henon_zeta_loop(
                 qfactor,
                 bfield,
                 current,
+                per,
                 &next_state,
                 intersection_state,
             )?;
@@ -131,12 +135,14 @@ pub(crate) fn henon_theta_loop(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     intersection: f64,
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
     while particle.theta.len() < turns {
-        let (old_state, next_state) = get_step_stages(particle, qfactor, bfield, current, &mut h)?;
+        let (old_state, next_state) =
+            get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
 
         if intersected(old_state.theta, next_state.theta, intersection) {
@@ -162,7 +168,7 @@ pub(crate) fn henon_theta_loop(
             let dtheta = direction * (intersection - old_state.theta % TAU);
 
             let next_mod_state =
-                calculate_next_mod_state(qfactor, bfield, current, old_mod_state, dtheta)?;
+                calculate_next_mod_state(qfactor, bfield, current, per, old_mod_state, dtheta)?;
 
             let kappa = 1.0;
             let dt_dt = kappa;
@@ -184,6 +190,7 @@ pub(crate) fn henon_theta_loop(
                 qfactor,
                 bfield,
                 current,
+                per,
                 &next_state,
                 intersection_state,
             )?;
@@ -204,15 +211,16 @@ fn get_step_stages(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     h: &mut f64,
 ) -> Result<(State, State)> {
     let mut solver = Solver::default();
     solver.init(&particle.state);
-    solver.start(*h, qfactor, bfield, current)?;
+    solver.start(*h, qfactor, bfield, current, per)?;
     *h = solver.calculate_optimal_step(*h);
     let old_state = particle.state.clone();
     let mut next_state = solver.next_state(*h);
-    next_state.evaluate(qfactor, current, bfield)?;
+    next_state.evaluate(qfactor, current, bfield, per)?;
     Ok((old_state, next_state))
 }
 
@@ -229,12 +237,13 @@ fn calculate_next_mod_state(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     mod_state: State,
     dtau: f64,
 ) -> Result<State> {
     let mut solver = Solver::default();
     solver.init(&mod_state);
-    solver.start(dtau, qfactor, bfield, current)?;
+    solver.start(dtau, qfactor, bfield, current, per)?;
     let new_mod_state = solver.next_state(dtau);
     Ok(new_mod_state)
 }
@@ -245,17 +254,18 @@ fn store_intersection(
     qfactor: &Qfactor,
     bfield: &Bfield,
     current: &Current,
+    per: &Perturbation,
     next_state: &State,
     intersection_state: State,
 ) -> Result<()> {
     particle.state = intersection_state.clone();
-    particle.state.evaluate(qfactor, current, bfield)?;
+    particle.state.evaluate(qfactor, current, bfield, per)?;
     particle.update_vecs();
     let temp_step = next_state.t - intersection_state.t;
     let mut solver = Solver::default();
     solver.init(&particle.state);
-    solver.start(temp_step, qfactor, bfield, current)?;
+    solver.start(temp_step, qfactor, bfield, current, per)?;
     particle.state = solver.next_state(temp_step);
-    particle.state.evaluate(qfactor, current, bfield)?;
+    particle.state.evaluate(qfactor, current, bfield, per)?;
     Ok(())
 }

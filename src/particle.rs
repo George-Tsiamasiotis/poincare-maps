@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::Result;
 use crate::solver::Solver;
 use crate::solver::henon;
-use crate::{Bfield, Current, Qfactor};
+use crate::{Bfield, Current, Perturbation, Qfactor};
 use crate::{InitialConditions, State};
 
 use numpy::{PyArray1, ToPyArray};
@@ -107,10 +107,11 @@ impl Particle {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
         t_eval: (f64, f64),
         steps: usize,
     ) -> PyResult<()> {
-        match self.run_ode(qfactor, bfield, current, t_eval, steps) {
+        match self.run_ode(qfactor, bfield, current, per, t_eval, steps) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
@@ -124,11 +125,21 @@ impl Particle {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
         angle: &str,
         intersection: f64,
         turns: usize,
     ) -> PyResult<()> {
-        match henon::run_henon(self, qfactor, bfield, current, angle, intersection, turns) {
+        match henon::run_henon(
+            self,
+            qfactor,
+            bfield,
+            current,
+            per,
+            angle,
+            intersection,
+            turns,
+        ) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
@@ -176,10 +187,11 @@ impl Particle {
         qfactor: &Qfactor,
         bfield: &Bfield,
         current: &Current,
+        per: &Perturbation,
         t_eval: (f64, f64),
         steps: usize,
     ) -> Result<()> {
-        self.state.evaluate(qfactor, current, bfield)?;
+        self.state.evaluate(qfactor, current, bfield, per)?;
         self.initial_energy = self.state.energy();
 
         let mut h = first_step(t_eval, steps);
@@ -189,10 +201,10 @@ impl Particle {
         while self.state.t < t_eval.1 {
             let mut solver = Solver::default();
             solver.init(&self.state);
-            solver.start(h, qfactor, bfield, current)?;
+            solver.start(h, qfactor, bfield, current, per)?;
             h = solver.calculate_optimal_step(h);
             self.state = solver.next_state(h);
-            self.state.evaluate(qfactor, current, bfield)?;
+            self.state.evaluate(qfactor, current, bfield, per)?;
             self.update_vecs();
             self.steps_taken += 1;
         }

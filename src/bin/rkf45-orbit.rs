@@ -10,12 +10,13 @@ fn main() {
     let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
     let current = Current::from_dataset(&path, "akima").unwrap();
     let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
+    let per = Perturbation::from_dataset(&path, "akima", 1.0, -8.0).unwrap();
     let psip_wall = qfactor.psip_wall;
 
     let initial = InitialConditions::new(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
     let mut particle = Particle::new(&initial);
     particle
-        .run_ode(&qfactor, &bfield, &current, (0.0, 20000.0), 0)
+        .run_ode(&qfactor, &bfield, &current, &per, (0.0, 200000.0), 0)
         .unwrap();
 
     dbg!(&particle);
