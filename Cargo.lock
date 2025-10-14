@@ -1257,9 +1257,9 @@ checksum = "c3160422bbd54dd5ecfdca71e5fd59b7b8fe2b1697ab2baf64f6d05dcc66d298"
 
 [[package]]
 name = "rsl-interpolation"
-version = "0.1.13"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15d22ff3bfee1573495d7b59e22d721762362d8037278980b36878a514195796"
+checksum = "6fb533c94c12af636eb58826b77e7d6694db24cacebcade9ed8600254a2456f0"
 dependencies = [
  "is_close",
  "ndarray",

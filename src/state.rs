@@ -1,7 +1,7 @@
 use core::f64;
 
 use crate::{Bfield, Current, Perturbation, Qfactor};
-use rsl_interpolation::Accelerator;
+use rsl_interpolation::{Accelerator, Cache};
 
 use crate::{InitialConditions, Result};
 
@@ -16,6 +16,8 @@ pub struct State {
     pub xacc: Accelerator,
     /// The `θ_p` coordinate [`Accelerator`].
     pub yacc: Accelerator,
+    /// The 2d Interpolation's [`Cache`].
+    pub cache: Cache<f64>,
 
     /// The time of evaluation.
     pub t: f64,
@@ -170,9 +172,27 @@ impl State {
 
     #[cfg(not(feature = "lar"))]
     fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
-        self.b = bfield.b(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
-        self.db_dtheta = bfield.db_dtheta(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
-        self.db_dpsip = bfield.db_dpsip(self.psip, self.theta, &mut self.xacc, &mut self.yacc)?;
+        self.b = bfield.b(
+            self.psip,
+            self.theta,
+            &mut self.xacc,
+            &mut self.yacc,
+            &mut self.cache,
+        )?;
+        self.db_dtheta = bfield.db_dtheta(
+            self.psip,
+            self.theta,
+            &mut self.xacc,
+            &mut self.yacc,
+            &mut self.cache,
+        )?;
+        self.db_dpsip = bfield.db_dpsip(
+            self.psip,
+            self.theta,
+            &mut self.xacc,
+            &mut self.yacc,
+            &mut self.cache,
+        )?;
         self.db_dzeta = 0.0; // Axisymmetric configuration
         Ok(())
     }
@@ -185,22 +205,6 @@ impl State {
         self.da_dt = per.da_dt(self.psip, self.theta, self.zeta, &mut self.xacc)?;
         Ok(())
     }
-
-    // fn calculate_perturbation(&mut self) -> Result<()> {
-    //     let m = 7.0;
-    //     let n = 1.0;
-    //     let psip_wall = 0.07;
-    //     let width = psip_wall / 5.0;
-    //     let exponent = ((self.psip - psip_wall / 2.0) / width).powi(2);
-    //     let cos = (m * self.theta - n * self.zeta).cos();
-    //     let v = 1e-3;
-    //     self.a = v * (exponent.exp()) * cos;
-    //     self.da_dpsip = -v * 2.0 * self.psip * exponent;
-    //     self.da_dtheta = -v * exponent * m * (m * self.theta - n * self.zeta).sin();
-    //     self.da_dzeta = v * exponent * n * (m * self.theta - n * self.zeta).sin();
-    //     self.da_dt = 0.0;
-    //     Ok(())
-    // }
 
     fn calculate_canonical_momenta(&mut self) {
         self.ptheta = self.psi + self.rho * self.i;
@@ -306,6 +310,7 @@ impl Default for State {
         Self {
             xacc: Accelerator::new(),
             yacc: Accelerator::new(),
+            cache: Cache::new(),
             t: f64::NAN,
             theta: f64::NAN,
             psip: f64::NAN,

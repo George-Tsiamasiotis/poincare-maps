@@ -14,9 +14,6 @@ per = pm.Perturbation("./data.nc", "akima", 1, -8)
 
 psip_wall = qfactor.psip_wall
 psi_wall = qfactor.psi_wall
-# For `lar` feature, since q=1
-# psip_wall = 0.1
-# psi_wall = 0.1
 
 points = 60
 psips = np.linspace(0.02 * psip_wall, 0.98 * psip_wall, points)
