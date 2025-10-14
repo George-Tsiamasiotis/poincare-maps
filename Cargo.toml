@@ -15,7 +15,7 @@ indicatif = "0.18.0"
 ndarray = "0.16.1"
 numpy = "0.26.0"
 rayon = "1.11.0"
-rsl-interpolation = "0.1.13"
+rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "cache-dev" }
 thiserror = "2.0.17"
 tokamak-netcdf = { git = "https://github.com/George-Tsiamasiotis/tokamak-netcdf", version = "0.1.3" }
 
@@ -33,7 +33,7 @@ rk45 = []
 error-adaptive-step = []
 openblas-static = ["rsl-interpolation/openblas-static"]
 openblas-system = ["rsl-interpolation/openblas-system"]
-static_netcdf = ["tokamak-netcdf/static"]
+static-netcdf = ["tokamak-netcdf/static"]
 
 [package.metadata.docs.rs]
 features = ["static_netcdf"]

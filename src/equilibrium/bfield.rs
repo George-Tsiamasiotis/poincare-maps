@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use ndarray::concatenate;
 use ndarray::{Array1, Array2, Axis};
 use numpy::{PyArray1, PyArray2, ToPyArray};
-use rsl_interpolation::{Accelerator, DynSpline2d};
+use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
 
 use crate::Result;
 
@@ -247,6 +247,8 @@ impl Bfield {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
+        let mut cache = Cache::new();
+
         let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
 
         let mut db_dpsip_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
@@ -254,7 +256,9 @@ impl Bfield {
             for i in 0..shape.1 {
                 let psip = self.b_spline.xa[i];
                 let theta = self.b_spline.ya[j];
-                let db_dtheta = self.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
+                let db_dtheta = self
+                    .db_dpsip(psip, theta, &mut xacc, &mut yacc, &mut cache)
+                    .unwrap();
                 db_dpsip_vec.push(db_dtheta);
             }
         }
@@ -273,6 +277,7 @@ impl Bfield {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
+        let mut cache = Cache::new();
         let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
 
         let mut db_dtheta_vec = Vec::<f64>::with_capacity(shape.0 * shape.1);
@@ -280,7 +285,9 @@ impl Bfield {
             for i in 0..shape.1 {
                 let psip = self.b_spline.xa[i];
                 let theta = self.b_spline.ya[j];
-                let db_dtheta = self.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
+                let db_dtheta = self
+                    .db_dtheta(psip, theta, &mut xacc, &mut yacc, &mut cache)
+                    .unwrap();
                 db_dtheta_vec.push(db_dtheta);
             }
         }
@@ -307,7 +314,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let b =  bfield.b(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let b =  bfield.b(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -317,8 +326,9 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
-        Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc)?)
+        Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕B(ψp, θ) /𝜕𝜃`.
@@ -337,7 +347,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let db_dtheta = bfield.db_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let db_dtheta = bfield.db_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -347,11 +359,12 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
         // Ok(self.db_dtheta_spline.eval(psi, theta, xacc, yacc)?)
         Ok(self
             .b_spline
-            .eval_deriv_y(psip, mod2pi(theta), xacc, yacc)?)
+            .eval_deriv_y(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕B(ψp, θ) /𝜕ψp`.
@@ -370,7 +383,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let db_dpsip = bfield.db_dpsip(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let db_dpsip = bfield.db_dpsip(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -380,10 +395,11 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_x(psip, mod2pi(theta), xacc, yacc)?)
+            .eval_deriv_x(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕𝜓p²`.
@@ -402,7 +418,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let d2b_dpsip2 = bfield.d2b_dpsip2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dpsip2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -412,10 +430,11 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc)?)
+            .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕θ²`.
@@ -434,7 +453,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let d2b_dpsip2 = bfield.d2b_dtheta2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dtheta2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -444,10 +465,11 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc)?)
+            .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕ψp𝜕θ`.
@@ -466,7 +488,9 @@ impl Bfield {
     ///
     /// let mut psi_acc = Accelerator::new();
     /// let mut theta_acc = Accelerator::new();
-    /// let d2b_dpsip2 = bfield.d2b_dpsip_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dpsip_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -476,10 +500,11 @@ impl Bfield {
         theta: f64,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
     ) -> Result<f64> {
         Ok(self
             .b_spline
-            .eval_deriv_xy(psip, mod2pi(theta), xacc, yacc)?)
+            .eval_deriv_xy(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 }
 
@@ -536,15 +561,20 @@ mod test {
         let b = create_bfield();
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
+        let mut cache = Cache::new();
 
         let psip = 0.015;
         let theta = 0.0;
-        b.b(psip, theta, &mut xacc, &mut yacc).unwrap();
-        b.db_dpsip(psip, theta, &mut xacc, &mut yacc).unwrap();
-        b.db_dtheta(psip, theta, &mut xacc, &mut yacc).unwrap();
-        b.d2b_dpsip2(psip, theta, &mut xacc, &mut yacc).unwrap();
-        b.d2b_dtheta2(psip, theta, &mut xacc, &mut yacc).unwrap();
-        b.d2b_dpsip_dtheta(psip, theta, &mut xacc, &mut yacc)
+        b.b(psip, theta, &mut xacc, &mut yacc, &mut cache).unwrap();
+        b.db_dpsip(psip, theta, &mut xacc, &mut yacc, &mut cache)
+            .unwrap();
+        b.db_dtheta(psip, theta, &mut xacc, &mut yacc, &mut cache)
+            .unwrap();
+        b.d2b_dpsip2(psip, theta, &mut xacc, &mut yacc, &mut cache)
+            .unwrap();
+        b.d2b_dtheta2(psip, theta, &mut xacc, &mut yacc, &mut cache)
+            .unwrap();
+        b.d2b_dpsip_dtheta(psip, theta, &mut xacc, &mut yacc, &mut cache)
             .unwrap();
     }
 }

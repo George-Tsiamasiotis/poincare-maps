@@ -79,7 +79,7 @@ impl Perturbation {
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3, 2)?;
+    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -139,8 +139,7 @@ impl Perturbation {
     /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
     ///
     /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let a = per.a(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc)?;
+    /// let a = per.a(0.015, 2.0*PI, 0.0, &mut psi_acc)?;
     /// # Ok(())
     /// # }
     /// ```
