@@ -1257,8 +1257,8 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rsl-interpolation"
-version = "0.1.14-pre.2"
-source = "git+https://github.com/George-Tsiamasiotis/rsl-interpolation?branch=cache-dev#3f57a65fdd56f952ea3bb8086a3087649712cee3"
+version = "0.1.14-pre.3"
+source = "git+https://github.com/George-Tsiamasiotis/rsl-interpolation?branch=cache-dev#b63e71e9b73b25197ee3b6a232ad456e23bd2909"
 dependencies = [
  "is_close",
  "ndarray",
