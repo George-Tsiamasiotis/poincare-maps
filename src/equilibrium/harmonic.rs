@@ -26,10 +26,13 @@ pub struct Harmonic {
     /// Spline over the perturbation amplitude `α` data, as a function of ψp.
     pub a_spline: DynSpline<f64>,
     /// The `θ` frequency number.
+    #[pyo3(get)]
     pub m: f64,
     /// The `ζ` frequency number.
+    #[pyo3(get)]
     pub n: f64,
     /// The initial phase of the harmonic.
+    #[pyo3(get)]
     pub phase: f64,
 
     /// The maximum value of the `α` values.

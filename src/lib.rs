@@ -28,6 +28,7 @@ pub type Result<T> = std::result::Result<T, MapError>;
 use pyo3::prelude::*;
 
 #[pymodule]
+#[coverage(off)]
 fn poincare_maps(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<InitialConditions>()?;
     m.add_class::<Bfield>()?;

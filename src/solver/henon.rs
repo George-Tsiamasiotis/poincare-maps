@@ -10,6 +10,7 @@ use std::f64::consts::TAU;
 
 use crate::solver::RKF45_FIRST_STEP;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn run_henon(
     particle: &mut Particle,
     qfactor: &Qfactor,

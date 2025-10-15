@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::Particle;
 use crate::Result;
 use crate::solver::henon;
@@ -38,7 +40,9 @@ impl Poincare {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[pyo3(name = "run")]
+    #[coverage(off)]
     pub fn run_py(
         &mut self,
         qfactor: &Qfactor,
@@ -55,24 +59,37 @@ impl Poincare {
         }
     }
 
-    pub fn get_particles(&self) -> Vec<Particle> {
+    /// Adds a particle to be calculated.
+    #[pyo3(name = "get_particles")]
+    #[coverage(off)]
+    pub fn get_particles_py(&self) -> Vec<Particle> {
         self.particles.clone()
     }
 
-    pub fn add_particle(&mut self, particle: &Particle) {
-        self.particles.push(particle.to_owned())
+    /// Returns the stored particles in a list.
+    #[pyo3(name = "add_particle")]
+    #[coverage(off)]
+    pub fn add_particle_py(&mut self, particle: &Particle) {
+        self.add_particle(particle);
     }
 
-    pub fn get_angles<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.angles.to_pyarray(py)
+    /// Returns the calculated angles as a 2D numpy array, 1 row corresponding to 1 particle.
+    #[pyo3(name = "get_angles")]
+    #[coverage(off)]
+    pub fn get_angles_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+        self.get_angles().to_pyarray(py)
     }
 
-    pub fn get_fluxes<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+    /// Returns the calculated fluxes as a 2D numpy array, 1 row corresponding to 1 particle.
+    #[pyo3(name = "get_fluxes")]
+    #[coverage(off)]
+    pub fn get_fluxes_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.fluxes.to_pyarray(py)
     }
 }
 
 impl Poincare {
+    #[allow(clippy::too_many_arguments)]
     pub fn run(
         &mut self,
         qfactor: &Qfactor,
@@ -93,6 +110,7 @@ impl Poincare {
         )
         .unwrap();
         let pbar = ProgressBar::new(self.particles.len() as u64).with_style(style);
+        pbar.enable_steady_tick(Duration::from_millis(100));
         pbar.force_draw();
 
         // Start a new thread for each particle
@@ -127,6 +145,26 @@ impl Poincare {
         pbar.finish_with_message("Done");
 
         Ok(())
+    }
+
+    /// Adds a particle to be calculated.
+    pub fn add_particle(&mut self, particle: &Particle) {
+        self.particles.push(particle.to_owned())
+    }
+
+    /// Returns the stored particles.
+    pub fn get_particles(&self) -> Vec<Particle> {
+        self.particles.clone()
+    }
+
+    /// Returns the calculated angles as a 2D array, 1 row corresponding to 1 particle.
+    pub fn get_angles(&self) -> Array2<f64> {
+        self.angles.clone()
+    }
+
+    /// Returns the calculated fluxes as a 2D array, 1 row corresponding to 1 particle.
+    pub fn get_fluxes(&self) -> Array2<f64> {
+        self.angles.clone()
     }
 }
 

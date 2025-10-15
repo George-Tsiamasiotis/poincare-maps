@@ -96,12 +96,14 @@ impl Particle {
         }
     }
 
+    #[coverage(off)]
     pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
     }
 
     /// Calculates the particle's trajectory.
     #[pyo3(name = "run_ode")]
+    #[coverage(off)]
     pub fn run_ode_py(
         &mut self,
         qfactor: &Qfactor,
@@ -117,9 +119,11 @@ impl Particle {
         }
     }
 
-    #[pyo3(name = "run_henon")]
     /// Calculates the particle's trajectory, by also stepping exactly at the `intersection`
     /// surface, with respect to `angle`, which can be either "theta" or "zeta".
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(name = "run_henon")]
+    #[coverage(off)]
     pub fn run_henon_py(
         &mut self,
         qfactor: &Qfactor,
@@ -146,36 +150,43 @@ impl Particle {
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn t<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.t.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn theta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.theta.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn psip<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.psip.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn rho<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.rho.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn zeta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.zeta.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn ptheta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.ptheta.to_pyarray(py)
     }
 
     #[getter]
+    #[coverage(off)]
     pub fn pzeta<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
         self.pzeta.to_pyarray(py)
     }

@@ -1,7 +1,6 @@
 use crate::Result;
 use crate::equilibrium::Harmonic;
 
-use pyo3::exceptions::PyTypeError;
 use rsl_interpolation::Accelerator;
 
 use pyo3::prelude::*;
@@ -27,10 +26,9 @@ impl Perturbation {
 
     /// Returns the indexed harmonic, by the order they were created.
     #[coverage(off)]
-    #[pyo3(name = "get_harmonic")]
-    pub fn get_harmonic_py(&self, index: usize) -> PyResult<Harmonic> {
-        self.get_harmonic(index)
-            .ok_or(PyTypeError::new_err(format!("index {index} out of range")))
+    #[pyo3(name = "get_harmonics")]
+    pub fn get_harmonics_py<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        self.get_harmonics().into_pyobject(py)
     }
 }
 
@@ -39,8 +37,8 @@ impl Perturbation {
         Self { harmonics }
     }
 
-    pub fn get_harmonic(&self, index: usize) -> Option<Harmonic> {
-        self.harmonics.get(index).cloned()
+    pub fn get_harmonics(&self) -> Vec<Harmonic> {
+        self.harmonics.clone()
     }
 }
 
@@ -249,6 +247,6 @@ mod test {
         let harmonics = vec![Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap()];
         let per = Perturbation::from_harmonics(harmonics);
 
-        let _ = per.get_harmonic(0).unwrap();
+        let _ = per.get_harmonics();
     }
 }
