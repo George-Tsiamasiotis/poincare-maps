@@ -2,7 +2,7 @@ import poincare_maps as pm
 import numpy as np
 import matplotlib.pyplot as plt
 
-s = 0.9
+s = 0.3
 c = "blue"
 dpi = 120
 figsize = (9, 6)
@@ -31,8 +31,9 @@ def plot_orbit(particle: pm.Particle, percentage: float = 100):
     ax[4].scatter(t, ptheta, s, c)
     ax[5].scatter(t, pzeta, s, c)
     # Zoom out Pzeta plot
-    current_ylim = np.array(ax[5].get_ylim())
-    ax[5].set_ylim(np.sort([current_ylim[0] / 3, current_ylim[1] * 3]))
+    if abs(np.diff(pzeta).max()) < 1e-3:
+        current_ylim = np.array(ax[5].get_ylim())
+        ax[5].set_ylim(np.sort([current_ylim[0] / 3, current_ylim[1] * 3]))
 
     ax[0].set_title(r"$\theta$")
     ax[1].set_title(r"$\psi_p$")

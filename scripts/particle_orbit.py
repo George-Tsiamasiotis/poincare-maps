@@ -8,7 +8,11 @@ matplotlib.use("gtk3agg")
 bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "cubic")
 current = pm.Current("./data.nc", "steffen")
-per = pm.Perturbation("./data.nc", "akima", 1, -8)
+harmonics = [
+    pm.Harmonic("./data.nc", "akima", 1, 7, 0),
+    pm.Harmonic("./data.nc", "akima", 1, 8, 0),
+]
+per = pm.Perturbation(harmonics)
 
 init = pm.InitialConditions(
     t0=0,
@@ -25,7 +29,7 @@ particle.run_ode(
     current=current,
     qfactor=qfactor,
     per=per,
-    t_eval=(0.0, 10000),
+    t_eval=(0.0, 15000),
     steps=0,
 )
 print(particle)

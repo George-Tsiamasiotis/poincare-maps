@@ -39,8 +39,6 @@ pub struct State {
     pub ptheta: f64,
     /// The canonical momentum `Pζ`,
     pub pzeta: f64,
-    /// Not sure yet, associated with the perturbations.
-    pub a: f64,
 
     /// The `θ` angle time derivative.
     pub theta_dot: f64,
@@ -59,6 +57,8 @@ pub struct State {
     pub g: f64,
     /// The poloidal plasma current.
     pub i: f64,
+    /// The perturbation (sum of harmonics)
+    pub p: f64,
 
     /// The magnetic field strength derivative with respect to `θ`.
     pub db_dtheta: f64,
@@ -71,14 +71,14 @@ pub struct State {
     pub dg_dpsip: f64,
     /// The poloidal plasma current derivative with respect to `ψ`
     pub di_dpsip: f64,
-    /// Not sure yet, associated with the perturbations.
-    pub da_dpsip: f64,
-    /// Not sure yet, associated with the perturbations.
-    pub da_dtheta: f64,
-    /// Not sure yet, associated with the perturbations.
-    pub da_dzeta: f64,
-    /// Not sure yet, associated with the perturbations.
-    pub da_dt: f64,
+    /// The perturbation's (sum of harmonics) derivative with respect to `ψp`.
+    pub dp_dpsip: f64,
+    /// The perturbation's (sum of harmonics) derivative with respect to `θ`.
+    pub dp_dtheta: f64,
+    /// The perturbation's (sum of harmonics) derivative with respect to `ζ`.
+    pub dp_dzeta: f64,
+    /// The perturbation's (sum of harmonics) derivative with respect to `t`.
+    pub dp_dt: f64,
 
     /// The `D` coefficient.
     pub dterm: f64,
@@ -198,11 +198,11 @@ impl State {
     }
 
     fn calculate_perturbation(&mut self, per: &Perturbation) -> Result<()> {
-        self.a = per.a(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.da_dpsip = per.da_dpsip(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.da_dtheta = per.da_dtheta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.da_dzeta = per.da_dzeta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.da_dt = per.da_dt(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.p = per.p(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.dp_dpsip = per.dp_dpsip(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.dp_dtheta = per.dp_dtheta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.dp_dzeta = per.dp_dzeta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.dp_dt = per.dp_dt(self.psip, self.theta, self.zeta, &mut self.xacc)?;
         Ok(())
     }
 
@@ -214,9 +214,9 @@ impl State {
     /// Calculates the matrix coefficients denoted with capital letters that appear in the
     /// perturbed equations of motion.
     fn calculate_capitals(&mut self) {
-        self.cterm = -1.0 + (self.rho + self.a) * self.dg_dpsip + self.g * self.da_dpsip;
-        self.fterm = self.q + (self.rho + self.a) * self.di_dpsip + self.i * self.da_dpsip;
-        self.kterm = self.g * self.da_dtheta - self.i * self.da_dzeta;
+        self.cterm = -1.0 + (self.rho + self.p) * self.dg_dpsip + self.g * self.dp_dpsip;
+        self.fterm = self.q + (self.rho + self.p) * self.di_dpsip + self.i * self.dp_dpsip;
+        self.kterm = self.g * self.dp_dtheta - self.i * self.dp_dzeta;
         self.dterm = self.g * self.fterm - self.i * self.cterm;
     }
 
@@ -249,7 +249,7 @@ impl State {
         self.rho_dot = self.cterm / self.dterm * self.theta_brace
             - self.kterm / self.dterm * self.psip_brace
             - self.fterm / self.dterm * self.zeta_brace
-            - self.da_dt;
+            - self.dp_dt;
     }
 
     fn calculate_zeta_dot(&mut self) {
@@ -337,11 +337,11 @@ impl Default for State {
             kterm: f64::NAN,
             cterm: f64::NAN,
             fterm: f64::NAN,
-            a: f64::NAN,
-            da_dpsip: f64::NAN,
-            da_dtheta: f64::NAN,
-            da_dzeta: f64::NAN,
-            da_dt: f64::NAN,
+            p: f64::NAN,
+            dp_dpsip: f64::NAN,
+            dp_dtheta: f64::NAN,
+            dp_dzeta: f64::NAN,
+            dp_dt: f64::NAN,
             mu_par: f64::NAN,
             psip_brace: f64::NAN,
             theta_brace: f64::NAN,

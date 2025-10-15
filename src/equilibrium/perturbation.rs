@@ -1,130 +1,82 @@
-use std::path::PathBuf;
-
-use rsl_interpolation::{Accelerator, DynSpline};
-
 use crate::Result;
+use crate::equilibrium::Harmonic;
 
-use ndarray::Array1;
-use numpy::{PyArray1, ToPyArray};
 use pyo3::exceptions::PyTypeError;
-use pyo3::prelude::*;
+use rsl_interpolation::Accelerator;
 
-/// Perturbation reconstructed from a netCDF file.
+use pyo3::prelude::*;
+use pyo3::types::PyList;
+
+/// A sum of different perturbation harmonics.
 #[pyclass(frozen, immutable_type)]
 pub struct Perturbation {
-    /// Path to the netCDF file.
-    #[pyo3(get)]
-    pub path: PathBuf,
-    /// Interpolation type.
-    #[pyo3(get)]
-    pub typ: String,
-
-    /// Spline over the perturbation amplitude `α` data, as a function of ψp.
-    pub a_spline: DynSpline<f64>,
-    /// The `θ` frequency number.
-    pub m: f64,
-    /// The `θ` frequency number.
-    pub n: f64,
-
-    /// The value of the poloidal angle ψp at the wall.
-    #[pyo3(get)]
-    pub psip_wall: f64,
+    harmonics: Vec<Harmonic>,
 }
 
-/// Wrapper methods exposed to Python.
 #[pymethods]
 impl Perturbation {
-    /// Creates a new [`Perturbation`]
+    /// Creates a new [`Perturbation`].
     ///
     /// Wrapper around [`Perturbation::from_dataset`]. This is a workaround to return a [`PyErr`].
     #[coverage(off)]
     #[new]
-    pub fn new_py(path: &str, typ: &str, m: f64, n: f64) -> PyResult<Self> {
-        let path = PathBuf::from(path);
-        match Self::from_dataset(&path, typ, m, n) {
-            Ok(bfield) => Ok(bfield),
-            Err(err) => Err(PyTypeError::new_err(err.to_string())),
-        }
+    pub fn new_py<'py>(harmonics: Bound<'py, PyList>) -> PyResult<Self> {
+        let harmonics_vec: Vec<Harmonic> = harmonics.iter().map(|h| h.extract().unwrap()).collect();
+        Ok(Self::from_harmonics(harmonics_vec))
     }
 
-    /// Returns the `psip` coordinate data as a Numpy 1D array.
+    /// Returns the indexed harmonic, by the order they were created.
     #[coverage(off)]
-    #[pyo3(name = "psip_data")]
-    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.psip_data().to_pyarray(py)
-    }
-
-    #[coverage(off)]
-    pub fn __repr__(&self) -> String {
-        format!("{:#?}", &self)
+    #[pyo3(name = "get_harmonic")]
+    pub fn get_harmonic_py(&self, index: usize) -> PyResult<Harmonic> {
+        self.get_harmonic(index)
+            .ok_or(PyTypeError::new_err(format!("index {index} out of range")))
     }
 }
 
 impl Perturbation {
-    /// Constructs a [`Perturbation`] from a netCDF file at `path`, with spline of `typ`
-    /// interpolation type.
+    pub fn from_harmonics(harmonics: Vec<Harmonic>) -> Self {
+        Self { harmonics }
+    }
+
+    pub fn get_harmonic(&self, index: usize) -> Option<Harmonic> {
+        self.harmonics.get(index).cloned()
+    }
+}
+
+/// Evaluation functions
+impl Perturbation {
+    /// Calculates the Perturbation `Σ{ α(n,m)(ψp) * cos(mθ-nζ+φ0) }`.
     ///
-    /// The spline is only over the amplitude `α`, of the perturbation, and the rest of the
-    /// exrpession is analytic.
-    ///
-    /// # Note
-    ///
-    /// The value `ψ = 0.0` is prepended at the ψ data array, and the first value of the q array is
-    /// prepended (duplicated) in the q array, to assure correct interpolation near the magnetic axis.
-    ///
+    /// If an empty Vec is passed, it is equivalent to the non-perturbed system.
     /// # Example
-    /// ```no_run
+    ///
+    /// ```
     /// # use poincare_maps::*;
     /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
+    /// let harmonics = vec![
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    /// ];
+    /// let per = Perturbation::from_harmonics(harmonics);
+    ///
+    /// let mut acc = Accelerator::new();
+    /// let p = per.p(0.015, 2.0*PI, PI, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_dataset(path: &PathBuf, typ: &str, m: f64, n: f64) -> Result<Self> {
-        use rsl_interpolation::*;
-        use tokamak_netcdf::variable_names::*;
-        use tokamak_netcdf::*;
-
-        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
-        let path = std::path::absolute(path).unwrap();
-
-        let eq = Equilibrium::from_file(&path)?;
-
-        // Add 0.0 manualy, which corresponds to α(0).
-        let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
-            .as_standard_layout()
-            .to_vec();
-        let psip_wall = psip_data.last().copied().unwrap();
-
-        // TODO: update
-        let mut a_data = Array1::zeros(psip_data.len());
-        for i in 0..psip_data.len() {
-            a_data[i] = gaussian(psip_data[i], psip_wall)
-        }
-
-        let a_spline = make_spline(typ, &psip_data, &a_data.to_vec())?;
-
-        Ok(Self {
-            path: path.to_owned(),
-            typ: typ.into(),
-            a_spline,
-            psip_wall,
-            m,
-            n,
+    pub fn p(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
+        self.harmonics.iter().try_fold(0.0, |p, harmonic| {
+            harmonic.h(psip, theta, zeta, acc).map(|v| p + v)
         })
     }
 
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.a_spline.xa.to_vec())
-    }
-}
-
-impl Perturbation {
-    /// Calculates the perturbation `α(ψp) * <analytical term>`.
+    /// Calculates the Perturbation's derivative with respect to `ψp`,
     ///
     /// # Example
     ///
@@ -136,43 +88,24 @@ impl Perturbation {
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let a = per.a(0.015, 2.0*PI, 0.0, &mut psi_acc)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn a(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = (self.m * theta + self.n * zeta).cos();
-        Ok(self.a_spline.eval(psip, acc)? * term)
-    }
-
-    /// Calculates the perturbation derivative `𝜕α/𝜕ψp`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
+    /// let harmonics = vec![
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    /// ];
+    /// let per = Perturbation::from_harmonics(harmonics);
     ///
     /// let mut acc = Accelerator::new();
-    /// let da_dpsip = per.da_dpsip(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let dp_dpsip = per.dp_dpsip(0.015, 2.0*PI, PI, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn da_dpsip(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = (self.m * theta + self.n * zeta).cos();
-        Ok(self.a_spline.eval_deriv(psip, acc)? * term)
+    pub fn dp_dpsip(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
+        self.harmonics.iter().try_fold(0.0, |p, harmonic| {
+            harmonic.dh_dpsip(psip, theta, zeta, acc).map(|v| p + v)
+        })
     }
 
-    /// Calculates the perturbation derivative `𝜕α/𝜕θ`.
+    /// Calculates the Perturbation's derivative with respect to `θ`.
     ///
     /// # Example
     ///
@@ -184,25 +117,30 @@ impl Perturbation {
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
+    /// let harmonics = vec![
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    /// ];
+    /// let per = Perturbation::from_harmonics(harmonics);
     ///
     /// let mut acc = Accelerator::new();
-    /// let da_dtheta = per.da_dtheta(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let dp_dtheta = per.dp_dtheta(0.015, 2.0*PI, PI, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn da_dtheta(
+    pub fn dp_dtheta(
         &self,
         psip: f64,
         theta: f64,
         zeta: f64,
         acc: &mut Accelerator,
     ) -> Result<f64> {
-        let term = -self.m * (self.m * theta + self.n * zeta).sin();
-        Ok(self.a_spline.eval(psip, acc)? * term)
+        self.harmonics.iter().try_fold(0.0, |p, harmonic| {
+            harmonic.dh_dtheta(psip, theta, zeta, acc).map(|v| p + v)
+        })
     }
 
-    /// Calculates the perturbation derivative `𝜕α/𝜕ζ`.
+    /// Calculates the Perturbation's derivative with respect to `ζ`.
     ///
     /// # Example
     ///
@@ -214,24 +152,24 @@ impl Perturbation {
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
+    /// let harmonics = vec![
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    /// ];
+    /// let per = Perturbation::from_harmonics(harmonics);
     ///
     /// let mut acc = Accelerator::new();
-    /// let da_dzeta = per.da_dzeta(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let dp_dzeta = per.dp_dzeta(0.015, 2.0*PI, PI, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn da_dzeta(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = -self.n * (self.m * theta + self.n * zeta).sin();
-        Ok(self.a_spline.eval(psip, acc)? * term)
+    pub fn dp_dzeta(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
+        self.harmonics.iter().try_fold(0.0, |p, harmonic| {
+            harmonic.dh_dzeta(psip, theta, zeta, acc).map(|v| p + v)
+        })
     }
 
-    /// Calculates the perturbation derivative `𝜕α/𝜕t`.
-    ///
-    /// # Note
-    ///
-    /// Since we treat mu as a constnat of motion, we should probably keep the perturbation
-    /// time-independent
+    /// Calculates the Perturbation's derivative with respect to `t`.
     ///
     /// # Example
     ///
@@ -243,39 +181,74 @@ impl Perturbation {
     /// #
     /// # fn main() -> Result<()> {
     /// let path = PathBuf::from("./data.nc");
-    /// let per = Perturbation::from_dataset(&path, "akima", 3.0, 2.0)?;
+    /// let harmonics = vec![
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    /// ];
+    /// let per = Perturbation::from_harmonics(harmonics);
     ///
     /// let mut acc = Accelerator::new();
-    /// let da_dt = per.da_dt(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let dp_dt = per.dp_dt(0.015, 2.0*PI, PI, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    #[allow(unused_variables)]
-    pub fn da_dt(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        Ok(0.0)
+    pub fn dp_dt(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
+        self.harmonics.iter().try_fold(0.0, |p, harmonic| {
+            harmonic.dh_dt(psip, theta, zeta, acc).map(|v| p + v)
+        })
     }
 }
 
-/// A simple gaussian distribution to emulate reconstructed perturbations.
-/// TODO: remove
-fn gaussian(psip: f64, psip_wall: f64) -> f64 {
-    use std::f64::consts::TAU;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::path::PathBuf;
 
-    let scale = 1e-4;
-    let mu = psip_wall / 2.0;
-    let sigma = psip_wall / 4.0;
+    #[test]
+    fn test_summation() {
+        let path = PathBuf::from("./data.nc");
+        let per1 = Perturbation::from_harmonics(vec![
+            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+        ]);
+        let per2 = Perturbation::from_harmonics(vec![
+            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+        ]);
 
-    scale * (1.0 / (TAU * sigma).sqrt()) * (-(psip - mu).powi(2) / (2.0 * sigma.powi(2))).exp()
-}
+        let mut acc = Accelerator::new();
+        let psip = per1.harmonics[0].psip_wall / 2.0;
+        let theta = 1.0;
+        let zeta = 1.0;
 
-impl std::fmt::Debug for Perturbation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Bfield")
-            .field("path", &self.path)
-            .field("typ", &self.typ)
-            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
-            .field("m", &self.m)
-            .field("n", &self.m)
-            .finish()
+        assert_eq!(
+            3.0 * per1.p(psip, theta, zeta, &mut acc).unwrap(),
+            per2.p(psip, theta, zeta, &mut acc).unwrap(),
+        );
+        assert_eq!(
+            3.0 * per1.dp_dpsip(psip, theta, zeta, &mut acc).unwrap(),
+            per2.dp_dpsip(psip, theta, zeta, &mut acc).unwrap(),
+        );
+        assert_eq!(
+            3.0 * per1.dp_dtheta(psip, theta, zeta, &mut acc).unwrap(),
+            per2.dp_dtheta(psip, theta, zeta, &mut acc).unwrap(),
+        );
+        assert_eq!(
+            3.0 * per1.dp_dzeta(psip, theta, zeta, &mut acc).unwrap(),
+            per2.dp_dzeta(psip, theta, zeta, &mut acc).unwrap(),
+        );
+        assert_eq!(
+            3.0 * per1.dp_dt(psip, theta, zeta, &mut acc).unwrap(),
+            per2.dp_dt(psip, theta, zeta, &mut acc).unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_perturbation_misc() {
+        let path = PathBuf::from("./data.nc");
+        let harmonics = vec![Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap()];
+        let per = Perturbation::from_harmonics(harmonics);
+
+        let _ = per.get_harmonic(0).unwrap();
     }
 }

@@ -11,7 +11,11 @@ fn rkf45_orbit(c: &mut Criterion) {
     let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
     let current = Current::from_dataset(&path, "akima").unwrap();
     let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
-    let per = Perturbation::from_dataset(&path, "akima", 1.0, -8.0).unwrap();
+    let harmonics = vec![
+        Harmonic::from_dataset(&path, "akima", 1.0, 7.0, 0.0).unwrap(),
+        // Harmonic::from_dataset(&path, "akima", 1.0, 5.0, 0.0)
+    ];
+    let per = Perturbation::from_harmonics(harmonics);
     let psip_wall = qfactor.psip_wall;
 
     let initial = InitialConditions::new(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
