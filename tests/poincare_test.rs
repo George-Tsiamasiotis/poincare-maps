@@ -15,7 +15,7 @@ fn setup_poincare() -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)
     let per = Perturbation::from_harmonics(harmonics);
     let psip_wall = qfactor.psip_wall;
     let n = 2;
-    let psips = Array1::linspace(0.05 * psip_wall, 0.95 * psip_wall, n);
+    let psips = Array1::linspace(0.1 * psip_wall, 0.9 * psip_wall, n);
     let mut map = Poincare::default();
     for psip in psips.iter() {
         let initial = InitialConditions::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);

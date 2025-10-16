@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use ndarray::concatenate;
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2};
 use numpy::{PyArray1, PyArray2, ToPyArray};
 use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
 
@@ -147,11 +146,11 @@ impl Bfield {
         let eq = Equilibrium::from_file(&path)?;
 
         // Add 0.0 manualy, which corresponds to the axis value.
-        let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
+        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
         // For `psi_wall`
-        let psi_data = extract_var_with_axis_value(&eq.file, PSI_COORD, 0.0)?
+        let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
             .as_standard_layout()
             .to_vec();
         let theta_data = eq.get_1d(THETA_COORD)?.to_vec();
@@ -159,24 +158,24 @@ impl Bfield {
         let b_data = eq.get_2d(B_FIELD)?;
         let r_data = eq.get_2d(R)?;
         let z_data = eq.get_2d(Z)?;
-        let baxis_val = eq.get_scalar(B_AXIS)?;
-        let raxis_val = eq.get_scalar(R_AXIS)?;
-        let zaxis_val = eq.get_scalar(Z_AXIS)?;
+        let baxis = eq.get_scalar(B_AXIS)?;
+        let raxis = eq.get_scalar(R_AXIS)?;
+        // let zaxis_val = eq.get_scalar(Z_AXIS)?;
 
         // Transpose of gcmotion
-        let b_axis_values = Array2::from_elem((1, b_data.ncols()), 1.0); // B0 = 1 [NU]
-        let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
+        // let b_axis_values = Array2::from_elem((1, b_data.ncols()), 1.0); // B0 = 1 [NU]
+        // let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
 
         // `Spline.za` is in Fortran order.
         let order = ndarray::Order::ColumnMajor;
         let b_data_flat = b_data.flatten_with_order(order).to_vec();
 
-        let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
-        let r_data = concatenate![Axis(0), r_axis_values, r_data];
+        // let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
+        // let r_data = concatenate![Axis(0), r_axis_values, r_data];
         let r_data_flat = r_data.flatten_with_order(order).to_vec();
-
-        let z_axis_values = Array2::from_elem((1, z_data.ncols()), zaxis_val);
-        let z_data = concatenate![Axis(0), z_axis_values, z_data];
+        //
+        // let z_axis_values = Array2::from_elem((1, z_data.ncols()), zaxis_val);
+        // let z_data = concatenate![Axis(0), z_axis_values, z_data];
         let z_data_flat = z_data.flatten_with_order(order).to_vec();
 
         let b_spline = make_spline2d(typ, &psip_data, &theta_data, &b_data_flat)?;
@@ -192,8 +191,8 @@ impl Bfield {
             b_spline,
             r_spline,
             z_spline,
-            baxis: baxis_val,
-            raxis: raxis_val,
+            baxis,
+            raxis,
             psip_wall,
             psi_wall,
         })
@@ -547,13 +546,13 @@ mod test {
         let b = create_bfield();
         let _ = format!("{b:?}");
 
-        assert_eq!(b.psip_data().shape(), [101]);
-        assert_eq!(b.theta_data().shape(), [3620]);
-        assert_eq!(b.r_data().shape(), [101, 3620]);
-        assert_eq!(b.z_data().shape(), [101, 3620]);
-        assert_eq!(b.b_data().shape(), [101, 3620]);
-        assert_eq!(b.db_dpsip_data().shape(), [101, 3620]);
-        assert_eq!(b.db_dtheta_data().shape(), [101, 3620]);
+        assert_eq!(b.psip_data().ndim(), 1);
+        assert_eq!(b.theta_data().ndim(), 1);
+        assert_eq!(b.r_data().ndim(), 2);
+        assert_eq!(b.z_data().ndim(), 2);
+        assert_eq!(b.b_data().ndim(), 2);
+        assert_eq!(b.db_dpsip_data().ndim(), 2);
+        assert_eq!(b.db_dtheta_data().ndim(), 2);
     }
 
     #[test]

@@ -105,14 +105,14 @@ impl Qfactor {
         let eq = Equilibrium::from_file(&path)?;
 
         // Add 0.0 manualy, which corresponds to q0.
-        let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
+        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
-        let psi_data = extract_var_with_axis_value(&eq.file, PSI_COORD, 0.0)?
+        let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
             .as_standard_layout()
             .to_vec();
         // Manually add q0 to the array.
-        let q_data = extract_var_with_first_axis_value(&eq.file, Q_FACTOR)?
+        let q_data = extract_1d_var(&eq.file, Q_FACTOR)?
             .as_standard_layout()
             .to_vec();
 

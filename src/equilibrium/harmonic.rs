@@ -286,7 +286,7 @@ impl Harmonic {
 fn gaussian(psip: f64, psip_wall: f64) -> f64 {
     use std::f64::consts::TAU;
 
-    let scale = 1e-4;
+    let scale = 2e-4;
     let mu = psip_wall / 2.0;
     let sigma = psip_wall / 4.0;
 
