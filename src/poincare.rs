@@ -3,6 +3,7 @@ use std::time::Duration;
 use crate::MapError;
 use crate::Particle;
 use crate::Result;
+use crate::particle::ParticleStatus;
 use crate::solver::henon;
 use crate::{Bfield, Current, Perturbation, Qfactor};
 
@@ -24,9 +25,15 @@ pub struct Poincare {
     #[pyo3(get)]
     pub intersection: f64,
     #[pyo3(get)]
+    pub timed_out_particles: usize,
+    #[pyo3(get)]
     pub completed_particles: usize,
     #[pyo3(get)]
     pub escpaped_particles: usize,
+    #[pyo3(get)]
+    pub max_steps: usize,
+    #[pyo3(get)]
+    pub max_duration: Duration,
 }
 
 #[pymethods]
@@ -42,8 +49,11 @@ impl Poincare {
             fluxes: Array2::zeros((1, 1)),
             angle: "".into(),
             intersection: f64::NAN,
+            timed_out_particles: 0,
             completed_particles: 0,
             escpaped_particles: 0,
+            max_steps: 0,
+            max_duration: Duration::default(),
         }
     }
 
@@ -126,26 +136,31 @@ impl Poincare {
         pbar.force_draw();
 
         // Start a new thread for each particle
-        self.particles.par_iter_mut().for_each(|p| {
-            match henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns) {
-                Ok(_) => {
-                    pbar.inc(1);
-                }
-                // Discard particles that hit the wall instead of panicking.
-                Err(err) => match err {
-                    MapError::DomainError(..) => {
-                        pbar.inc(1);
+        self.particles.par_iter_mut().try_for_each(|p| {
+            {
+                match henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns)
+                {
+                    // Discard particles that hit the wall instead of panicking.
+                    Err(err) if matches!(err, MapError::DomainError(..)) => {
+                        p.status = ParticleStatus::Escaped(());
+                        Ok(())
                     }
-                    _ => unreachable!(),
-                },
+                    // Discard particles that took too long to integrate
+                    Err(err) if matches!(err, MapError::OrbitTimeout(..)) => {
+                        p.status = ParticleStatus::TimedOut(());
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
+                    Ok(_) => Ok(()),
+                }
             }
-        });
+            .inspect(|()| pbar.inc(1))
+        })?;
 
         // Store points
         for p in self.particles.iter_mut() {
             // Do not store particles that didn't complete the integration.
             if p.t.len() != turns {
-                self.escpaped_particles += 1;
                 continue;
             }
             match angle {
@@ -167,12 +182,24 @@ impl Poincare {
                 }
                 _ => unreachable!(),
             }
-            self.completed_particles += 1;
         }
 
         pbar.finish_with_message("Done");
-
+        self.statistics();
         Ok(())
+    }
+
+    fn statistics(&mut self) {
+        for p in self.particles.iter() {
+            match p.status {
+                ParticleStatus::Initialized(_) => (),
+                ParticleStatus::Integrated(_) => self.completed_particles += 1,
+                ParticleStatus::Escaped(_) => self.escpaped_particles += 1,
+                ParticleStatus::TimedOut(_) => self.timed_out_particles += 1,
+            }
+            self.max_steps = p.steps_taken.max(self.max_steps);
+            self.max_duration = p.calculation_time.max(self.max_duration);
+        }
     }
 
     /// Adds a particle to be calculated.
@@ -202,8 +229,11 @@ impl std::fmt::Debug for Poincare {
             .field("number of particles", &self.particles.len())
             .field("angle", &self.angle)
             .field("intersection", &self.intersection)
-            .field("completed particles", &self.particles.len())
+            .field("timed out particles", &self.timed_out_particles)
+            .field("completed particles", &self.completed_particles)
             .field("escpaped_particles", &self.escpaped_particles)
+            .field("max duration", &self.max_duration)
+            .field("max steps", &self.max_steps)
             .finish()
     }
 }

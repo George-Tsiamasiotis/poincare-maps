@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+pub(crate) use std::{path::PathBuf, time::Duration};
 
 #[derive(thiserror::Error, Debug)]
 pub enum MapError {
@@ -30,7 +30,11 @@ pub enum MapError {
     #[error("Supplied angle must be either 'zeta' or 'theta'")]
     InvalidAngle,
 
-    /// Error running particle
+    /// Error running particle.
     #[error("Error running particle: {0}")]
     OrbitError(Box<str>),
+
+    /// Particle integration time out.
+    #[error("Particle timed out after {0:?} and {1} steps.")]
+    OrbitTimeout(Duration, usize),
 }

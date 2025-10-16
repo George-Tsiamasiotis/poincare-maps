@@ -8,6 +8,7 @@ use crate::solver::Solver;
 use crate::{Bfield, Current, Perturbation, Qfactor};
 use std::f64::consts::TAU;
 
+use crate::solver::MAX_STEPS;
 use crate::solver::RKF45_FIRST_STEP;
 
 #[allow(clippy::too_many_arguments)]
@@ -51,6 +52,7 @@ pub(crate) fn run_henon(
     };
 
     particle.calculation_time = start.elapsed();
+    particle.status = crate::particle::ParticleStatus::Integrated(());
     particle.shrink_vecs();
 
     particle.final_energy = particle.state.energy();
@@ -68,11 +70,17 @@ pub(crate) fn henon_zeta_loop(
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
-
+    let calculation_time = Instant::now();
     while particle.zeta.len() < turns {
         let (old_state, next_state) =
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
+        if particle.steps_taken >= MAX_STEPS {
+            return Err(crate::MapError::OrbitTimeout(
+                calculation_time.elapsed(),
+                MAX_STEPS,
+            ));
+        }
 
         if intersected(old_state.zeta, next_state.zeta, intersection) {
             // Setup new system (6) and (9)
@@ -141,10 +149,17 @@ pub(crate) fn henon_theta_loop(
     turns: usize,
 ) -> Result<()> {
     let mut h = RKF45_FIRST_STEP;
+    let calculation_time = Instant::now();
     while particle.theta.len() < turns {
         let (old_state, next_state) =
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
+        if particle.steps_taken >= MAX_STEPS {
+            return Err(crate::MapError::OrbitTimeout(
+                calculation_time.elapsed(),
+                MAX_STEPS,
+            ));
+        }
 
         if intersected(old_state.theta, next_state.theta, intersection) {
             // Setup new system (6) and (9)

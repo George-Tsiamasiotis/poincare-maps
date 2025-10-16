@@ -14,8 +14,10 @@ fn setup_poincare() -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)
     ];
     let per = Perturbation::from_harmonics(harmonics);
     let psip_wall = qfactor.psip_wall;
-    let n = 2;
-    let psips = Array1::linspace(0.1 * psip_wall, 0.9 * psip_wall, n);
+    let n = 7;
+    // Include some particles outside the wall.
+    // Values are [0, 0.33, 0.66, 1, 1.33, 1.66, 2]. Only 0.33 and 0.66 should pass
+    let psips = Array1::linspace(0.0, 2.0 * psip_wall, n);
     let mut map = Poincare::default();
     for psip in psips.iter() {
         let initial = InitialConditions::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);
@@ -36,6 +38,9 @@ fn test_poincare_theta() -> Result<()> {
     let _ = map.get_angles();
     let _ = map.get_fluxes();
 
+    assert_eq!(map.completed_particles, 2);
+    assert_eq!(map.escpaped_particles, 5);
+
     Ok(())
 }
 
@@ -49,6 +54,9 @@ fn test_poincare_zeta() -> Result<()> {
     let _ = map.get_particles();
     let _ = map.get_angles();
     let _ = map.get_fluxes();
+
+    assert_eq!(map.completed_particles, 2);
+    assert_eq!(map.escpaped_particles, 5);
 
     Ok(())
 }

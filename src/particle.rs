@@ -13,6 +13,14 @@ use pyo3::prelude::*;
 /// Initial capacity of the vectors that store the evolution of the particle.
 const VEC_INIT_CAPACITY: usize = 2000;
 
+#[derive(Debug, Clone, IntoPyObject)]
+pub enum ParticleStatus {
+    Initialized(()),
+    Integrated(()),
+    Escaped(()),
+    TimedOut(()),
+}
+
 #[pyclass]
 #[derive(Clone)]
 pub struct Particle {
@@ -52,9 +60,14 @@ pub struct Particle {
     #[pyo3(get)]
     pub final_energy: f64,
     /// The total compute time.
+    #[pyo3(get)]
     pub calculation_time: Duration,
     /// The total number of integration steps.
+    #[pyo3(get)]
     pub steps_taken: usize,
+    /// Status about the particle's integration.
+    #[pyo3(get)]
+    pub status: ParticleStatus,
 }
 
 #[pymethods]
@@ -93,6 +106,7 @@ impl Particle {
             final_energy: f64::NAN,
             calculation_time: Duration::ZERO,
             steps_taken: 0,
+            status: ParticleStatus::Initialized(()),
         }
     }
 
@@ -221,6 +235,7 @@ impl Particle {
         }
 
         self.calculation_time = start.elapsed();
+        self.status = ParticleStatus::Integrated(());
         self.shrink_vecs();
         self.final_energy = self.state.energy();
         Ok(())
@@ -281,6 +296,7 @@ impl std::fmt::Debug for Particle {
             .field("Perpendicular energy", &self.state.perpendicular_energy())
             .field("ψ-acc", &self.state.xacc)
             .field("θ-acc", &self.state.xacc)
+            .field("Status", &self.status)
             .field("Steps taken", &self.steps_taken)
             .field("Steps stored", &self.t.len())
             .field("Initial energy", &self.initial_energy)
