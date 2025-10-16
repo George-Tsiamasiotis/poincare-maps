@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::MapError;
 use crate::Particle;
 use crate::Result;
 use crate::solver::henon;
@@ -22,6 +23,10 @@ pub struct Poincare {
     pub angle: String,
     #[pyo3(get)]
     pub intersection: f64,
+    #[pyo3(get)]
+    pub completed_particles: usize,
+    #[pyo3(get)]
+    pub escpaped_particles: usize,
 }
 
 #[pymethods]
@@ -37,6 +42,8 @@ impl Poincare {
             fluxes: Array2::zeros((1, 1)),
             angle: "".into(),
             intersection: f64::NAN,
+            completed_particles: 0,
+            escpaped_particles: 0,
         }
     }
 
@@ -86,6 +93,11 @@ impl Poincare {
     pub fn get_fluxes_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
         self.fluxes.to_pyarray(py)
     }
+
+    #[coverage(off)]
+    pub fn __repr__(&self) -> String {
+        format!("{:#?}", &self)
+    }
 }
 
 impl Poincare {
@@ -114,13 +126,28 @@ impl Poincare {
         pbar.force_draw();
 
         // Start a new thread for each particle
-        self.particles.par_iter_mut().try_for_each(|p| {
-            henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns)
-                .inspect(|()| pbar.inc(1))
-        })?;
+        self.particles.par_iter_mut().for_each(|p| {
+            match henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns) {
+                Ok(_) => {
+                    pbar.inc(1);
+                }
+                // Discard particles that hit the wall instead of panicking.
+                Err(err) => match err {
+                    MapError::DomainError(..) => {
+                        pbar.inc(1);
+                    }
+                    _ => unreachable!(),
+                },
+            }
+        });
 
         // Store points
         for p in self.particles.iter_mut() {
+            // Do not store particles that didn't complete the integration.
+            if p.t.len() != turns {
+                self.escpaped_particles += 1;
+                continue;
+            }
             match angle {
                 "theta" => {
                     self.angles
@@ -140,6 +167,7 @@ impl Poincare {
                 }
                 _ => unreachable!(),
             }
+            self.completed_particles += 1;
         }
 
         pbar.finish_with_message("Done");
@@ -165,6 +193,18 @@ impl Poincare {
     /// Returns the calculated fluxes as a 2D array, 1 row corresponding to 1 particle.
     pub fn get_fluxes(&self) -> Array2<f64> {
         self.angles.clone()
+    }
+}
+
+impl std::fmt::Debug for Poincare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Poincare")
+            .field("number of particles", &self.particles.len())
+            .field("angle", &self.angle)
+            .field("intersection", &self.intersection)
+            .field("completed particles", &self.particles.len())
+            .field("escpaped_particles", &self.escpaped_particles)
+            .finish()
     }
 }
 

@@ -20,7 +20,7 @@ psip_wall = qfactor.psip_wall
 psi_wall = qfactor.psi_wall
 
 points = 60
-psips = np.linspace(0.02 * psip_wall, 0.98 * psip_wall, points)
+psips = np.linspace(0, psip_wall, points)
 thetas = np.array([0] * points)
 zetas = np.array([0] * points)
 
@@ -49,6 +49,7 @@ poincare.run(
     intersection=np.pi,
     turns=600,
 )
+print(poincare)
 
 fig = plt.figure(**{"figsize": (10, 6), "layout": "constrained"})
 ax = fig.subplots()
