@@ -10,7 +10,7 @@ use crate::{InitialConditions, Result};
 /// Corresponds to a single specific point in configuration space, e.g. all values are calculated
 /// at the same `θ`, `ψ_p`, `ρ`, `ζ` point.
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct State {
     /// The `ψ_p` coordinate [`Accelerator`].
     pub xacc: Accelerator,
@@ -136,8 +136,7 @@ impl State {
         self.calculate_qfactor_quantities(qfactor)?;
         self.calculate_current_quantities(current)?;
         self.calculate_bfield_quantities(bfield)?;
-
-        self.calculate_perturbation(per)?; // TODO: when?
+        self.calculate_perturbation(per)?;
 
         // Then intermediate quantities that only depend on the already calculated interpolations.
         self.calculate_capitals();
@@ -361,5 +360,47 @@ impl std::fmt::Display for State {
             .field("ρ", &self.rho)
             .field("ζ", &self.zeta)
             .finish_non_exhaustive()
+    }
+}
+
+/// Just to remove [`Cache`].
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("t", &self.t)
+            .field("theta", &self.theta)
+            .field("psip", &self.psip)
+            .field("rho", &self.rho)
+            .field("zeta", &self.zeta)
+            .field("theta_dot", &self.theta_dot)
+            .field("psip_dot", &self.psip_dot)
+            .field("rho_dot", &self.rho_dot)
+            .field("zeta_dot", &self.zeta_dot)
+            .field("b", &self.b)
+            .field("q", &self.q)
+            .field("g", &self.g)
+            .field("i", &self.i)
+            .field("p", &self.p)
+            .field("db_dtheta", &self.db_dtheta)
+            .field("db_dzeta", &self.db_dzeta)
+            .field("db_dpsip", &self.db_dpsip)
+            .field("dg_dpsip", &self.dg_dpsip)
+            .field("di_dpsip", &self.di_dpsip)
+            .field("dp_dpsip", &self.dp_dpsip)
+            .field("dp_dtheta", &self.dp_dtheta)
+            .field("dp_dzeta", &self.dp_dzeta)
+            .field("dp_dt", &self.dp_dt)
+            .field("dterm", &self.dterm)
+            .field("kterm", &self.kterm)
+            .field("cterm", &self.cterm)
+            .field("fterm", &self.fterm)
+            .field("mu_par", &self.mu_par)
+            .field("psip_brace", &self.psip_brace)
+            .field("theta_brace", &self.theta_brace)
+            .field("zeta_brace", &self.zeta_brace)
+            .field("rho_bsquared_d", &self.rho_bsquared_d)
+            .field("g_over_d", &self.g_over_d)
+            .field("i_over_d", &self.i_over_d)
+            .finish()
     }
 }

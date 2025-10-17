@@ -12,7 +12,7 @@ pub(crate) mod henon;
 pub(crate) const RKF45_FIRST_STEP: f64 = 1e-4;
 
 // The maximum amount of steps a particle can make before terminating its integration.
-pub(crate) const MAX_STEPS: usize = 1e7 as usize;
+pub(crate) const MAX_STEPS: usize = 1e9 as usize;
 
 /// Common to both solvers.
 fn calculate_k1(solver: &mut Solver) {

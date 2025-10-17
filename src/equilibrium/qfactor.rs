@@ -69,6 +69,13 @@ impl Qfactor {
         self.psi_data().to_pyarray(py)
     }
 
+    /// Returns the `q` data calculated from `dψ/dψp` as a Numpy 1D array.
+    #[coverage(off)]
+    #[pyo3(name = "q_data_derived")]
+    pub fn q_data_derived_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
+        self.q_data_derived().to_pyarray(py)
+    }
+
     #[coverage(off)]
     pub fn __repr__(&self) -> String {
         format!("{:#?}", &self)
@@ -104,14 +111,12 @@ impl Qfactor {
 
         let eq = Equilibrium::from_file(&path)?;
 
-        // Add 0.0 manualy, which corresponds to q0.
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
         let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
             .as_standard_layout()
             .to_vec();
-        // Manually add q0 to the array.
         let q_data = extract_1d_var(&eq.file, Q_FACTOR)?
             .as_standard_layout()
             .to_vec();
@@ -145,6 +150,19 @@ impl Qfactor {
     /// Returns the `psi` data as a 1D array.
     pub fn psi_data(&self) -> Array1<f64> {
         Array1::from_vec(self.psi_spline.ya.to_vec())
+    }
+
+    /// Returns the `q` data calculated from `dψ/dψp` as a 1D array.
+    pub fn q_data_derived(&self) -> Array1<f64> {
+        let psip_data = self.psip_data();
+
+        let mut acc = Accelerator::new();
+        let q: Vec<f64> = psip_data
+            .iter()
+            .map(|psip| self.psi_spline.eval_deriv(*psip, &mut acc).unwrap())
+            .collect();
+
+        q.into()
     }
 }
 

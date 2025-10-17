@@ -11,16 +11,16 @@ bfield = pm.Bfield("./data.nc", "bicubic")
 qfactor = pm.Qfactor("./data.nc", "akima")
 current = pm.Current("./data.nc", "akima")
 harmonics = [
-    pm.Harmonic("./data.nc", "akima", 1, 7, 0),
-    pm.Harmonic("./data.nc", "akima", 1, 9, 0),
+    # pm.Harmonic("./data.nc", "akima", 1, 7, 0),
+    # pm.Harmonic("./data.nc", "akima", 1, 9, 0),
 ]
 per = pm.Perturbation(harmonics)
 
 psip_wall = qfactor.psip_wall
 psi_wall = qfactor.psi_wall
 
-points = 60
-psips = np.linspace(0, psip_wall, points)
+points = 40
+psips = np.linspace(0.585, 0.601, points)
 thetas = np.array([0] * points)
 zetas = np.array([0] * points)
 
@@ -47,7 +47,7 @@ poincare.run(
     per=per,
     angle="theta",
     intersection=np.pi,
-    turns=600,
+    turns=1000,
 )
 print(poincare)
 

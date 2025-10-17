@@ -15,7 +15,7 @@ def poincare_plot(ax, p: pm.Poincare, walls=None):
     for i in range(len(angles)):
 
         ax.scatter(pi_mod(angles[i][1:]), fluxes[i][1:], s, c)
-        # angle0, flux0 = angles[i, 0], fluxes[i, 0]
+        # angle0, flux0 = angles[i, 0], fluxes[i, 1]
         # ax.scatter(pi_mod(angle0), flux0, marker="_", s=10, color="k")
 
     if p.angle == "theta":
@@ -29,10 +29,11 @@ def poincare_plot(ax, p: pm.Poincare, walls=None):
         ax.set_title(rf"$\theta-\psi,$ cross section at $\zeta={p.intersection:.4g}$")
         wall = walls[1]
 
-    if wall > ax.get_ylim()[0] and wall < ax.get_ylim()[1]:
-        ax.axhline(y=wall, color="red")
+    ylim = ax.get_ylim()
+    ax.axhline(y=wall, color="red")
 
     ax.set_xlim(-np.pi, np.pi)
+    ax.set_ylim(ylim)
     ax.set_xticks(
         np.linspace(-np.pi, np.pi, 5),
         [r"$-\pi$", r"$-\pi/2$", r"$0$", r"$\pi/2$", r"$\pi$"],

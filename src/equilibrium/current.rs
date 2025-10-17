@@ -117,15 +117,12 @@ impl Current {
 
         let eq = Equilibrium::from_file(&path)?;
 
-        // Add 0.0 manualy, which corresponds to q0.
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
-        // For `psi_wall`
         let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
             .as_standard_layout()
             .to_vec();
-        // Manually add q0 to the array.
         let g_data = extract_1d_var(&eq.file, CURRENT_G)?
             .as_standard_layout()
             .to_vec();

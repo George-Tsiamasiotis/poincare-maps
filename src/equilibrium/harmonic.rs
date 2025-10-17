@@ -112,8 +112,7 @@ impl Harmonic {
 
         let eq = Equilibrium::from_file(&path)?;
 
-        // Add 0.0 manualy, which corresponds to α(0).
-        let psip_data = extract_var_with_axis_value(&eq.file, PSIP_COORD, 0.0)?
+        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
         let psip_wall = psip_data.last().copied().unwrap();
@@ -286,7 +285,7 @@ impl Harmonic {
 fn gaussian(psip: f64, psip_wall: f64) -> f64 {
     use std::f64::consts::TAU;
 
-    let scale = 2e-4;
+    let scale = 2e-2;
     let mu = psip_wall / 2.0;
     let sigma = psip_wall / 4.0;
 

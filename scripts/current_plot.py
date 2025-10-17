@@ -7,7 +7,7 @@ from plots import g_plot, i_plot
 
 matplotlib.use("gtk3agg")
 
-current = pm.Current("./data.nc", "akima")
+current = pm.Current("./data.nc", "steffen")
 
 fig = plt.figure(**{"figsize": (15, 5), "layout": "constrained"})
 fig.suptitle("Plasma Current")

@@ -54,29 +54,35 @@ def db_plots(axx, axy, bfield: pm.Bfield):
 def q_plot(ax, qfactor: pm.Qfactor):
     psip_data = qfactor.psip_data()
     q_data = qfactor.q_data()
+    q_data_derived = qfactor.q_data_derived()
 
-    ax.scatter(psip_data, q_data, c="k", s=2, zorder=2, alpha=0.8)
-    ax.plot(psip_data, q_data, c="b")
+    ax.scatter(psip_data, q_data, c="k", s=2, zorder=2, alpha=0.8, label="data points")
+    ax.plot(psip_data, q_data, c="b", label=r"$q(\psi_p)$")
+    ax.plot(psip_data, q_data_derived, c="r", label=r"$d\psi / d\psi_p$")
 
     ax.set_xlabel(r"$\psi_p$")
     ax.set_ylabel(r"$q(\psi_p)$")
     ax.set_title(r"$q(\psi_p)$")
     ax.grid(True)
     ax.margins(0)
+    ax.legend()
 
 
 def psi_plot(ax, qfactor: pm.Qfactor):
     psip_data = qfactor.psip_data()
     psi_data = qfactor.psi_data()
 
-    ax.scatter(psip_data, psi_data, c="k", s=2, zorder=2, alpha=0.8)
-    ax.plot(psip_data, psi_data, c="b")
+    ax.scatter(
+        psip_data, psi_data, c="k", s=2, zorder=2, alpha=0.8, label="data points"
+    )
+    ax.plot(psip_data, psi_data, c="b", label=r"$\psi(\psi_p)$")
 
     ax.set_xlabel(r"$\psi_p$")
     ax.set_ylabel(r"$\psi(\psi_p)$")
     ax.set_title(r"$\psi(\psi_p)$")
     ax.grid(True)
     ax.margins(0)
+    ax.legend()
 
 
 def g_plot(ax, current: pm.Current):
@@ -85,14 +91,15 @@ def g_plot(ax, current: pm.Current):
     dg_dpsip_data = current.di_dpsip_data()
     dax = ax.twinx()
 
-    ax.scatter(psip_data, g_data, c="k", s=2, zorder=2, alpha=0.8)
-    ax.plot(psip_data, g_data, c="b")
-    dax.plot(psip_data, dg_dpsip_data, c="r")
+    ax.scatter(psip_data, g_data, c="k", s=2, zorder=2, alpha=0.8, label="data points")
+    ax.plot(psip_data, g_data, c="b", label=r"$g(\psi_p)$")
+    dax.plot(
+        psip_data, dg_dpsip_data, c="r", label=r"$\partial g(\psi_p)\partial \psi_p$"
+    )
 
     ax.set_xlabel(r"$\psi_p$")
     ax.set_ylabel(r"$g(\psi_p)$")
-    dax.set_ylabel(r"$\partial g(\psi_p)\partial \psi_p$")
-    ax.set_title("Toroidal current")
+    dax.set_ylabel(r"$\partial g(\psi_p)/\partial \psi_p$")
     ax.grid(True)
     ax.margins(0)
 
@@ -103,13 +110,14 @@ def i_plot(ax, current: pm.Current):
     di_dpsip_data = current.di_dpsip_data()
     dax = ax.twinx()
 
-    ax.scatter(psip_data, i_data, c="k", s=2, zorder=2, alpha=0.8)
-    ax.plot(psip_data, i_data, c="b")
-    dax.plot(psip_data, di_dpsip_data, c="r")
+    ax.scatter(psip_data, i_data, c="k", s=2, zorder=2, alpha=0.8, label="data points")
+    ax.plot(psip_data, i_data, c="b", label=r"$I(\psi_p)$")
+    dax.plot(
+        psip_data, di_dpsip_data, c="r", label=r"$\partial I(\psi_p)\partial \psi_p$"
+    )
 
-    ax.set_xlabel(r"$\psi_p$")
     ax.set_ylabel(r"$I(\psi_p)$")
-    dax.set_ylabel(r"$\partial I(\psi_p)\partial \psi_p$")
-    ax.set_title("Poloidal current")
+    dax.set_ylabel(r"$\partial I(\psi_p)/\partial \psi_p$")
+    ax.set_xlabel(r"$\psi_p$")
     ax.grid(True)
     ax.margins(0)

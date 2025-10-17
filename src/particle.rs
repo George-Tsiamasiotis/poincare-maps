@@ -295,7 +295,7 @@ impl std::fmt::Debug for Particle {
             .field("Parallel energy", &self.state.parallel_energy())
             .field("Perpendicular energy", &self.state.perpendicular_energy())
             .field("ψ-acc", &self.state.xacc)
-            .field("θ-acc", &self.state.xacc)
+            .field("θ-acc", &self.state.yacc)
             .field("Status", &self.status)
             .field("Steps taken", &self.steps_taken)
             .field("Steps stored", &self.t.len())

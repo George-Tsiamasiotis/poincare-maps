@@ -6,8 +6,8 @@ import numpy as np
 # Extract arrays
 npz = np.load("./usr/30840_103_axi_rev.npz")
 
-psi_p_data = npz["psipol"] / (2 * np.pi)
-psi_data = npz["psitor"] / (2 * np.pi)
+psi_p_dataSI = npz["psipol"] / (2 * np.pi)
+psi_dataSI = npz["psitor"] / (2 * np.pi)
 boozer_theta_data = npz["theta"]
 baxis = npz["BB"][0, 0]
 raxis = npz["Rmaj"]
@@ -20,28 +20,41 @@ r = npz["RR"]
 z = npz["ZZ"]
 
 # Normalize
+mp = 1.672621923e-27
+qp = 1.602176634e-19
+
+w0 = qp / mp * baxis  # s^-1
+
+psi_p_data = psi_p_dataSI * mp * w0 * raxis**2 / qp
+psi_data = psi_dataSI * mp * w0 * raxis**2 / qp
 g_norm = g / (baxis * raxis)
-i_norm = g / (baxis * raxis)
+i_norm = i / (baxis * raxis)
 b_norm = b / baxis
 
 
 # ======================= Coordinates ========================
 
 
-boozer_theta_da = xr.DataArray(
+boozer_theta_coord = xr.DataArray(
     data=boozer_theta_data,
     dims=["boozer_theta"],
     coords=dict(boozer_theta=(["boozer_theta"], boozer_theta_data)),
     attrs=dict(description="Boozer theta coordinate", units="[rads]"),
 )
 
-psi_p_da = xr.DataArray(
+psi_p_coord = xr.DataArray(
     data=psi_p_data,
     dims=["psi_p"],
     coords=dict(psi_p=(["psi_p"], psi_p_data)),
-    attrs=dict(description="Polidal flux coordinate", units=["Normalized"]),
+    attrs=dict(description="Poloidal flux coordinate", units=["Normalized"]),
 )
 
+psi_coord = xr.DataArray(
+    data=psi_data,
+    dims=["psi"],
+    coords=dict(psi=(["psi"], psi_data)),
+    attrs=dict(description="Toroidal flux coordinate", units=["Normalized"]),
+)
 
 # ===================== 1D SI variables ======================
 
@@ -143,12 +156,12 @@ dataset = xr.Dataset(
         Z=z_da,
         Baxis=baxis,
         raxis=raxis,
-        zaxis=0.0,
+        zaxis=np.nan,
     ),
     coords=dict(
-        psi_p=(["psi_p"], psi_p_data),
-        boozer_theta=(["boozer_theta"], boozer_theta_data),
-        psi=(["psi"], psi_data),
+        psi_p=psi_p_coord,
+        boozer_theta=boozer_theta_coord,
+        psi=psi_coord,
     ),
 )
 
@@ -158,8 +171,4 @@ for var in dataset.variables:
 dataset.to_netcdf(
     "data.nc",
     engine="netcdf4",
-    encoding={
-        "psi_p": {"_FillValue": None},
-        "boozer_theta": {"_FillValue": None},
-    },
 )

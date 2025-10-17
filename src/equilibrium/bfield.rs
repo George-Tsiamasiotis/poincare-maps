@@ -145,7 +145,6 @@ impl Bfield {
 
         let eq = Equilibrium::from_file(&path)?;
 
-        // Add 0.0 manualy, which corresponds to the axis value.
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
