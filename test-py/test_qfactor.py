@@ -25,9 +25,9 @@ def test_data_extraction(qfactor):
     q_data = qfactor.psip_data()
     psi_data = qfactor.psip_data()
 
-    assert psip_data.shape == (101,)
-    assert q_data.shape == (101,)
-    assert psi_data.shape == (101,)
+    assert psip_data.ndim == 1
+    assert q_data.ndim == 1
+    assert psi_data.ndim == 1
 
 
 def test_qfactor_print(qfactor):

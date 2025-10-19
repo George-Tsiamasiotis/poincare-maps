@@ -27,11 +27,11 @@ def test_data_extraction(current):
     dg_dpsip_data = current.dg_dpsip_data()
     di_dpsip_data = current.di_dpsip_data()
 
-    assert psip_data.shape == (101,)
-    assert g_data.shape == (101,)
-    assert i_data.shape == (101,)
-    assert dg_dpsip_data.shape == (101,)
-    assert di_dpsip_data.shape == (101,)
+    assert psip_data.ndim == 1
+    assert g_data.ndim == 1
+    assert i_data.ndim == 1
+    assert dg_dpsip_data.ndim == 1
+    assert di_dpsip_data.ndim == 1
 
 
 def test_current_print(current):

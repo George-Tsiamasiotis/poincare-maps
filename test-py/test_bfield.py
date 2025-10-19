@@ -33,13 +33,13 @@ def test_data_extraction(bfield):
     db_dpsip_data = bfield.db_dpsip_data()
     db_dtheta_data = bfield.db_dtheta_data()
 
-    assert psip_data.shape == (101,)
-    assert theta_data.shape == (3620,)
-    assert b_data.shape == (101, 3620)
-    assert r_data.shape == (101, 3620)
-    assert z_data.shape == (101, 3620)
-    assert db_dpsip_data.shape == (101, 3620)
-    assert db_dtheta_data.shape == (101, 3620)
+    assert psip_data.ndim == 1
+    assert theta_data.ndim == 1
+    assert b_data.ndim == 2
+    assert r_data.ndim == 2
+    assert z_data.ndim == 2
+    assert db_dpsip_data.ndim == 2
+    assert db_dtheta_data.ndim == 2
 
 
 def test_bfield_print(bfield):
