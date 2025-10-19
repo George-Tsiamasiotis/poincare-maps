@@ -9,7 +9,6 @@ use crate::{InitialConditions, Result};
 ///
 /// Corresponds to a single specific point in configuration space, e.g. all values are calculated
 /// at the same `θ`, `ψ_p`, `ρ`, `ζ` point.
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct State {
     /// The `ψ_p` coordinate [`Accelerator`].

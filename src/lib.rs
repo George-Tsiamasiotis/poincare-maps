@@ -18,8 +18,7 @@ pub use error::MapError;
 pub use initial::InitialConditions;
 pub use particle::Particle;
 pub use poincare::Poincare;
-
-pub(crate) use state::State;
+pub use state::State;
 
 pub type Result<T> = std::result::Result<T, MapError>;
 

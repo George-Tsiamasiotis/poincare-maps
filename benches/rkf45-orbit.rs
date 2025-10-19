@@ -30,7 +30,6 @@ fn rkf45_orbit(c: &mut Criterion) {
             particle.run_ode(&qfactor, &bfield, &current, &per, (0.0, 300.0), 0)
         })
     });
-    dbg!(&particle);
 }
 
 criterion_group!(benches, rkf45_orbit);
