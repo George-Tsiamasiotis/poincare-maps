@@ -1,37 +1,14 @@
+use crate::Harmonic;
 use crate::Result;
-use crate::equilibrium::Harmonic;
 
 use rsl_interpolation::Accelerator;
 
-use pyo3::prelude::*;
-use pyo3::types::PyList;
-
 /// A sum of different perturbation harmonics.
-#[pyclass(frozen, immutable_type)]
 pub struct Perturbation {
     harmonics: Vec<Harmonic>,
 }
 
-#[pymethods]
-impl Perturbation {
-    /// Creates a new [`Perturbation`].
-    ///
-    /// Wrapper around [`Perturbation::from_dataset`]. This is a workaround to return a [`PyErr`].
-    #[coverage(off)]
-    #[new]
-    pub fn new_py<'py>(harmonics: Bound<'py, PyList>) -> PyResult<Self> {
-        let harmonics_vec: Vec<Harmonic> = harmonics.iter().map(|h| h.extract().unwrap()).collect();
-        Ok(Self::from_harmonics(harmonics_vec))
-    }
-
-    /// Returns the indexed harmonic, by the order they were created.
-    #[coverage(off)]
-    #[pyo3(name = "get_harmonics")]
-    pub fn get_harmonics_py<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
-        self.get_harmonics().into_pyobject(py)
-    }
-}
-
+/// Creation and 'data extraction'
 impl Perturbation {
     pub fn from_harmonics(harmonics: Vec<Harmonic>) -> Self {
         Self { harmonics }
@@ -42,7 +19,7 @@ impl Perturbation {
     }
 }
 
-/// Evaluation functions
+/// Interpolation
 impl Perturbation {
     /// Calculates the Perturbation `Σ{ α(n,m)(ψp) * cos(mθ-nζ+φ0) }`.
     ///
@@ -50,13 +27,13 @@ impl Perturbation {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonics = vec![
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
@@ -79,13 +56,13 @@ impl Perturbation {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonics = vec![
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
@@ -108,13 +85,13 @@ impl Perturbation {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonics = vec![
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
@@ -143,13 +120,13 @@ impl Perturbation {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonics = vec![
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
@@ -172,13 +149,13 @@ impl Perturbation {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonics = vec![
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
     ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
@@ -204,7 +181,7 @@ mod test {
 
     #[test]
     fn test_summation() {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         let per1 = Perturbation::from_harmonics(vec![
             Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
         ]);
@@ -243,7 +220,7 @@ mod test {
 
     #[test]
     fn test_perturbation_misc() {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         let harmonics = vec![Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap()];
         let per = Perturbation::from_harmonics(harmonics);
 

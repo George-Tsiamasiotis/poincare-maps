@@ -6,79 +6,33 @@ use rsl_interpolation::{Accelerator, DynSpline, make_spline};
 use crate::Result;
 
 use ndarray::Array1;
-use numpy::{PyArray1, ToPyArray};
-use pyo3::exceptions::PyTypeError;
-use pyo3::prelude::*;
 
 /// Single perturbation harmonic reconstructed from a netCDF file.
 ///
 /// The harmonic has the form of `α(ψp) * cos(mθ-nζ+φ0)`, where `α(ψp)` is calculated by
 /// interpolation over some numerical data.
-#[pyclass(frozen, immutable_type)]
 pub struct Harmonic {
     /// Path to the netCDF file.
-    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    #[pyo3(get)]
     pub typ: String,
 
     /// Spline over the perturbation amplitude `α` data, as a function of ψp.
     pub a_spline: DynSpline<f64>,
     /// The `θ` frequency number.
-    #[pyo3(get)]
     pub m: f64,
     /// The `ζ` frequency number.
-    #[pyo3(get)]
     pub n: f64,
     /// The initial phase of the harmonic.
-    #[pyo3(get)]
     pub phase: f64,
 
     /// The maximum value of the `α` values.
-    #[pyo3(get)]
     pub amax: f64,
     /// The value of the poloidal angle ψp at the wall.
-    #[pyo3(get)]
     pub psip_wall: f64,
 }
 
-/// Wrapper methods exposed to Python.
-#[pymethods]
-impl Harmonic {
-    /// Creates a new [`Harmonic`]
-    ///
-    /// Wrapper around [`Harmonic::from_dataset`]. This is a workaround to return a [`PyErr`].
-    #[coverage(off)]
-    #[new]
-    pub fn new_py(path: &str, typ: &str, m: f64, n: f64, phase: f64) -> PyResult<Self> {
-        let path = PathBuf::from(path);
-        match Self::from_dataset(&path, typ, m, n, phase) {
-            Ok(bfield) => Ok(bfield),
-            Err(err) => Err(PyTypeError::new_err(err.to_string())),
-        }
-    }
-
-    /// Returns the `psip` coordinate data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "psip_data")]
-    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.psip_data().to_pyarray(py)
-    }
-
-    /// Returns the `α` amplitude data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "a_data")]
-    pub fn a_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.a_data().to_pyarray(py)
-    }
-
-    #[coverage(off)]
-    pub fn __repr__(&self) -> String {
-        format!("{:#?}", &self)
-    }
-}
-
+/// Creation
 impl Harmonic {
     /// Constructs a [`Harmonic`] from a netCDF file at `path`, with spline of `typ`
     /// interpolation type.
@@ -93,11 +47,11 @@ impl Harmonic {
     ///
     /// # Example
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     /// # Ok(())
     /// # }
@@ -140,31 +94,22 @@ impl Harmonic {
             amax,
         })
     }
-
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.a_spline.xa.to_vec())
-    }
-
-    /// Returns the `α` perturbation amplitude data as a 1D array.
-    pub fn a_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.a_spline.ya.to_vec())
-    }
 }
 
+/// Interpolation
 impl Harmonic {
     /// Calculates the harmonic `a(ψp) * <analytical term>`.
     ///
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -182,13 +127,13 @@ impl Harmonic {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
@@ -206,13 +151,13 @@ impl Harmonic {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
@@ -236,13 +181,13 @@ impl Harmonic {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
@@ -260,13 +205,13 @@ impl Harmonic {
     /// # Example
     ///
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
@@ -277,6 +222,19 @@ impl Harmonic {
     #[allow(unused_variables)]
     pub fn dh_dt(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
         Ok(0.0)
+    }
+}
+
+/// Data extraction
+impl Harmonic {
+    /// Returns the `psip` coordinate data as a 1D array.
+    pub fn psip_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.a_spline.xa.to_vec())
+    }
+
+    /// Returns the `α` perturbation amplitude data as a 1D array.
+    pub fn a_data(&self) -> Array1<f64> {
+        Array1::from_vec(self.a_spline.ya.to_vec())
     }
 }
 
@@ -328,7 +286,7 @@ mod test {
 
     #[test]
     fn test_data_extraction() {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
 
         assert_eq!(harmonic.psip_data().ndim(), 1);
@@ -337,7 +295,7 @@ mod test {
 
     #[test]
     fn test_harmonic_misc() {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
         let _ = harmonic.clone();
         let _ = format!("{harmonic:?}");

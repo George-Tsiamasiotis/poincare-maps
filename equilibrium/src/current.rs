@@ -5,18 +5,11 @@ use rsl_interpolation::{Accelerator, DynSpline};
 
 use crate::Result;
 
-use numpy::{PyArray1, ToPyArray};
-use pyo3::exceptions::PyTypeError;
-use pyo3::prelude::*;
-
 /// Plasma current reconstructed from a netCDF file.
-#[pyclass(frozen, immutable_type)]
 pub struct Current {
     /// Path to the netCDF file.
-    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    #[pyo3(get)]
     pub typ: String,
 
     /// Spline over the g-current data, as a function of ψp.
@@ -25,69 +18,12 @@ pub struct Current {
     pub i_spline: DynSpline<f64>,
 
     /// The value of the poloidal angle ψp at the wall.
-    #[pyo3(get)]
     pub psip_wall: f64,
     /// The value of the toroidal angle ψ at the wall.
-    #[pyo3(get)]
     pub psi_wall: f64,
 }
 
-#[pymethods]
-impl Current {
-    /// Creates a new [`Current`]
-    ///
-    /// Wrapper around [`Current::from_dataset`]. This is a workaround to return a [`PyErr`].
-    #[coverage(off)]
-    #[new]
-    pub fn new(path: &str, typ: &str) -> PyResult<Self> {
-        let path = PathBuf::from(path);
-        match Self::from_dataset(&path, typ) {
-            Ok(current) => Ok(current),
-            Err(err) => Err(PyTypeError::new_err(err.to_string())),
-        }
-    }
-
-    /// Returns the `psip` coordinate data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "psip_data")]
-    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.psip_data().to_pyarray(py)
-    }
-
-    /// Returns the `g` data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "g_data")]
-    pub fn g_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.g_data().to_pyarray(py)
-    }
-
-    /// Returns the `I` data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "i_data")]
-    pub fn i_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.i_data().to_pyarray(py)
-    }
-
-    /// Returns the `𝜕g(ψp)/𝜕ψp` data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "dg_dpsip_data")]
-    pub fn dg_dpsip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.dg_dpsip_data().to_pyarray(py)
-    }
-
-    /// Returns the `𝜕I(ψp)/𝜕ψp` data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "di_dpsip_data")]
-    pub fn di_dpsip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.di_dpsip_data().to_pyarray(py)
-    }
-
-    #[coverage(off)]
-    pub fn __repr__(&self) -> String {
-        format!("{:#?}", &self)
-    }
-}
-
+/// Creation
 impl Current {
     /// Constructs a [`Current`] from a netCDF file at `path`, with spline of `typ` interpolation type.
     ///
@@ -98,11 +34,11 @@ impl Current {
     ///
     /// # Example
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let cur = Current::from_dataset(&path, "cubic")?;
     /// # Ok(())
     /// # }
@@ -145,7 +81,55 @@ impl Current {
             psi_wall,
         })
     }
+}
 
+/// Interpolation
+impl Current {
+    /// Calculates `g(ψp)`
+    ///
+    /// # Example
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let current = Current::from_dataset(&path, "cubic")?;
+    ///
+    /// let mut acc = Accelerator::new();
+    /// let g = current.g(0.015, &mut acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn g(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
+        Ok(self.g_spline.eval(psip, acc)?)
+    }
+
+    /// Calculates `I(ψp)`
+    ///
+    /// # Example
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let current = Current::from_dataset(&path, "cubic")?;
+    ///
+    /// let mut acc = Accelerator::new();
+    /// let i = current.i(0.015, &mut acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn i(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
+        Ok(self.i_spline.eval(psip, acc)?)
+    }
+}
+
+/// Data Extraction
+impl Current {
     /// Returns the `psip` coordinate data as a 1D array.
     pub fn psip_data(&self) -> Array1<f64> {
         Array1::from_vec(self.g_spline.xa.to_vec())
@@ -187,60 +171,16 @@ impl Current {
 }
 
 impl Current {
-    /// Calculates `g(ψp)`
-    ///
-    /// # Example
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let current = Current::from_dataset(&path, "cubic")?;
-    ///
-    /// let mut acc = Accelerator::new();
-    /// let g = current.g(0.015, &mut acc)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn g(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        Ok(self.g_spline.eval(psip, acc)?)
-    }
-
-    /// Calculates `I(ψp)`
-    ///
-    /// # Example
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let current = Current::from_dataset(&path, "cubic")?;
-    ///
-    /// let mut acc = Accelerator::new();
-    /// let i = current.i(0.015, &mut acc)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn i(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        Ok(self.i_spline.eval(psip, acc)?)
-    }
-}
-
-impl Current {
     /// Calculates `𝜕g(ψp)/𝜕ψp`
     ///
     /// # Example
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let current = Current::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -256,12 +196,12 @@ impl Current {
     ///
     /// # Example
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let current = Current::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -291,7 +231,7 @@ mod test {
     use super::*;
 
     fn create_current() -> Current {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         Current::from_dataset(&path, "akima").unwrap()
     }
 

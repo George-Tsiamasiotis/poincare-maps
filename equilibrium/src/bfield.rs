@@ -1,22 +1,15 @@
 use std::path::PathBuf;
 
 use ndarray::{Array1, Array2};
-use numpy::{PyArray1, PyArray2, ToPyArray};
 use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
 
 use crate::Result;
 
-use pyo3::exceptions::PyTypeError;
-use pyo3::prelude::*;
-
 /// Magnetic field reconstructed from a netCDF file.
-#[pyclass(frozen, immutable_type)]
 pub struct Bfield {
     /// Path to the netCDF file.
-    #[pyo3(get)]
     pub path: PathBuf,
     /// Interpolation type.
-    #[pyo3(get)]
     pub typ: String,
 
     /// Spline over the magnetic field strength data, as a function of ψp, θ.
@@ -27,110 +20,26 @@ pub struct Bfield {
     pub z_spline: DynSpline2d<f64>,
 
     /// Magnetic field strength on the axis **in \[T\]**.
-    #[pyo3(get)]
     pub baxis: f64,
     /// The tokamak's major radius **in \[m\]**.
-    #[pyo3(get)]
     pub raxis: f64,
     /// The value of the poloidal angle ψp at the wall.
-    #[pyo3(get)]
     pub psip_wall: f64,
     /// The value of the toroidal angle ψ at the wall.
-    #[pyo3(get)]
     pub psi_wall: f64,
 }
 
-/// Wrapper methods exposed to Python.
-#[pymethods]
-impl Bfield {
-    /// Creates a new [`Bfield`]
-    ///
-    /// Wrapper around [`Bfield::from_dataset`]. This is a workaround to return a [`PyErr`].
-    #[coverage(off)]
-    #[new]
-    pub fn new_py(path: &str, typ: &str) -> PyResult<Self> {
-        let path = PathBuf::from(path);
-        match Self::from_dataset(&path, typ) {
-            Ok(bfield) => Ok(bfield),
-            Err(err) => Err(PyTypeError::new_err(err.to_string())),
-        }
-    }
-
-    /// Returns the `psip` coordinate data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "psip_data")]
-    pub fn psip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.psip_data().to_pyarray(py)
-    }
-
-    /// Returns the `theta` coordinate data as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "theta_data")]
-    pub fn theta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-        self.theta_data().to_pyarray(py)
-    }
-
-    /// Returns the `B` data grid as a Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "b_data")]
-    pub fn b_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.b_data().to_pyarray(py)
-    }
-
-    /// Returns the `R` data grid as  Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "r_data")]
-    pub fn r_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.r_data().to_pyarray(py)
-    }
-
-    /// Returns the `Z` data grid as  Numpy 1D array.
-    #[coverage(off)]
-    #[pyo3(name = "z_data")]
-    pub fn z_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.z_data().to_pyarray(py)
-    }
-
-    /// Returns the `𝜕B(ψp, θ) /𝜕ψp` data as a Numpy 2D array.
-    ///
-    /// # Note:
-    ///
-    /// The data are calculated by evaluating the bfield spline's derivative, rather than
-    /// extracting the data arrays from the netCDF file.
-    #[pyo3(name = "db_dpsip_data")]
-    #[coverage(off)]
-    pub fn db_dspip_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.db_dpsip_data().to_pyarray(py)
-    }
-
-    /// Returns the `𝜕B(ψp, θ) /𝜕𝜃` data as a Numpy 2D array.
-    ///
-    /// # Note:
-    ///
-    /// The data are calculated by evaluating the bfield spline's derivative, rather than
-    /// extracting the data arrays from the netCDF file.
-    #[pyo3(name = "db_dtheta_data")]
-    #[coverage(off)]
-    pub fn db_dtheta_data_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.db_dtheta_data().to_pyarray(py)
-    }
-
-    #[coverage(off)]
-    pub fn __repr__(&self) -> String {
-        format!("{:#?}", &self)
-    }
-}
-
+/// Creation
 impl Bfield {
     /// Constructs a [`Bfield`] from a netCDF file at `path`, with spline of `typ` interpolation type.
     ///
     /// # Example
     /// ```
-    /// # use poincare_maps::*;
+    /// # use equilibrium::*;
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
+    /// let path = PathBuf::from("../data.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     /// # Ok(())
     /// # }
@@ -196,7 +105,222 @@ impl Bfield {
             psi_wall,
         })
     }
+}
 
+/// Interpolation
+impl Bfield {
+    /// Calculates `B(ψp, θ)`,
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let b =  bfield.b(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn b(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+
+    /// Calculates `𝜕B(ψp, θ) /𝜕𝜃`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let db_dtheta = bfield.db_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn db_dtheta(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        // Ok(self.db_dtheta_spline.eval(psi, theta, xacc, yacc)?)
+        Ok(self
+            .b_spline
+            .eval_deriv_y(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+
+    /// Calculates `𝜕B(ψp, θ) /𝜕ψp`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let db_dpsip = bfield.db_dpsip(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn db_dpsip(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_x(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+
+    /// Calculates `𝜕²B(ψp, θ) /𝜕𝜓p²`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dpsip2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn d2b_dpsip2(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+
+    /// Calculates `𝜕²B(ψp, θ) /𝜕θ²`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dtheta2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn d2b_dtheta2(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+
+    /// Calculates `𝜕²B(ψp, θ) /𝜕ψp𝜕θ`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// # use std::f64::consts::PI;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
+    ///
+    /// let mut psi_acc = Accelerator::new();
+    /// let mut theta_acc = Accelerator::new();
+    /// let mut cache = Cache::new();
+    ///
+    /// let d2b_dpsip2 = bfield.d2b_dpsip_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn d2b_dpsip_dtheta(
+        &self,
+        psip: f64,
+        theta: f64,
+        xacc: &mut Accelerator,
+        yacc: &mut Accelerator,
+        cache: &mut Cache<f64>,
+    ) -> Result<f64> {
+        Ok(self
+            .b_spline
+            .eval_deriv_xy(psip, mod2pi(theta), xacc, yacc, cache)?)
+    }
+}
+
+/// Data Extraction
+impl Bfield {
     /// Returns the `psip` coordinate data as a 1D array.
     pub fn psip_data(&self) -> Array1<f64> {
         Array1::from_vec(self.b_spline.xa.to_vec())
@@ -295,217 +419,6 @@ impl Bfield {
     }
 }
 
-impl Bfield {
-    /// Calculates `B(ψp, θ)`,
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let b =  bfield.b(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn b(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        Ok(self.b_spline.eval(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-
-    /// Calculates `𝜕B(ψp, θ) /𝜕𝜃`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let db_dtheta = bfield.db_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn db_dtheta(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        // Ok(self.db_dtheta_spline.eval(psi, theta, xacc, yacc)?)
-        Ok(self
-            .b_spline
-            .eval_deriv_y(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-
-    /// Calculates `𝜕B(ψp, θ) /𝜕ψp`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let db_dpsip = bfield.db_dpsip(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn db_dpsip(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        Ok(self
-            .b_spline
-            .eval_deriv_x(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-
-    /// Calculates `𝜕²B(ψp, θ) /𝜕𝜓p²`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let d2b_dpsip2 = bfield.d2b_dpsip2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn d2b_dpsip2(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        Ok(self
-            .b_spline
-            .eval_deriv_xx(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-
-    /// Calculates `𝜕²B(ψp, θ) /𝜕θ²`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let d2b_dpsip2 = bfield.d2b_dtheta2(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn d2b_dtheta2(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        Ok(self
-            .b_spline
-            .eval_deriv_yy(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-
-    /// Calculates `𝜕²B(ψp, θ) /𝜕ψp𝜕θ`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use poincare_maps::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// # use std::f64::consts::PI;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("./data.nc");
-    /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
-    ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let mut theta_acc = Accelerator::new();
-    /// let mut cache = Cache::new();
-    ///
-    /// let d2b_dpsip2 = bfield.d2b_dpsip_dtheta(0.015, 2.0*PI, &mut psi_acc, &mut theta_acc, &mut cache)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn d2b_dpsip_dtheta(
-        &self,
-        psip: f64,
-        theta: f64,
-        xacc: &mut Accelerator,
-        yacc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64> {
-        Ok(self
-            .b_spline
-            .eval_deriv_xy(psip, mod2pi(theta), xacc, yacc, cache)?)
-    }
-}
-
 /// Returns θ % 2π.
 fn mod2pi(theta: f64) -> f64 {
     use std::f64::consts::TAU;
@@ -531,7 +444,7 @@ mod test {
     use super::*;
 
     fn create_bfield() -> Bfield {
-        let path = PathBuf::from("./data.nc");
+        let path = PathBuf::from("../data.nc");
         Bfield::from_dataset(&path, "bicubic").unwrap()
     }
 
