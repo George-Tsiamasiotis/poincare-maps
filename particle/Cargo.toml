@@ -5,7 +5,9 @@ edition = "2024"
 authors.workspace = true
 
 [dependencies]
+serde = { workspace = true }
 thiserror = {workspace = true}
+config-file = {workspace = true}
 rsl-interpolation = {workspace = true}
 equilibrium = {path = "../equilibrium"}
 

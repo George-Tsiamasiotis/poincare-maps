@@ -4,14 +4,13 @@ use std::time::Instant;
 use crate::Particle;
 use crate::Result;
 use crate::State;
+use crate::get_config;
 use crate::solver::Solver;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use std::f64::consts::TAU;
 
-use crate::solver::MAX_STEPS;
-use crate::solver::RKF45_FIRST_STEP;
-
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub(crate) fn run_henon(
     particle: &mut Particle,
     qfactor: &Qfactor,
@@ -48,7 +47,7 @@ pub(crate) fn run_henon(
                     .all(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
             );
         }
-        _ => return todo!(),
+        _ => (),
     };
 
     particle.calculation_time = start.elapsed();
@@ -69,14 +68,16 @@ pub(crate) fn henon_zeta_loop(
     intersection: f64,
     turns: usize,
 ) -> Result<()> {
-    let mut h = RKF45_FIRST_STEP;
-    let calculation_time = Instant::now();
+    let config = get_config();
+    let mut h = config.rkf45_first_step;
+    let max_steps = config.max_steps;
+
     while particle.zeta.len() < turns {
         let (old_state, next_state) =
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
-        if particle.steps_taken >= MAX_STEPS {
-            return Err(todo!());
+        if particle.steps_taken >= max_steps {
+            // return Err(todo!());
         }
 
         if intersected(old_state.zeta, next_state.zeta, intersection) {
@@ -128,7 +129,7 @@ pub(crate) fn henon_zeta_loop(
                 &next_state,
                 intersection_state,
             )?;
-            h = RKF45_FIRST_STEP;
+            h = config.rkf45_first_step;
         } else {
             particle.state = next_state;
         }
@@ -145,14 +146,16 @@ pub(crate) fn henon_theta_loop(
     intersection: f64,
     turns: usize,
 ) -> Result<()> {
-    let mut h = RKF45_FIRST_STEP;
-    let calculation_time = Instant::now();
+    let config = get_config();
+    let mut h = config.rkf45_first_step;
+    let max_steps = config.max_steps;
+
     while particle.theta.len() < turns {
         let (old_state, next_state) =
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
-        if particle.steps_taken >= MAX_STEPS {
-            return Err(todo!());
+        if particle.steps_taken >= max_steps {
+            // return Err(todo!());
         }
 
         if intersected(old_state.theta, next_state.theta, intersection) {
@@ -204,7 +207,7 @@ pub(crate) fn henon_theta_loop(
                 &next_state,
                 intersection_state,
             )?;
-            h = RKF45_FIRST_STEP;
+            h = config.rkf45_first_step;
         } else {
             particle.state = next_state;
         }

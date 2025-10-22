@@ -5,13 +5,6 @@ pub(crate) use rkf45::Solver;
 
 pub(crate) mod henon;
 
-/// The initial time step for the RKF45 adaptive step method. Should be small
-/// enough to account for fast particles. The value is empirical.
-pub(crate) const RKF45_FIRST_STEP: f64 = 1e-4;
-
-// The maximum amount of steps a particle can make before terminating its integration.
-pub(crate) const MAX_STEPS: usize = 1e9 as usize;
-
 /// Common to both solvers.
 fn calculate_k1(solver: &mut Solver) {
     solver.k1 = [

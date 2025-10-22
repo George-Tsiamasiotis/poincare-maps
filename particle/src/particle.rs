@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::Result;
+use crate::get_config;
 use crate::solver::Solver;
 use crate::{InitialConditions, State};
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
@@ -59,7 +60,7 @@ impl Particle {
         self.state.evaluate(qfactor, current, bfield, per)?;
         self.initial_energy = self.state.energy();
 
-        let mut h = crate::solver::RKF45_FIRST_STEP;
+        let mut h = get_config().rkf45_first_step;
 
         let start = Instant::now();
 
