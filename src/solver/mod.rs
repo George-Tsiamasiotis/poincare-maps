@@ -1,18 +1,8 @@
-#[cfg_attr(not(feature = "rk45"), path = "rkf45.rs")]
-#[cfg_attr(feature = "rk45", path = "rk45.rs")]
-mod rk;
+pub(crate) mod henon;
+mod rkf45;
 
 use crate::State;
-pub(crate) use rk::Solver;
-
-pub(crate) mod henon;
-
-/// The initial time step for the RKF45 adaptive step method. Should be small
-/// enough to account for fast particles. The value is empirical.
-pub(crate) const RKF45_FIRST_STEP: f64 = 1e-4;
-
-// The maximum amount of steps a particle can make before terminating its integration.
-pub(crate) const MAX_STEPS: usize = 1e9 as usize;
+pub(crate) use rkf45::Solver;
 
 /// Common to both solvers.
 fn calculate_k1(solver: &mut Solver) {
@@ -26,7 +16,7 @@ fn calculate_k1(solver: &mut Solver) {
 
 /// Common to both solvers.
 fn next_state(solver: &mut Solver, h: f64) -> State {
-    solver.next.t = solver.state1.t + h;
+    solver.next.time = solver.state1.time + h;
     solver.next.theta = solver.state1.theta + h * solver.weights[0];
     solver.next.psip = solver.state1.psip + h * solver.weights[1];
     solver.next.rho = solver.state1.rho + h * solver.weights[2];

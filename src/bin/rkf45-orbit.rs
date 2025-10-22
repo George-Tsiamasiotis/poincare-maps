@@ -3,9 +3,6 @@ use std::path::PathBuf;
 use poincare_maps::*;
 
 fn main() {
-    #[cfg(feature = "rk45")]
-    compile_error!("Feature rk45 must be disabled for this bench.");
-
     let path = PathBuf::from("./data.nc");
     let qfactor = Qfactor::from_dataset(&path, "akima").unwrap();
     let current = Current::from_dataset(&path, "akima").unwrap();
@@ -17,10 +14,9 @@ fn main() {
     let per = Perturbation::from_harmonics(harmonics);
     let psip_wall = qfactor.psip_wall;
 
-    let initial = InitialConditions::new(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
-    let mut particle = Particle::new(&initial);
+    let mut particle = Particle::new(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
     particle
-        .run_ode(&qfactor, &bfield, &current, &per, (0.0, 20000.0), 0)
+        .run_ode(&qfactor, &bfield, &current, &per, (0.0, 20000.0))
         .unwrap();
 
     dbg!(&particle);

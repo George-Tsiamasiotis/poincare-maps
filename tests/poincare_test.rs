@@ -3,7 +3,9 @@ use std::{f64::consts::PI, path::PathBuf};
 use ndarray::Array1;
 use poincare_maps::*;
 
-fn setup_poincare() -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)> {
+fn setup_poincare(
+    params: PoincareParameters,
+) -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)> {
     let path = PathBuf::from("./data.nc");
     let bfield = Bfield::from_dataset(&path, "bicubic")?;
     let qfactor = Qfactor::from_dataset(&path, "akima")?;
@@ -18,10 +20,9 @@ fn setup_poincare() -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)
     // Include some particles outside the wall.
     // Values are [0, 0.33, 0.66, 1, 1.33, 1.66, 2]. Only 0, 0.33 and 0.66 should pass
     let psips = Array1::linspace(0.0, 2.0 * psip_wall, n);
-    let mut map = Poincare::default();
+    let mut map = Poincare::new(params);
     for psip in psips.iter() {
-        let initial = InitialConditions::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);
-        let particle = Particle::new(&initial);
+        let particle = Particle::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);
         map.add_particle(&particle);
     }
     Ok((bfield, qfactor, current, per, map))
@@ -29,14 +30,12 @@ fn setup_poincare() -> Result<(Bfield, Qfactor, Current, Perturbation, Poincare)
 
 #[test]
 fn test_poincare_theta() -> Result<()> {
-    let (bfield, qfactor, current, per, mut map) = setup_poincare()?;
+    let params = PoincareParameters::new("theta", PI, 2);
+    let (bfield, qfactor, current, per, mut map) = setup_poincare(params)?;
 
-    let turns = 2;
-    map.run(&qfactor, &bfield, &current, &per, "theta", PI, turns)?;
+    map.run(&qfactor, &bfield, &current, &per)?;
 
     let _ = map.get_particles();
-    let _ = map.get_angles();
-    let _ = map.get_fluxes();
 
     assert_eq!(map.completed_particles, 3);
     assert_eq!(map.escpaped_particles, 4);
@@ -46,14 +45,12 @@ fn test_poincare_theta() -> Result<()> {
 
 #[test]
 fn test_poincare_zeta() -> Result<()> {
-    let (bfield, qfactor, current, per, mut map) = setup_poincare()?;
+    let params = PoincareParameters::new("zeta", PI, 2);
+    let (bfield, qfactor, current, per, mut map) = setup_poincare(params)?;
 
-    let turns = 2;
-    map.run(&qfactor, &bfield, &current, &per, "zeta", PI, turns)?;
+    map.run(&qfactor, &bfield, &current, &per)?;
 
     let _ = map.get_particles();
-    let _ = map.get_angles();
-    let _ = map.get_fluxes();
 
     assert_eq!(map.completed_particles, 3);
     assert_eq!(map.escpaped_particles, 4);

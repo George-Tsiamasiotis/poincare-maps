@@ -2,9 +2,11 @@ use std::time::Duration;
 
 use crate::MapError;
 use crate::Particle;
+use crate::PoincareParameters;
 use crate::Result;
-use crate::particle::ParticleStatus;
+use crate::Surface;
 use crate::solver::henon;
+use crate::{__repr__, numpy_getter_2D};
 use crate::{Bfield, Current, Perturbation, Qfactor};
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -20,10 +22,7 @@ pub struct Poincare {
     pub particles: Vec<Particle>,
     pub angles: Array2<f64>,
     pub fluxes: Array2<f64>,
-    #[pyo3(get)]
-    pub angle: String,
-    #[pyo3(get)]
-    pub intersection: f64,
+    pub params: PoincareParameters,
     #[pyo3(get)]
     pub timed_out_particles: usize,
     #[pyo3(get)]
@@ -39,16 +38,12 @@ pub struct Poincare {
 #[pymethods]
 impl Poincare {
     #[new]
-    pub fn new() -> Self {
-        #[cfg(feature = "rk45")]
-        compile_error!("Feature rk45 must be disabled for Poincare maps.");
-
+    pub fn new(params: PoincareParameters) -> Self {
         Poincare {
             particles: Vec::new(),
             angles: Array2::zeros((1, 1)),
             fluxes: Array2::zeros((1, 1)),
-            angle: "".into(),
-            intersection: f64::NAN,
+            params,
             timed_out_particles: 0,
             completed_particles: 0,
             escpaped_particles: 0,
@@ -57,7 +52,6 @@ impl Poincare {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[pyo3(name = "run")]
     #[coverage(off)]
     pub fn run_py(
@@ -66,11 +60,8 @@ impl Poincare {
         bfield: &Bfield,
         current: &Current,
         per: &Perturbation,
-        angle: &str,
-        intersection: f64,
-        turns: usize,
     ) -> PyResult<()> {
-        match self.run(qfactor, bfield, current, per, angle, intersection, turns) {
+        match self.run(qfactor, bfield, current, per) {
             Ok(()) => Ok(()),
             Err(err) => Err(PyTypeError::new_err(err.to_string())),
         }
@@ -89,26 +80,11 @@ impl Poincare {
     pub fn add_particle_py(&mut self, particle: &Particle) {
         self.add_particle(particle);
     }
-
-    /// Returns the calculated angles as a 2D numpy array, 1 row corresponding to 1 particle.
-    #[pyo3(name = "get_angles")]
-    #[coverage(off)]
-    pub fn get_angles_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.get_angles().to_pyarray(py)
-    }
-
-    /// Returns the calculated fluxes as a 2D numpy array, 1 row corresponding to 1 particle.
-    #[pyo3(name = "get_fluxes")]
-    #[coverage(off)]
-    pub fn get_fluxes_py<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-        self.fluxes.to_pyarray(py)
-    }
-
-    #[coverage(off)]
-    pub fn __repr__(&self) -> String {
-        format!("{:#?}", &self)
-    }
 }
+
+__repr__!(Poincare);
+numpy_getter_2D!(Poincare, angles);
+numpy_getter_2D!(Poincare, fluxes);
 
 impl Poincare {
     #[allow(clippy::too_many_arguments)]
@@ -118,14 +94,9 @@ impl Poincare {
         bfield: &Bfield,
         current: &Current,
         per: &Perturbation,
-        angle: &str,
-        intersection: f64,
-        turns: usize,
     ) -> Result<()> {
-        self.angles = Array2::zeros((0, turns));
-        self.fluxes = Array2::zeros((0, turns));
-        self.angle = angle.into();
-        self.intersection = intersection;
+        self.angles = Array2::zeros((0, self.params.turns));
+        self.fluxes = Array2::zeros((0, self.params.turns));
 
         let style = ProgressStyle::with_template(
             "[{elapsed_precise}] {wide_bar:.cyan/blue} {spinner} {pos:>4}/{len:4} {msg}",
@@ -138,16 +109,22 @@ impl Poincare {
         // Start a new thread for each particle
         self.particles.par_iter_mut().try_for_each(|p| {
             {
-                match henon::run_henon(p, qfactor, bfield, current, per, angle, intersection, turns)
-                {
+                match henon::run_henon(
+                    &mut p.evolution,
+                    qfactor,
+                    bfield,
+                    current,
+                    per,
+                    &self.params,
+                ) {
                     // Discard particles that hit the wall instead of panicking.
                     Err(err) if matches!(err, MapError::DomainError(..)) => {
-                        p.status = ParticleStatus::Escaped(());
+                        // p.status = IntegrationStatus::Escaped;
                         Ok(())
                     }
                     // Discard particles that took too long to integrate
                     Err(err) if matches!(err, MapError::OrbitTimeout(..)) => {
-                        p.status = ParticleStatus::TimedOut(());
+                        // p.status = IntegrationStatus::TimedOut;
                         Ok(())
                     }
                     Err(err) => Err(err),
@@ -160,27 +137,26 @@ impl Poincare {
         // Store points
         for p in self.particles.iter_mut() {
             // Do not store particles that didn't complete the integration.
-            if p.t.len() != turns {
+            if p.evolution.time.len() != self.params.turns {
                 continue;
             }
-            match angle {
-                "theta" => {
+            match self.params.surface {
+                Surface::ConstZeta => {
                     self.angles
-                        .push_row(Array1::from_vec(p.zeta.clone()).view())
+                        .push_row(Array1::from_vec(p.evolution.zeta.clone()).view())
                         .unwrap();
                     self.fluxes
-                        .push_row(Array1::from_vec(p.psip.clone()).view())
+                        .push_row(Array1::from_vec(p.evolution.psip.clone()).view())
                         .unwrap()
                 }
-                "zeta" => {
+                Surface::ConstTheta => {
                     self.angles
-                        .push_row(Array1::from_vec(p.theta.clone()).view())
+                        .push_row(Array1::from_vec(p.evolution.theta.clone()).view())
                         .unwrap();
                     self.fluxes
-                        .push_row(Array1::from_vec(p.psi.clone()).view())
+                        .push_row(Array1::from_vec(p.evolution.psi.clone()).view())
                         .unwrap()
                 }
-                _ => unreachable!(),
             }
         }
 
@@ -190,16 +166,16 @@ impl Poincare {
     }
 
     fn statistics(&mut self) {
-        for p in self.particles.iter() {
-            match p.status {
-                ParticleStatus::Initialized(_) => (),
-                ParticleStatus::Integrated(_) => self.completed_particles += 1,
-                ParticleStatus::Escaped(_) => self.escpaped_particles += 1,
-                ParticleStatus::TimedOut(_) => self.timed_out_particles += 1,
-            }
-            self.max_steps = p.steps_taken.max(self.max_steps);
-            self.max_duration = p.calculation_time.max(self.max_duration);
-        }
+        // for p in self.particles.iter() {
+        //     match p.status {
+        //         IntegrationStatus::Initialized => (),
+        //         IntegrationStatus::Integrated => self.completed_particles += 1,
+        //         IntegrationStatus::Escaped => self.escpaped_particles += 1,
+        //         IntegrationStatus::TimedOut => self.timed_out_particles += 1,
+        //     }
+        //     self.max_steps = p.steps_taken.max(self.max_steps);
+        //     self.max_duration = p.calculation_time.max(self.max_duration);
+        // }
     }
 
     /// Adds a particle to be calculated.
@@ -211,35 +187,18 @@ impl Poincare {
     pub fn get_particles(&self) -> Vec<Particle> {
         self.particles.clone()
     }
-
-    /// Returns the calculated angles as a 2D array, 1 row corresponding to 1 particle.
-    pub fn get_angles(&self) -> Array2<f64> {
-        self.angles.clone()
-    }
-
-    /// Returns the calculated fluxes as a 2D array, 1 row corresponding to 1 particle.
-    pub fn get_fluxes(&self) -> Array2<f64> {
-        self.angles.clone()
-    }
 }
 
 impl std::fmt::Debug for Poincare {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Poincare")
             .field("number of particles", &self.particles.len())
-            .field("angle", &self.angle)
-            .field("intersection", &self.intersection)
+            .field("params", &self.params)
             .field("timed out particles", &self.timed_out_particles)
             .field("completed particles", &self.completed_particles)
             .field("escpaped_particles", &self.escpaped_particles)
             .field("max duration", &self.max_duration)
             .field("max steps", &self.max_steps)
             .finish()
-    }
-}
-
-impl Default for Poincare {
-    fn default() -> Self {
-        Self::new()
     }
 }

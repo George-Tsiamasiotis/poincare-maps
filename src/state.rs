@@ -1,9 +1,8 @@
 use core::f64;
-
-use crate::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
-use crate::{InitialConditions, Result};
+use crate::Result;
+use crate::{Bfield, Current, Perturbation, Point, Qfactor};
 
 /// State of the System at each step.
 ///
@@ -19,7 +18,7 @@ pub struct State {
     pub cache: Cache<f64>,
 
     /// The time of evaluation.
-    pub t: f64,
+    pub time: f64,
 
     /// The `θ` angle.
     pub theta: f64,
@@ -106,24 +105,37 @@ pub struct State {
 
 impl State {
     /// All fields set to NaN and Accelerator creation.
-    pub fn new_uninit() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// Set intial state variables, without evaluating anything else.
-    pub fn new_init(initial: &InitialConditions) -> Self {
+    /// Creates an initial State by the System's initial conditions (t, θ, ψp, ρ, ζ, μ).
+    pub fn from_initial(t0: f64, theta0: f64, psip0: f64, rho0: f64, zeta0: f64, mu: f64) -> Self {
         Self {
-            t: initial.t0,
-            theta: initial.theta0,
-            psip: initial.psip0,
-            rho: initial.rho0,
-            zeta: initial.zeta0,
-            mu: initial.mu,
+            time: t0,
+            theta: theta0,
+            psip: psip0,
+            rho: rho0,
+            zeta: zeta0,
+            mu: mu,
             ..Default::default()
         }
     }
 
-    /// Evaluation all quantites derived by (θ, ψ_p, ρ, ζ, μ)
+    /// Returns the state evaluated at the stored point.
+    pub fn into_evaluated(
+        self,
+        qfactor: &Qfactor,
+        current: &Current,
+        bfield: &Bfield,
+        per: &Perturbation,
+    ) -> Result<Self> {
+        let mut temp = self.clone();
+        temp.evaluate(qfactor, current, bfield, per)?;
+        Ok(temp)
+    }
+
+    /// Evaluation all quantites derived by (θ, ψp, ρ, ζ, μ)
     pub fn evaluate(
         &mut self,
         qfactor: &Qfactor,
@@ -267,6 +279,20 @@ impl State {
     pub fn perpendicular_energy(&self) -> f64 {
         self.mu * self.b
     }
+
+    pub fn as_point(&self) -> Point {
+        Point {
+            time: self.time,
+            theta: self.theta,
+            psip: self.psip,
+            rho: self.rho,
+            zeta: self.zeta,
+            mu: self.mu,
+            ptheta: self.ptheta,
+            pzeta: self.pzeta,
+            psi: self.psi,
+        }
+    }
 }
 
 /// Alternative Large Aspect Ratio configuration (much faster)
@@ -309,7 +335,7 @@ impl Default for State {
             xacc: Accelerator::new(),
             yacc: Accelerator::new(),
             cache: Cache::new(),
-            t: f64::NAN,
+            time: f64::NAN,
             theta: f64::NAN,
             psip: f64::NAN,
             rho: f64::NAN,
@@ -366,7 +392,7 @@ impl std::fmt::Display for State {
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("State")
-            .field("t", &self.t)
+            .field("t", &self.time)
             .field("theta", &self.theta)
             .field("psip", &self.psip)
             .field("rho", &self.rho)

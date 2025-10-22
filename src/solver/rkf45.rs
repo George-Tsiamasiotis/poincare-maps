@@ -121,7 +121,7 @@ impl Solver {
         ];
 
         // self.state2.mu = self.state1.mu;
-        self.state2.t = self.state1.t + C2 * h;
+        self.state2.time = self.state1.time + C2 * h;
         self.state2.theta = self.state1.theta + coef[0] * h;
         self.state2.psip = self.state1.psip + coef[1] * h;
         self.state2.rho = self.state1.rho + coef[2] * h;
@@ -152,7 +152,7 @@ impl Solver {
         ];
 
         // self.state3.mu = self.state1.mu;
-        self.state3.t = self.state1.t + C3 * h;
+        self.state3.time = self.state1.time + C3 * h;
         self.state3.theta = self.state1.theta + coef[0] * h;
         self.state3.psip = self.state1.psip + coef[1] * h;
         self.state3.rho = self.state1.rho + coef[2] * h;
@@ -183,7 +183,7 @@ impl Solver {
         ];
 
         // self.state4.mu = self.state1.mu;
-        self.state4.t = self.state1.t + C4 * h;
+        self.state4.time = self.state1.time + C4 * h;
         self.state4.theta = self.state1.theta + coef[0] * h;
         self.state4.psip = self.state1.psip + coef[1] * h;
         self.state4.rho = self.state1.rho + coef[2] * h;
@@ -214,7 +214,7 @@ impl Solver {
         ];
 
         // self.state5.mu = self.state1.mu;
-        self.state5.t = self.state1.t + C5 * h;
+        self.state5.time = self.state1.time + C5 * h;
         self.state5.theta = self.state1.theta + coef[0] * h;
         self.state5.psip = self.state1.psip + coef[1] * h;
         self.state5.rho = self.state1.rho + coef[2] * h;
@@ -246,7 +246,7 @@ impl Solver {
             ];
 
         // self.state6.mu = self.state1.mu;
-        self.state6.t = self.state1.t + C6 * h;
+        self.state6.time = self.state1.time + C6 * h;
         self.state6.theta = self.state1.theta + coef[0] * h;
         self.state6.psip = self.state1.psip + coef[1] * h;
         self.state6.rho = self.state1.rho + coef[2] * h;
@@ -333,13 +333,13 @@ impl Default for Solver {
             k6: [f64::NAN; 4],
             weights: [f64::NAN; 4],
             errors: [f64::NAN; 4],
-            state1: State::new_uninit(),
-            state2: State::new_uninit(),
-            state3: State::new_uninit(),
-            state4: State::new_uninit(),
-            state5: State::new_uninit(),
-            state6: State::new_uninit(),
-            next: State::new_uninit(),
+            state1: State::new(),
+            state2: State::new(),
+            state3: State::new(),
+            state4: State::new(),
+            state5: State::new(),
+            state6: State::new(),
+            next: State::new(),
         }
     }
 }

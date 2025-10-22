@@ -21,7 +21,7 @@ tokamak-netcdf = { git = "https://github.com/George-Tsiamasiotis/tokamak-netcdf"
 
 [dependencies.pyo3]
 version = "0.26.0"
-features = ["abi3-py314", "extension-module"]
+features = ["abi3-py314", "extension-module", "multiple-pymethods"]
 
 [dev-dependencies]
 criterion = "0.7.0"
@@ -29,7 +29,6 @@ criterion = "0.7.0"
 [features]
 default = ["rsl-interpolation/openblas-system"]
 lar = []
-rk45 = []
 error-adaptive-step = []
 openblas-static = ["rsl-interpolation/openblas-static"]
 openblas-system = ["rsl-interpolation/openblas-system"]

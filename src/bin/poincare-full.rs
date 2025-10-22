@@ -19,15 +19,15 @@ fn main() -> Result<()> {
     let turns = 200;
     let psips = Array1::linspace(0.05 * psip_wall, 0.95 * psip_wall, n);
 
-    let mut map = Poincare::new();
+    let params = PoincareParameters::new("theta", PI, turns);
+    let mut map = Poincare::new(params);
 
     for psip in psips.iter() {
-        let initial = InitialConditions::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);
-        let particle = Particle::new(&initial);
+        let particle = Particle::new(0.0, 0.0, *psip, 0.01, 0.0, 0.0);
         map.add_particle(&particle);
     }
 
-    map.run(&qfactor, &bfield, &current, &per, "theta", PI, turns)?;
+    map.run(&qfactor, &bfield, &current, &per)?;
 
     Ok(())
 }

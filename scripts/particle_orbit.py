@@ -30,7 +30,6 @@ particle.run_ode(
     qfactor=qfactor,
     per=per,
     t_eval=(0.0, 15000),
-    steps=0,
 )
 print(particle)
 

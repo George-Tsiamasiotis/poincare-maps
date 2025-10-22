@@ -15,18 +15,9 @@ fn state_evaluation(c: &mut Criterion) {
     let per = Perturbation::from_harmonics(harmonics);
     let psip_wall = qfactor.psip_wall;
 
-    let initial = InitialConditions {
-        t0: 0.0,
-        theta0: 0.0,
-        psip0: 0.0,
-        rho0: 0.01,
-        zeta0: 0.0,
-        mu: 0.0,
-    };
-
     let mut group = c.benchmark_group("State Evaluation");
 
-    let mut state = State::new_init(&initial);
+    let mut state = State::from_initial(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
     let points = vec![(0.0, 0.5 * psip_wall)];
     let mut points_iter = points.iter().cycle();
 
@@ -39,7 +30,7 @@ fn state_evaluation(c: &mut Criterion) {
         })
     });
 
-    let mut state = State::new_init(&initial);
+    let mut state = State::from_initial(0.0, 0.0, 0.5 * psip_wall, 0.01, 0.0, 0.0);
     let points = vec![(0.0, 0.1 * psip_wall), (3.14, 0.8 * psip_wall)];
     let mut points_iter = points.iter().cycle();
 
