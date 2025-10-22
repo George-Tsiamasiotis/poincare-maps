@@ -1,9 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["equilibrium", "poincare", "pyncare"]
+members = ["equilibrium", "particle", "poincare", "pyncare"]
 
 [workspace.dependencies]
 thiserror = "2.0.17"
+rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "cache-dev" }
 
 [workspace.package]
 authors = ["George Tsiamasiotis"]

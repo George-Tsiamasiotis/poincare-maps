@@ -1,6 +1,7 @@
 use self::tableau::*;
 use crate::solver as common;
 use crate::*;
+use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 
 const SAFETY_FACTOR: f64 = 0.9;
 const REL_TOL: f64 = 1e-11;

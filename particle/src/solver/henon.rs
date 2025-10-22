@@ -5,7 +5,7 @@ use crate::Particle;
 use crate::Result;
 use crate::State;
 use crate::solver::Solver;
-use crate::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use std::f64::consts::TAU;
 
 use crate::solver::MAX_STEPS;
@@ -48,7 +48,7 @@ pub(crate) fn run_henon(
                     .all(|w| (w[1] - w[0]).abs() - TAU <= 1e-9)
             );
         }
-        _ => return Err(crate::MapError::InvalidAngle),
+        _ => return todo!(),
     };
 
     particle.calculation_time = start.elapsed();
@@ -76,10 +76,7 @@ pub(crate) fn henon_zeta_loop(
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
         if particle.steps_taken >= MAX_STEPS {
-            return Err(crate::MapError::OrbitTimeout(
-                calculation_time.elapsed(),
-                MAX_STEPS,
-            ));
+            return Err(todo!());
         }
 
         if intersected(old_state.zeta, next_state.zeta, intersection) {
@@ -155,10 +152,7 @@ pub(crate) fn henon_theta_loop(
             get_step_stages(particle, qfactor, bfield, current, per, &mut h)?;
         particle.steps_taken += 1;
         if particle.steps_taken >= MAX_STEPS {
-            return Err(crate::MapError::OrbitTimeout(
-                calculation_time.elapsed(),
-                MAX_STEPS,
-            ));
+            return Err(todo!());
         }
 
         if intersected(old_state.theta, next_state.theta, intersection) {

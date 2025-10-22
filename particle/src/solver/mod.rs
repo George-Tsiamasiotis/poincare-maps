@@ -1,9 +1,7 @@
-#[cfg_attr(not(feature = "rk45"), path = "rkf45.rs")]
-#[cfg_attr(feature = "rk45", path = "rk45.rs")]
-mod rk;
+mod rkf45;
 
 use crate::State;
-pub(crate) use rk::Solver;
+pub(crate) use rkf45::Solver;
 
 pub(crate) mod henon;
 

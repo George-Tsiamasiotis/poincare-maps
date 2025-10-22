@@ -1,6 +1,6 @@
 use core::f64;
 
-use crate::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
 use crate::{InitialConditions, Result};
@@ -348,17 +348,6 @@ impl Default for State {
             g_over_d: f64::NAN,
             i_over_d: f64::NAN,
         }
-    }
-}
-
-impl std::fmt::Display for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("State Variables")
-            .field("θ", &self.theta)
-            .field("ψp", &self.psip)
-            .field("ρ", &self.rho)
-            .field("ζ", &self.zeta)
-            .finish_non_exhaustive()
     }
 }
 

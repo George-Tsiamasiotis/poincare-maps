@@ -1,6 +1,3 @@
-use pyo3::prelude::*;
-
-#[pyclass(frozen, get_all)]
 #[derive(Clone, Debug)]
 pub struct InitialConditions {
     /// The initial time.
@@ -17,9 +14,7 @@ pub struct InitialConditions {
     pub mu: f64,
 }
 
-#[pymethods]
 impl InitialConditions {
-    #[new]
     pub fn new(t0: f64, theta0: f64, psip0: f64, rho0: f64, zeta0: f64, mu: f64) -> Self {
         Self {
             t0,

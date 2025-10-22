@@ -1,8 +1,8 @@
 #[derive(thiserror::Error, Debug)]
-pub enum EqError {
-    /// Error from [`tokamak_netcdf`].
-    #[error("NetCDF error: {0}")]
-    NcError(#[from] tokamak_netcdf::NcError),
+pub enum ParticleError {
+    /// Error from [`equilibrium`].
+    #[error("Equilibrium error: {0}")]
+    EqError(#[from] equilibrium::EqError),
 
     /// Error from [`rsl_interpolation`].
     #[error("Interpolation error: {0}")]
@@ -11,4 +11,8 @@ pub enum EqError {
     /// Interpolation domain error.
     #[error("Interpolation domain error: {0}")]
     DomainError(#[from] rsl_interpolation::DomainError),
+
+    /// TODO:
+    #[error("TODO")]
+    InvalidAngle,
 }
