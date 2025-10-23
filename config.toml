@@ -7,3 +7,5 @@ rkf45_first_step = 1e-3
 energy_rel_tol = 1e-10
 # The relative tolerance of the stepping error in every step.
 step_rel_tol = 1e-9
+# The starting capacity of the Evolution time series vectors.
+evolution_init_capacity = 2000

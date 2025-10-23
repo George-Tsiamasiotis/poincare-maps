@@ -1,5 +1,4 @@
 use self::tableau::*;
-use crate::solver as common;
 use crate::*;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 
@@ -103,7 +102,12 @@ impl Solver {
     }
 
     pub(crate) fn calculate_k1(&mut self) {
-        common::calculate_k1(self);
+        self.k1 = [
+            self.state1.theta_dot,
+            self.state1.psip_dot,
+            self.state1.rho_dot,
+            self.state1.zeta_dot,
+        ];
     }
 
     pub(crate) fn calculate_state_k2(
@@ -122,7 +126,7 @@ impl Solver {
         ];
 
         // self.state2.mu = self.state1.mu;
-        self.state2.t = self.state1.t + C2 * h;
+        self.state2.time = self.state1.time + C2 * h;
         self.state2.theta = self.state1.theta + coef[0] * h;
         self.state2.psip = self.state1.psip + coef[1] * h;
         self.state2.rho = self.state1.rho + coef[2] * h;
@@ -153,7 +157,7 @@ impl Solver {
         ];
 
         // self.state3.mu = self.state1.mu;
-        self.state3.t = self.state1.t + C3 * h;
+        self.state3.time = self.state1.time + C3 * h;
         self.state3.theta = self.state1.theta + coef[0] * h;
         self.state3.psip = self.state1.psip + coef[1] * h;
         self.state3.rho = self.state1.rho + coef[2] * h;
@@ -184,7 +188,7 @@ impl Solver {
         ];
 
         // self.state4.mu = self.state1.mu;
-        self.state4.t = self.state1.t + C4 * h;
+        self.state4.time = self.state1.time + C4 * h;
         self.state4.theta = self.state1.theta + coef[0] * h;
         self.state4.psip = self.state1.psip + coef[1] * h;
         self.state4.rho = self.state1.rho + coef[2] * h;
@@ -215,7 +219,7 @@ impl Solver {
         ];
 
         // self.state5.mu = self.state1.mu;
-        self.state5.t = self.state1.t + C5 * h;
+        self.state5.time = self.state1.time + C5 * h;
         self.state5.theta = self.state1.theta + coef[0] * h;
         self.state5.psip = self.state1.psip + coef[1] * h;
         self.state5.rho = self.state1.rho + coef[2] * h;
@@ -247,7 +251,7 @@ impl Solver {
             ];
 
         // self.state6.mu = self.state1.mu;
-        self.state6.t = self.state1.t + C6 * h;
+        self.state6.time = self.state1.time + C6 * h;
         self.state6.theta = self.state1.theta + coef[0] * h;
         self.state6.psip = self.state1.psip + coef[1] * h;
         self.state6.rho = self.state1.rho + coef[2] * h;
@@ -319,7 +323,15 @@ impl Solver {
     }
 
     pub(crate) fn next_state(&mut self, h: f64) -> State {
-        common::next_state(self, h)
+        {
+            self.next.time = self.state1.time + h;
+            self.next.theta = self.state1.theta + h * self.weights[0];
+            self.next.psip = self.state1.psip + h * self.weights[1];
+            self.next.rho = self.state1.rho + h * self.weights[2];
+            self.next.zeta = self.state1.zeta + h * self.weights[3];
+            self.next.mu = self.state1.mu;
+            self.next.clone()
+        }
     }
 }
 
@@ -334,13 +346,13 @@ impl Default for Solver {
             k6: [f64::NAN; 4],
             weights: [f64::NAN; 4],
             errors: [f64::NAN; 4],
-            state1: State::new_uninit(),
-            state2: State::new_uninit(),
-            state3: State::new_uninit(),
-            state4: State::new_uninit(),
-            state5: State::new_uninit(),
-            state6: State::new_uninit(),
-            next: State::new_uninit(),
+            state1: State::default(),
+            state2: State::default(),
+            state3: State::default(),
+            state4: State::default(),
+            state5: State::default(),
+            state6: State::default(),
+            next: State::default(),
         }
     }
 }

@@ -3,7 +3,8 @@ use core::f64;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
-use crate::{InitialConditions, Result};
+use crate::Point;
+use crate::Result;
 
 /// State of the System at each step.
 ///
@@ -19,7 +20,7 @@ pub struct State {
     pub cache: Cache<f64>,
 
     /// The time of evaluation.
-    pub t: f64,
+    pub time: f64,
 
     /// The `θ` angle.
     pub theta: f64,
@@ -106,21 +107,33 @@ pub struct State {
 
 impl State {
     /// All fields set to NaN and Accelerator creation.
-    pub fn new_uninit() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    /// Set intial state variables, without evaluating anything else.
-    pub fn new_init(initial: &InitialConditions) -> Self {
+    /// Creates a [`State`] from the **independent** variables only.
+    pub fn from_point(point: &Point) -> Self {
         Self {
-            t: initial.t0,
-            theta: initial.theta0,
-            psip: initial.psip0,
-            rho: initial.rho0,
-            zeta: initial.zeta0,
-            mu: initial.mu,
+            time: point.time,
+            theta: point.theta,
+            psip: point.psip,
+            rho: point.rho,
+            zeta: point.zeta,
+            mu: point.mu,
             ..Default::default()
         }
+    }
+
+    /// Returns the state evaluated, consuming self.
+    pub fn into_evaluated(
+        mut self,
+        qfactor: &Qfactor,
+        current: &Current,
+        bfield: &Bfield,
+        per: &Perturbation,
+    ) -> Result<Self> {
+        self.evaluate(qfactor, current, bfield, per)?;
+        Ok(self)
     }
 
     /// Evaluation all quantites derived by (θ, ψ_p, ρ, ζ, μ)
@@ -302,6 +315,42 @@ impl State {
     }
 }
 
+/// Helper struct for printing [`State`]'s independent variables.
+pub struct Display {
+    pub t: f64,
+    pub theta: f64,
+    pub psip: f64,
+    pub rho: f64,
+    pub zeta: f64,
+    pub mu: f64,
+}
+
+impl std::fmt::Debug for Display {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("")
+            .field("t", &format!("{:.5}", self.t))
+            .field("theta", &format!("{:.5}", self.theta))
+            .field("psip", &format!("{:.5}", self.psip))
+            .field("rho", &format!("{:.5}", self.rho))
+            .field("zeta", &format!("{:.5}", self.zeta))
+            .field("mu", &format!("{:.5}", self.mu))
+            .finish()
+    }
+}
+
+impl Display {
+    pub fn from_state(state: &State) -> Self {
+        Self {
+            t: state.time,
+            theta: state.theta,
+            psip: state.psip,
+            rho: state.rho,
+            zeta: state.zeta,
+            mu: state.zeta,
+        }
+    }
+}
+
 impl Default for State {
     /// Set all derived quantities to NaN and use the corresponding methods to set them up
     fn default() -> Self {
@@ -309,7 +358,7 @@ impl Default for State {
             xacc: Accelerator::new(),
             yacc: Accelerator::new(),
             cache: Cache::new(),
-            t: f64::NAN,
+            time: f64::NAN,
             theta: f64::NAN,
             psip: f64::NAN,
             rho: f64::NAN,
@@ -355,11 +404,12 @@ impl Default for State {
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("State")
-            .field("t", &self.t)
+            .field("t", &self.time)
             .field("theta", &self.theta)
             .field("psip", &self.psip)
             .field("rho", &self.rho)
             .field("zeta", &self.zeta)
+            .field("mu", &self.mu)
             .field("theta_dot", &self.theta_dot)
             .field("psip_dot", &self.psip_dot)
             .field("rho_dot", &self.rho_dot)

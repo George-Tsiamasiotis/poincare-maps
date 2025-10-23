@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ParticleError {
     /// Error from [`equilibrium`].
@@ -12,7 +14,7 @@ pub enum ParticleError {
     #[error("Interpolation domain error: {0}")]
     DomainError(#[from] rsl_interpolation::DomainError),
 
-    /// TODO:
-    #[error("TODO")]
-    InvalidAngle,
+    /// Particle timed out.
+    #[error("Particle timed out after {0:?}")]
+    TimedOut(Duration),
 }
