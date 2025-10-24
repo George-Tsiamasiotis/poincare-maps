@@ -9,7 +9,7 @@ mod state;
 pub use config::get_config;
 pub use error::ParticleError;
 pub use evolution::Evolution;
-pub use particle::Particle;
+pub use particle::{IntegrationStatus, Particle};
 pub use point::Point;
 pub use state::State;
 

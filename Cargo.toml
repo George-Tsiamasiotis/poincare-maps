@@ -10,3 +10,16 @@ rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpol
 
 [workspace.package]
 authors = ["George Tsiamasiotis"]
+
+[profile.test]
+opt-level = 1
+
+# Bevy tip
+
+# Enable a small amount of optimization in the dev profile.
+[profile.dev]
+opt-level = 1
+
+# Enable a large amount of optimization in the dev profile for dependencies.
+[profile.dev.package."*"]
+opt-level = 3

@@ -17,7 +17,7 @@ fn main() {
     let psip_wall = qfactor.psip_wall;
 
     let mut particle = Particle::new(0.0, 0.0, 0.5 * psip_wall, 0.005, 0.0, 0.0);
-    match particle.run_ode(&qfactor, &bfield, &current, &per, (0.0, 1000.0)) {
+    match particle.integrate(&qfactor, &bfield, &current, &per, (0.0, 1000.0)) {
         Ok(_) => dbg!(&particle),
         Err(err) => {
             eprintln!("{}", err);

@@ -67,19 +67,11 @@ pub(crate) struct Solver {
     pub(crate) state4: State,
     pub(crate) state5: State,
     pub(crate) state6: State,
-    pub(crate) next: State,
 }
 
 impl Solver {
     pub(crate) fn init(&mut self, state: &State) {
-        // Clone to keep the accelerator state.
         self.state1 = state.clone();
-        self.state2 = state.clone();
-        self.state3 = state.clone();
-        self.state4 = state.clone();
-        self.state5 = state.clone();
-        self.state6 = state.clone();
-        self.next = state.clone();
     }
 
     pub(crate) fn start(
@@ -125,12 +117,19 @@ impl Solver {
             A21 * self.k1[3],
         ];
 
-        // self.state2.mu = self.state1.mu;
+        // States 2-6 are uninitialized, so we need to copy all the indepenendent variables before
+        // evaluating.
+        // The accelerators don't really need to be copied, since, the 1st state's cache should be
+        // the same for all the others, but we want to keep track of the hits and misses.
+        // Same goes for the cache, but we don't really mind for those stats.
+        self.state2.mu = self.state1.mu;
         self.state2.time = self.state1.time + C2 * h;
         self.state2.theta = self.state1.theta + coef[0] * h;
         self.state2.psip = self.state1.psip + coef[1] * h;
         self.state2.rho = self.state1.rho + coef[2] * h;
         self.state2.zeta = self.state1.zeta + coef[3] * h;
+        self.state2.xacc = self.state1.xacc;
+        self.state2.yacc = self.state1.yacc;
         self.state2.evaluate(qfactor, current, bfield, per)?;
         self.k2 = [
             self.state2.theta_dot,
@@ -156,12 +155,14 @@ impl Solver {
             A31 * self.k1[3] + A32 * self.k2[3],
         ];
 
-        // self.state3.mu = self.state1.mu;
+        self.state3.mu = self.state1.mu;
         self.state3.time = self.state1.time + C3 * h;
         self.state3.theta = self.state1.theta + coef[0] * h;
         self.state3.psip = self.state1.psip + coef[1] * h;
         self.state3.rho = self.state1.rho + coef[2] * h;
         self.state3.zeta = self.state1.zeta + coef[3] * h;
+        self.state3.xacc = self.state2.xacc;
+        self.state3.yacc = self.state2.yacc;
         self.state3.evaluate(qfactor, current, bfield, per)?;
         self.k3 = [
             self.state3.theta_dot,
@@ -187,12 +188,14 @@ impl Solver {
             A41 * self.k1[3] + A42 * self.k2[3] + A43 * self.k3[3],
         ];
 
-        // self.state4.mu = self.state1.mu;
+        self.state4.mu = self.state1.mu;
         self.state4.time = self.state1.time + C4 * h;
         self.state4.theta = self.state1.theta + coef[0] * h;
         self.state4.psip = self.state1.psip + coef[1] * h;
         self.state4.rho = self.state1.rho + coef[2] * h;
         self.state4.zeta = self.state1.zeta + coef[3] * h;
+        self.state4.xacc = self.state3.xacc;
+        self.state4.yacc = self.state3.yacc;
         self.state4.evaluate(qfactor, current, bfield, per)?;
         self.k4 = [
             self.state4.theta_dot,
@@ -218,12 +221,14 @@ impl Solver {
             A51 * self.k1[3] + A52 * self.k2[3] + A53 * self.k3[3] + A54 * self.k4[3],
         ];
 
-        // self.state5.mu = self.state1.mu;
+        self.state5.mu = self.state1.mu;
         self.state5.time = self.state1.time + C5 * h;
         self.state5.theta = self.state1.theta + coef[0] * h;
         self.state5.psip = self.state1.psip + coef[1] * h;
         self.state5.rho = self.state1.rho + coef[2] * h;
         self.state5.zeta = self.state1.zeta + coef[3] * h;
+        self.state5.xacc = self.state4.xacc;
+        self.state5.yacc = self.state4.yacc;
         self.state5.evaluate(qfactor, current, bfield, per)?;
         self.k5 = [
             self.state5.theta_dot,
@@ -250,12 +255,14 @@ impl Solver {
                 A61 * self.k1[3] + A62 * self.k2[3] + A63 * self.k3[3] + A64 * self.k4[3] + A65 * self.k5[3],
             ];
 
-        // self.state6.mu = self.state1.mu;
+        self.state6.mu = self.state1.mu;
         self.state6.time = self.state1.time + C6 * h;
         self.state6.theta = self.state1.theta + coef[0] * h;
         self.state6.psip = self.state1.psip + coef[1] * h;
         self.state6.rho = self.state1.rho + coef[2] * h;
         self.state6.zeta = self.state1.zeta + coef[3] * h;
+        self.state6.xacc = self.state5.xacc;
+        self.state6.yacc = self.state5.yacc;
         self.state6.evaluate(qfactor, current, bfield, per)?;
         self.k6 = [
             self.state6.theta_dot,
@@ -324,13 +331,17 @@ impl Solver {
 
     pub(crate) fn next_state(&mut self, h: f64) -> State {
         {
-            self.next.time = self.state1.time + h;
-            self.next.theta = self.state1.theta + h * self.weights[0];
-            self.next.psip = self.state1.psip + h * self.weights[1];
-            self.next.rho = self.state1.rho + h * self.weights[2];
-            self.next.zeta = self.state1.zeta + h * self.weights[3];
-            self.next.mu = self.state1.mu;
-            self.next.clone()
+            State {
+                time: self.state1.time + h,
+                theta: self.state1.theta + h * self.weights[0],
+                psip: self.state1.psip + h * self.weights[1],
+                rho: self.state1.rho + h * self.weights[2],
+                zeta: self.state1.zeta + h * self.weights[3],
+                mu: self.state1.mu,
+                xacc: self.state6.xacc,
+                yacc: self.state6.yacc,
+                ..Default::default()
+            }
         }
     }
 }
@@ -352,7 +363,6 @@ impl Default for Solver {
             state4: State::default(),
             state5: State::default(),
             state6: State::default(),
-            next: State::default(),
         }
     }
 }

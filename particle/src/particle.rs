@@ -53,7 +53,7 @@ impl Particle {
     }
 
     /// Integrates the particle, storing the calculated obrit in [`Evolution`].
-    pub fn run_ode(
+    pub fn integrate(
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
@@ -72,19 +72,21 @@ impl Particle {
         while state.time <= t_eval.1 {
             // We still want to keep the particle, and also store its final state and final point,
             // even if the integration isn't properly completed.
-            match {
+            let res = {
                 // Store the most recent state's point, including the intial and final points, even
                 // if they are invalid.
                 let result = state.evaluate(qfactor, current, bfield, per);
                 self.evolution.push_point(&Point::from_state(&state));
                 result
-            } {
+            };
+            match res {
                 Err(err) if matches!(&err, ParticleError::DomainError(..)) => {
                     self.status = IntegrationStatus::Escaped;
                     break;
                 }
-                Err(_) => {
+                Err(err) => {
                     // Should be unreachable..
+                    eprintln!("{err}");
                     self.status = IntegrationStatus::Failed;
                     break;
                 }
@@ -101,10 +103,11 @@ impl Particle {
             solver.init(&state);
             match solver.start(dt, qfactor, bfield, current, per) {
                 Ok(_) => (),
-                Err(_) => {
+                Err(err) => {
                     // This could only fail due to the solver's internal states' evaluate() calls.
                     // However, this will be already caught at the start of the loop, even if the
                     // initial state was invalid.
+                    eprintln!("{err}");
                     unreachable!()
                 }
             };
