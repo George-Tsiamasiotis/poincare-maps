@@ -1,6 +1,7 @@
 mod config;
 mod error;
 mod evolution;
+mod mapping;
 mod particle;
 mod point;
 mod rkf45;
@@ -9,6 +10,7 @@ mod state;
 pub use config::get_config;
 pub use error::ParticleError;
 pub use evolution::Evolution;
+pub use mapping::*;
 pub use particle::{IntegrationStatus, Particle};
 pub use point::Point;
 pub use state::State;

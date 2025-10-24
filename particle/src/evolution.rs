@@ -14,7 +14,6 @@ pub struct Evolution {
     pub psi: Vec<f64>,
     pub ptheta: Vec<f64>,
     pub pzeta: Vec<f64>,
-    pub mu: f64,
     pub duration: Duration,
 }
 
@@ -29,7 +28,6 @@ impl Evolution {
             psi: Vec::with_capacity(capacity),
             ptheta: Vec::with_capacity(capacity),
             pzeta: Vec::with_capacity(capacity),
-            mu: f64::NAN,
             duration: Duration::default(),
         }
     }

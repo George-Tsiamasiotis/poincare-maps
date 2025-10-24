@@ -1,14 +1,18 @@
 use std::time::Instant;
 
 use crate::Evolution;
+use crate::Mapping;
 use crate::ParticleError;
+use crate::PoincareSection::*;
 use crate::Point;
 use crate::Result;
 use crate::Solver;
 use crate::State;
+use crate::check_accuracy;
 use crate::config::Config;
 use crate::get_config;
 use crate::state::Display;
+use crate::{theta_map, zeta_map};
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 
 #[derive(Debug, Clone, Default)]
@@ -18,6 +22,7 @@ pub enum IntegrationStatus {
     Integrated,
     Escaped,
     TimedOut,
+    InvalidIntersections,
     Failed,
 }
 
@@ -32,7 +37,7 @@ pub struct Particle {
     /// Status of the particle's integration.
     pub status: IntegrationStatus,
     /// The global configuration parameters.
-    config: Config,
+    pub(crate) config: Config,
 }
 
 impl Particle {
@@ -61,6 +66,7 @@ impl Particle {
         per: &Perturbation,
         t_eval: (f64, f64),
     ) -> Result<()> {
+        self.evolution = Evolution::with_capacity(self.config.evolution_init_capacity);
         self.initial_state.evaluate(qfactor, current, bfield, per)?;
 
         // Tracks the state of the particle in each step. Also keeps the Accelerators' states.
@@ -80,15 +86,13 @@ impl Particle {
                 result
             };
             match res {
-                Err(err) if matches!(&err, ParticleError::DomainError(..)) => {
+                Err(ParticleError::DomainError(..)) => {
                     self.status = IntegrationStatus::Escaped;
                     break;
                 }
                 Err(err) => {
-                    // Should be unreachable..
-                    eprintln!("{err}");
                     self.status = IntegrationStatus::Failed;
-                    break;
+                    unreachable!("{err}");
                 }
                 Ok(_) => (),
             }
@@ -101,22 +105,79 @@ impl Particle {
             // Perform a step
             let mut solver = Solver::default();
             solver.init(&state);
-            match solver.start(dt, qfactor, bfield, current, per) {
-                Ok(_) => (),
-                Err(err) => {
-                    // This could only fail due to the solver's internal states' evaluate() calls.
-                    // However, this will be already caught at the start of the loop, even if the
-                    // initial state was invalid.
-                    eprintln!("{err}");
-                    unreachable!()
-                }
+            if let Err(err) = solver.start(dt, qfactor, bfield, current, per) {
+                // This could only fail due to the solver's internal states' evaluate() calls.
+                // However, this will be already caught at the start of the loop, even if the
+                // initial state was invalid.
+                unreachable!("{err}");
             };
             dt = solver.calculate_optimal_step(dt);
             state = solver.next_state(dt);
         }
 
         self.evolution.duration = start.elapsed();
+        self.evolution.shrink_to_fit();
         self.final_state = state.into_evaluated(qfactor, current, bfield, per)?;
+        Ok(())
+    }
+
+    /// Integrates the particle, storing its intersections with the Poincare surface defined by
+    /// [`Mapping`].
+    pub fn map(
+        &mut self,
+        qfactor: &Qfactor,
+        bfield: &Bfield,
+        current: &Current,
+        per: &Perturbation,
+        mapping: &Mapping,
+    ) -> Result<()> {
+        self.evolution = Evolution::with_capacity(self.config.evolution_init_capacity);
+        self.initial_state.evaluate(qfactor, current, bfield, per)?;
+
+        self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
+        let accuracy_result: Result<()>;
+        let map_result: Result<()>;
+
+        let start = Instant::now();
+        match mapping.section {
+            ConstTheta => {
+                map_result = theta_map(self, qfactor, bfield, current, per, mapping);
+                accuracy_result = check_accuracy(&self.evolution.theta, self.config.map_threshold);
+            }
+            ConstZeta => {
+                map_result = zeta_map(self, qfactor, bfield, current, per, mapping);
+                accuracy_result = check_accuracy(&self.evolution.zeta, self.config.map_threshold);
+            }
+        };
+
+        match map_result {
+            Err(ParticleError::DomainError(..)) => {
+                self.status = IntegrationStatus::Escaped;
+            }
+            Err(err) => {
+                self.status = IntegrationStatus::Failed;
+                unreachable!("{err}");
+            }
+            Ok(_) => (),
+        }
+
+        if accuracy_result.is_err() {
+            self.status = IntegrationStatus::Failed;
+        };
+
+        self.evolution.duration = start.elapsed();
+        self.evolution.shrink_to_fit();
+        self.final_state = State {
+            mu: self.initial_state.mu,
+            time: self.evolution.time.last().copied().unwrap_or_default(),
+            theta: self.evolution.theta.last().copied().unwrap_or_default(),
+            psip: self.evolution.psip.last().copied().unwrap_or_default(),
+            rho: self.evolution.rho.last().copied().unwrap_or_default(),
+            zeta: self.evolution.zeta.last().copied().unwrap_or_default(),
+            ..Default::default()
+        }
+        .into_evaluated(qfactor, current, bfield, per)?;
+
         Ok(())
     }
 }

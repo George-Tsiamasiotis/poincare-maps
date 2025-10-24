@@ -9,3 +9,5 @@ energy_rel_tol = 1e-10
 step_rel_tol = 1e-9
 # The starting capacity of the Evolution time series vectors.
 evolution_init_capacity = 2000
+# The maximum allowed absolute difference between two consecutive intersections.
+map_threshold = 1e-9

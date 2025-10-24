@@ -5,7 +5,7 @@ use particle::*;
 use crate::common::create_equilibrium;
 
 #[test]
-fn test_normal_particle() {
+fn test_normal_particle_int() {
     let (qfactor, current, bfield, per) = create_equilibrium();
     let psip_wall = qfactor.psip_wall;
 

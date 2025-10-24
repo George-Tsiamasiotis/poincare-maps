@@ -17,6 +17,7 @@ pub struct Config {
     pub energy_rel_tol: f64,
     pub step_rel_tol: f64,
     pub evolution_init_capacity: usize,
+    pub map_threshold: f64,
 }
 
 /// Default configuration if no file is found
@@ -28,6 +29,7 @@ impl Default for Config {
             energy_rel_tol: 1e-12,
             step_rel_tol: 1e-12,
             evolution_init_capacity: 2000,
+            map_threshold: 1e-9,
         }
     }
 }

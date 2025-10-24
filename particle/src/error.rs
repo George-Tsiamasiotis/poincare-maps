@@ -17,4 +17,8 @@ pub enum ParticleError {
     /// Particle timed out.
     #[error("Particle timed out after {0:?}")]
     TimedOut(Duration),
+
+    /// Intersection accuracy check failed.
+    #[error("Intersection accuracy check failed.")]
+    IntersectionError,
 }
