@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::Evolution;
 use crate::Mapping;
 use crate::ParticleError;
-use crate::PoincareSection::*;
+use crate::PoincareSection;
 use crate::Point;
 use crate::Result;
 use crate::Solver;
@@ -11,8 +11,8 @@ use crate::State;
 use crate::check_accuracy;
 use crate::config::Config;
 use crate::get_config;
+use crate::map_integrate;
 use crate::state::Display;
-use crate::{theta_map, zeta_map};
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 
 #[derive(Debug, Clone, Default)]
@@ -133,24 +133,10 @@ impl Particle {
     ) -> Result<()> {
         self.evolution = Evolution::with_capacity(self.config.evolution_init_capacity);
         self.initial_state.evaluate(qfactor, current, bfield, per)?;
-
         self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
-        let accuracy_result: Result<()>;
-        let map_result: Result<()>;
-
         let start = Instant::now();
-        match mapping.section {
-            ConstTheta => {
-                map_result = theta_map(self, qfactor, bfield, current, per, mapping);
-                accuracy_result = check_accuracy(&self.evolution.theta, self.config.map_threshold);
-            }
-            ConstZeta => {
-                map_result = zeta_map(self, qfactor, bfield, current, per, mapping);
-                accuracy_result = check_accuracy(&self.evolution.zeta, self.config.map_threshold);
-            }
-        };
 
-        match map_result {
+        match map_integrate(self, qfactor, bfield, current, per, mapping) {
             Err(ParticleError::DomainError(..)) => {
                 self.status = IntegrationStatus::Escaped;
             }
@@ -161,7 +147,11 @@ impl Particle {
             Ok(_) => (),
         }
 
-        if accuracy_result.is_err() {
+        let intersections = match mapping.section {
+            PoincareSection::ConstZeta => &self.evolution.zeta,
+            PoincareSection::ConstTheta => &self.evolution.theta,
+        };
+        if check_accuracy(intersections, self.config.map_threshold).is_err() {
             self.status = IntegrationStatus::Failed;
         };
 
