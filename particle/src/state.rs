@@ -1,4 +1,5 @@
 use core::f64;
+use std::f64::consts::TAU;
 
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
@@ -103,6 +104,9 @@ pub struct State {
     pub g_over_d: f64,
     /// The intermediate value i/D.
     pub i_over_d: f64,
+
+    pub mod_theta: f64,
+    pub mod_zeta: f64,
 }
 
 impl State {
@@ -145,6 +149,7 @@ impl State {
         per: &Perturbation,
     ) -> Result<()> {
         // First do all the interpolations.
+        self.calculate_modulos();
         self.calculate_qfactor_quantities(qfactor)?;
         self.calculate_current_quantities(current)?;
         self.calculate_bfield_quantities(bfield)?;
@@ -163,6 +168,11 @@ impl State {
         self.calculate_rho_dot();
         self.calculate_zeta_dot();
         Ok(())
+    }
+
+    fn calculate_modulos(&mut self) {
+        self.mod_theta = self.theta % TAU;
+        self.mod_zeta = self.zeta % TAU;
     }
 
     #[cfg(not(feature = "lar"))]
@@ -185,21 +195,21 @@ impl State {
     fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
         self.b = bfield.b(
             self.psip,
-            self.theta,
+            self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
             &mut self.cache,
         )?;
         self.db_dtheta = bfield.db_dtheta(
             self.psip,
-            self.theta,
+            self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
             &mut self.cache,
         )?;
         self.db_dpsip = bfield.db_dpsip(
             self.psip,
-            self.theta,
+            self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
             &mut self.cache,
@@ -209,11 +219,11 @@ impl State {
     }
 
     fn calculate_perturbation(&mut self, per: &Perturbation) -> Result<()> {
-        self.p = per.p(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.dp_dpsip = per.dp_dpsip(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.dp_dtheta = per.dp_dtheta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.dp_dzeta = per.dp_dzeta(self.psip, self.theta, self.zeta, &mut self.xacc)?;
-        self.dp_dt = per.dp_dt(self.psip, self.theta, self.zeta, &mut self.xacc)?;
+        self.p = per.p(self.psip, self.mod_theta, self.zeta, &mut self.xacc)?;
+        self.dp_dpsip = per.dp_dpsip(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
+        self.dp_dtheta = per.dp_dtheta(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
+        self.dp_dzeta = per.dp_dzeta(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
+        self.dp_dt = per.dp_dt(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
         Ok(())
     }
 
@@ -396,6 +406,8 @@ impl Default for State {
             rho_bsquared_d: f64::NAN,
             g_over_d: f64::NAN,
             i_over_d: f64::NAN,
+            mod_theta: f64::NAN,
+            mod_zeta: f64::NAN,
         }
     }
 }
