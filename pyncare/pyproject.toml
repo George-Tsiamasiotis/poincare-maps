@@ -1,0 +1,25 @@
+[project]
+name = "pyncare"
+version = "0.1.0"
+description = "Python wrappers around the 'poincare' crate."
+readme = "README.md"
+authors = [
+    { name = "George-Tsiamasiotis", email = "gt.develop@protonmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.maturin]
+module-name = "pyncare._core"
+python-packages = ["pyncare"]
+python-source = "src"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[dependency-groups]
+dev = [
+    "ipython>=9.6.0",
+    "pygobject>=3.54.5",
+]

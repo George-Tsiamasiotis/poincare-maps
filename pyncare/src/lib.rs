@@ -1,14 +1,11 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod pylibrium;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use pyo3::prelude::*;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub use pylibrium::*;
+
+#[pymodule]
+fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyQfactor>()?;
+    Ok(())
 }
