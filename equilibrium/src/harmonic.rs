@@ -32,6 +32,62 @@ pub struct Harmonic {
     pub psip_wall: f64,
 }
 
+/// Holds the Harmonic's values evalutated at a specific spot. Since all the harmonic's methods are
+/// called consecutively over the same coordinates, most terms do not need to be calculated every
+/// time.
+///
+/// Similar to the Accelerators, they are stored inside State, and do not affect the behavior of the
+/// equilibrium objects themselves.
+///
+/// The cache should be cloned in each new state calculated from the Solver.
+#[derive(Clone, Default)]
+pub struct HarmonicCache {
+    pub hits: usize,
+    pub misses: usize,
+    pub psip: f64,
+    pub theta: f64,
+    pub zeta: f64,
+    pub alpha: f64,
+    pub dalpha: f64,
+    pub sin: f64,
+    pub cos: f64,
+}
+
+impl HarmonicCache {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_updated(&mut self, psip: f64, theta: f64, zeta: f64) -> bool {
+        if (self.psip == psip) & (self.theta == theta) & (self.zeta == zeta) {
+            self.hits += 1;
+            true
+        } else {
+            self.misses += 1;
+            false
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        h: &Harmonic,
+        psip: f64,
+        theta: f64,
+        zeta: f64,
+        acc: &mut Accelerator,
+    ) -> Result<()> {
+        // Comparing floats is OK here since they are simply copied between every call.
+        self.psip = psip;
+        self.theta = theta;
+        self.zeta = zeta;
+        self.alpha = h.a_spline.eval(psip, acc)?;
+        self.dalpha = h.a_spline.eval_deriv(psip, acc)?;
+        let mod_arg = (h.m * theta - h.n * zeta) % TAU;
+        (self.sin, self.cos) = mod_arg.sin_cos();
+        Ok(())
+    }
+}
+
 /// Creation
 impl Harmonic {
     /// Constructs a [`Harmonic`] from a netCDF file at `path`, with spline of `typ`
@@ -112,14 +168,24 @@ impl Harmonic {
     /// let path = PathBuf::from("../data.nc");
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
-    /// let mut psi_acc = Accelerator::new();
-    /// let h = harmonic.h(0.015, 2.0*PI, 0.0, &mut psi_acc)?;
+    /// let mut acc = Accelerator::new();
+    /// let mut hcache = HarmonicCache::new();
+    /// let h = harmonic.h(0.015, 2.0*PI, 0.0, &mut hcache, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn h(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = (self.m * theta - self.n * zeta + self.phase).cos();
-        Ok(self.a_spline.eval(psip, acc)? * term)
+    pub fn h(
+        &self,
+        psip: f64,
+        theta: f64,
+        zeta: f64,
+        cache: &mut HarmonicCache,
+        acc: &mut Accelerator,
+    ) -> Result<f64> {
+        if !cache.is_updated(psip, theta, zeta) {
+            cache.update(&self, psip, theta, zeta, acc)?
+        };
+        Ok(cache.alpha * cache.cos)
     }
 
     /// Calculates the harmonic derivative `𝜕h/𝜕ψp`.
@@ -137,13 +203,23 @@ impl Harmonic {
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
-    /// let dh_dpsip = harmonic.dh_dpsip(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let mut hcache = HarmonicCache::new();
+    /// let dh_dpsip = harmonic.dh_dpsip(0.015, 2.0*PI, PI, &mut hcache, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn dh_dpsip(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = (self.m * theta - self.n * zeta + self.phase).cos();
-        Ok(self.a_spline.eval_deriv(psip, acc)? * term)
+    pub fn dh_dpsip(
+        &self,
+        psip: f64,
+        theta: f64,
+        zeta: f64,
+        cache: &mut HarmonicCache,
+        acc: &mut Accelerator,
+    ) -> Result<f64> {
+        if !cache.is_updated(psip, theta, zeta) {
+            cache.update(&self, psip, theta, zeta, acc)?
+        };
+        Ok(cache.dalpha * cache.cos)
     }
 
     /// Calculates the harmonic derivative `𝜕h/𝜕θ`.
@@ -161,7 +237,8 @@ impl Harmonic {
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
-    /// let dh_dtheta = harmonic.dh_dtheta(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let mut hcache = HarmonicCache::new();
+    /// let dh_dtheta = harmonic.dh_dtheta(0.015, 2.0*PI, PI, &mut hcache, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -170,10 +247,13 @@ impl Harmonic {
         psip: f64,
         theta: f64,
         zeta: f64,
+        cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
-        let term = -self.m * (self.m * theta - self.n * zeta + self.phase).sin();
-        Ok(self.a_spline.eval(psip, acc)? * term)
+        if !cache.is_updated(psip, theta, zeta) {
+            cache.update(&self, psip, theta, zeta, acc)?
+        };
+        Ok(cache.alpha * (-self.m) * cache.sin)
     }
 
     /// Calculates the perturbation derivative `𝜕h/𝜕ζ`.
@@ -191,13 +271,23 @@ impl Harmonic {
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
-    /// let dh_dzeta = harmonic.dh_dzeta(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let mut hcache = HarmonicCache::new();
+    /// let dh_dzeta = harmonic.dh_dzeta(0.015, 2.0*PI, PI, &mut hcache, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn dh_dzeta(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
-        let term = self.n * (self.m * theta - self.n * zeta + self.phase).sin();
-        Ok(self.a_spline.eval(psip, acc)? * term)
+    pub fn dh_dzeta(
+        &self,
+        psip: f64,
+        theta: f64,
+        zeta: f64,
+        cache: &mut HarmonicCache,
+        acc: &mut Accelerator,
+    ) -> Result<f64> {
+        if !cache.is_updated(psip, theta, zeta) {
+            cache.update(&self, psip, theta, zeta, acc)?
+        };
+        Ok(cache.alpha * self.n * cache.sin)
     }
 
     /// Calculates the perturbation derivative `𝜕h/𝜕t`.
@@ -215,12 +305,21 @@ impl Harmonic {
     /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
     ///
     /// let mut acc = Accelerator::new();
-    /// let dh_dt = harmonic.dh_dt(0.015, 2.0*PI, PI, &mut acc)?;
+    /// let mut hcache = HarmonicCache::new();
+    /// let dh_dt = harmonic.dh_dt(0.015, 2.0*PI, PI, &mut hcache, &mut acc)?;
     /// # Ok(())
     /// # }
     /// ```
     #[allow(unused_variables)]
-    pub fn dh_dt(&self, psip: f64, theta: f64, zeta: f64, acc: &mut Accelerator) -> Result<f64> {
+    pub fn dh_dt(
+        &self,
+        psip: f64,
+        theta: f64,
+        zeta: f64,
+        cache: &mut HarmonicCache,
+        acc: &mut Accelerator,
+    ) -> Result<f64> {
+        // Time-independent perturbations at the moment.
         Ok(0.0)
     }
 }
@@ -299,5 +398,14 @@ mod test {
         let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
         let _ = harmonic.clone();
         let _ = format!("{harmonic:?}");
+    }
+}
+
+impl std::fmt::Debug for HarmonicCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HarmonicCache")
+            .field("hits  ", &self.hits)
+            .field("misses", &self.misses)
+            .finish()
     }
 }

@@ -108,6 +108,7 @@ fn calculate_mod_state1(state1: &State, section: &PoincareSection) -> State {
                 psip_dot: dpsip_dtheta,
                 rho_dot: drho_dtheta,
                 zeta_dot: dzeta_dtheta,
+                hcache: state1.hcache.clone(),
                 ..*state1
             }
         }
@@ -124,6 +125,7 @@ fn calculate_mod_state1(state1: &State, section: &PoincareSection) -> State {
                 psip_dot: dpsip_dzeta,
                 rho_dot: drho_dzeta,
                 zeta_dot: dt_dzeta,
+                hcache: state1.hcache.clone(),
                 ..*state1
             }
         }

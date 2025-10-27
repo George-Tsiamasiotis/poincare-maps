@@ -11,7 +11,7 @@ pub fn create_equilibrium() -> (Qfactor, Current, Bfield, Perturbation) {
         Harmonic::from_dataset(&path, "akima", 7.0, 1.0, 0.0).unwrap(),
         Harmonic::from_dataset(&path, "akima", 8.0, 1.0, 0.0).unwrap(),
     ];
-    let per = Perturbation::from_harmonics(harmonics);
+    let per = Perturbation::from_harmonics(&harmonics);
 
     (qfactor, current, bfield, per)
 }

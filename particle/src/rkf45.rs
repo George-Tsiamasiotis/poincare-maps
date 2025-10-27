@@ -119,9 +119,6 @@ impl Solver {
 
         // States 2-6 are uninitialized, so we need to copy all the indepenendent variables before
         // evaluating.
-        // The accelerators don't really need to be copied, since, the 1st state's cache should be
-        // the same for all the others, but we want to keep track of the hits and misses.
-        // Same goes for the cache, but we don't really mind for those stats.
         self.state2.mu = self.state1.mu;
         self.state2.time = self.state1.time + C2 * h;
         self.state2.theta = self.state1.theta + coef[0] * h;
@@ -130,6 +127,7 @@ impl Solver {
         self.state2.zeta = self.state1.zeta + coef[3] * h;
         self.state2.xacc = self.state1.xacc;
         self.state2.yacc = self.state1.yacc;
+        self.state2.hcache = self.state1.hcache.clone();
         self.state2.evaluate(qfactor, current, bfield, per)?;
         self.k2 = [
             self.state2.theta_dot,
@@ -163,6 +161,7 @@ impl Solver {
         self.state3.zeta = self.state1.zeta + coef[3] * h;
         self.state3.xacc = self.state2.xacc;
         self.state3.yacc = self.state2.yacc;
+        self.state3.hcache = self.state2.hcache.clone();
         self.state3.evaluate(qfactor, current, bfield, per)?;
         self.k3 = [
             self.state3.theta_dot,
@@ -196,6 +195,7 @@ impl Solver {
         self.state4.zeta = self.state1.zeta + coef[3] * h;
         self.state4.xacc = self.state3.xacc;
         self.state4.yacc = self.state3.yacc;
+        self.state4.hcache = self.state3.hcache.clone();
         self.state4.evaluate(qfactor, current, bfield, per)?;
         self.k4 = [
             self.state4.theta_dot,
@@ -229,6 +229,7 @@ impl Solver {
         self.state5.zeta = self.state1.zeta + coef[3] * h;
         self.state5.xacc = self.state4.xacc;
         self.state5.yacc = self.state4.yacc;
+        self.state5.hcache = self.state4.hcache.clone();
         self.state5.evaluate(qfactor, current, bfield, per)?;
         self.k5 = [
             self.state5.theta_dot,
@@ -263,6 +264,7 @@ impl Solver {
         self.state6.zeta = self.state1.zeta + coef[3] * h;
         self.state6.xacc = self.state5.xacc;
         self.state6.yacc = self.state5.yacc;
+        self.state6.hcache = self.state5.hcache.clone();
         self.state6.evaluate(qfactor, current, bfield, per)?;
         self.k6 = [
             self.state6.theta_dot,
@@ -340,6 +342,7 @@ impl Solver {
                 mu: self.state1.mu,
                 xacc: self.state6.xacc,
                 yacc: self.state6.yacc,
+                hcache: self.state6.hcache.clone(),
                 ..Default::default()
             }
         }

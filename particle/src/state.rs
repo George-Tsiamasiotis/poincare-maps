@@ -1,6 +1,7 @@
 use core::f64;
 use std::f64::consts::TAU;
 
+use equilibrium::HarmonicCache;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
@@ -18,7 +19,10 @@ pub struct State {
     /// The `θ_p` coordinate [`Accelerator`].
     pub yacc: Accelerator,
     /// The 2d Interpolation's [`Cache`].
-    pub cache: Cache<f64>,
+    pub spline2d_cache: Cache<f64>,
+    /// Holds a [`HarmonicCache`] for each harmonic of the [`Perturbation`], caching the expensive
+    /// trigonometric and interpolation values.
+    pub hcache: Vec<HarmonicCache>,
 
     /// The time of evaluation.
     pub time: f64,
@@ -198,32 +202,68 @@ impl State {
             self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
-            &mut self.cache,
+            &mut self.spline2d_cache,
         )?;
         self.db_dtheta = bfield.db_dtheta(
             self.psip,
             self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
-            &mut self.cache,
+            &mut self.spline2d_cache,
         )?;
         self.db_dpsip = bfield.db_dpsip(
             self.psip,
             self.mod_theta,
             &mut self.xacc,
             &mut self.yacc,
-            &mut self.cache,
+            &mut self.spline2d_cache,
         )?;
         self.db_dzeta = 0.0; // Axisymmetric configuration
         Ok(())
     }
 
     fn calculate_perturbation(&mut self, per: &Perturbation) -> Result<()> {
-        self.p = per.p(self.psip, self.mod_theta, self.zeta, &mut self.xacc)?;
-        self.dp_dpsip = per.dp_dpsip(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
-        self.dp_dtheta = per.dp_dtheta(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
-        self.dp_dzeta = per.dp_dzeta(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
-        self.dp_dt = per.dp_dt(self.psip, self.mod_theta, self.mod_zeta, &mut self.xacc)?;
+        // This is necessary, since we can't know the number of harmonics from the start. The
+        // hcache vec should be cloned in each solver state.
+        if self.hcache.is_empty() {
+            self.hcache = vec![HarmonicCache::default(); per.harmonics.len()];
+        }
+
+        self.p = per.p(
+            self.psip,
+            self.mod_theta,
+            self.mod_zeta,
+            &mut self.hcache,
+            &mut self.xacc,
+        )?;
+        self.dp_dpsip = per.dp_dpsip(
+            self.psip,
+            self.mod_theta,
+            self.mod_zeta,
+            &mut self.hcache,
+            &mut self.xacc,
+        )?;
+        self.dp_dtheta = per.dp_dtheta(
+            self.psip,
+            self.mod_theta,
+            self.mod_zeta,
+            &mut self.hcache,
+            &mut self.xacc,
+        )?;
+        self.dp_dzeta = per.dp_dzeta(
+            self.psip,
+            self.mod_theta,
+            self.mod_zeta,
+            &mut self.hcache,
+            &mut self.xacc,
+        )?;
+        self.dp_dt = per.dp_dt(
+            self.psip,
+            self.mod_theta,
+            self.mod_zeta,
+            &mut self.hcache,
+            &mut self.xacc,
+        )?;
         Ok(())
     }
 
@@ -367,7 +407,8 @@ impl Default for State {
         Self {
             xacc: Accelerator::new(),
             yacc: Accelerator::new(),
-            cache: Cache::new(),
+            spline2d_cache: Cache::new(),
+            hcache: Vec::new(),
             time: f64::NAN,
             theta: f64::NAN,
             psip: f64::NAN,
@@ -412,7 +453,7 @@ impl Default for State {
     }
 }
 
-/// Just to remove [`Cache`].
+/// Just to remove the Caches and Accelerators.
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("State")
