@@ -9,6 +9,7 @@ serde = { workspace = true }
 thiserror = {workspace = true}
 config-file = {workspace = true}
 rsl-interpolation = {workspace = true}
+config = {path = "../config"}
 equilibrium = {path = "../equilibrium"}
 
 [features]

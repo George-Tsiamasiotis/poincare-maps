@@ -1,11 +1,14 @@
 use crate::Particle;
+use crate::ParticleError;
 use crate::Point;
 use crate::Result;
 use crate::Solver;
 use crate::State;
+use config::*;
 
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use std::f64::consts::TAU;
+use std::time::Duration;
 
 /// Defines the surface of the Poincare section.
 #[derive(Clone, Copy)]
@@ -50,7 +53,7 @@ pub fn map_integrate(
     let mut state1 = particle.initial_state.clone(); // Already evaluated
     let mut state2: State;
 
-    let mut dt = particle.config.rkf45_first_step;
+    let mut dt = RKF45_FIRST_STEP;
 
     while particle.evolution.time.len() <= mapping.intersections {
         // Perform a step on the normal system.
@@ -61,6 +64,10 @@ pub fn map_integrate(
         state2 = solver.next_state(dt);
         state2.evaluate(qfactor, current, bfield, per)?;
 
+        if particle.evolution.time.len() == MAX_STEPS {
+            return Err(ParticleError::TimedOut(Duration::default()));
+        }
+
         // Hénon's trick.
         // Depending on the PoincareSection, the independent variable becomes either `zeta` or
         // `theta`. Checking its value in every function and every loop has negligible performance
@@ -68,7 +75,7 @@ pub fn map_integrate(
         // twice.
         if intersected(state1.zeta, state2.zeta, mapping.alpha) {
             let mod_state1 = calculate_mod_state1(&state1, &mapping.section);
-            let dtau = calculate_mod_step(&state1, &state2, &mapping);
+            let dtau = calculate_mod_step(&state1, &state2, mapping);
             let mod_state2 = calculate_mod_state2(qfactor, bfield, current, per, mod_state1, dtau)?;
             let intersection_state =
                 calculate_intersection_state(qfactor, bfield, current, per, mapping, mod_state2)?;

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["equilibrium", "particle", "poincare", "pyncare"]
+members = [ "config","equilibrium", "particle", "poincare", "pyncare"]
 
 [workspace.dependencies]
 thiserror = "2.0.17"

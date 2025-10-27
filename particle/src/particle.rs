@@ -1,3 +1,4 @@
+use std::time::Duration;
 use std::time::Instant;
 
 use crate::Evolution;
@@ -9,10 +10,9 @@ use crate::Result;
 use crate::Solver;
 use crate::State;
 use crate::check_accuracy;
-use crate::config::Config;
-use crate::get_config;
 use crate::map_integrate;
 use crate::state::Display;
+use config::*;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 
 #[derive(Debug, Clone, Default)]
@@ -21,9 +21,11 @@ pub enum IntegrationStatus {
     Initialized,
     Integrated,
     Escaped,
-    TimedOut,
+    TimedOut(Duration),
     InvalidIntersections,
-    Failed,
+    Failed {
+        reason: Box<str>,
+    },
 }
 
 #[derive(Clone)]
@@ -36,16 +38,13 @@ pub struct Particle {
     pub evolution: Evolution,
     /// Status of the particle's integration.
     pub status: IntegrationStatus,
-    /// The global configuration parameters.
-    pub(crate) config: Config,
 }
 
 impl Particle {
     /// Creates a new [`Particle`] from the initial conditions.
     pub fn new(t0: f64, theta0: f64, psip0: f64, rho0: f64, zeta0: f64, mu: f64) -> Self {
-        let config = get_config();
         let point = Point::new(t0, theta0, psip0, rho0, zeta0, mu);
-        let mut evolution = Evolution::with_capacity(config.evolution_init_capacity);
+        let mut evolution = Evolution::with_capacity(EVOLUTION_INIT_CAPACITY);
         evolution.push_point(&point);
 
         Self {
@@ -53,7 +52,6 @@ impl Particle {
             final_state: State::default(),
             status: IntegrationStatus::default(),
             evolution,
-            config,
         }
     }
 
@@ -66,13 +64,12 @@ impl Particle {
         per: &Perturbation,
         t_eval: (f64, f64),
     ) -> Result<()> {
-        self.evolution = Evolution::with_capacity(self.config.evolution_init_capacity);
         self.initial_state.evaluate(qfactor, current, bfield, per)?;
 
         // Tracks the state of the particle in each step. Also keeps the Accelerators' states.
         let mut state = self.initial_state.clone();
         self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
-        let mut dt = self.config.rkf45_first_step;
+        let mut dt = RKF45_FIRST_STEP;
 
         let start = Instant::now();
         while state.time <= t_eval.1 {
@@ -91,15 +88,14 @@ impl Particle {
                     break;
                 }
                 Err(err) => {
-                    self.status = IntegrationStatus::Failed;
-                    unreachable!("{err}");
+                    self.status = IntegrationStatus::Failed { reason: err.into() };
                 }
                 Ok(_) => (),
             }
 
-            if self.evolution.time.len() == self.config.max_steps {
-                self.status = IntegrationStatus::TimedOut;
-                return Err(ParticleError::TimedOut(start.elapsed()));
+            if self.evolution.time.len() == MAX_STEPS {
+                self.status = IntegrationStatus::TimedOut(start.elapsed());
+                break;
             }
 
             // Perform a step
@@ -131,7 +127,6 @@ impl Particle {
         per: &Perturbation,
         mapping: &Mapping,
     ) -> Result<()> {
-        self.evolution = Evolution::with_capacity(self.config.evolution_init_capacity);
         self.initial_state.evaluate(qfactor, current, bfield, per)?;
         self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
         let start = Instant::now();
@@ -140,9 +135,11 @@ impl Particle {
             Err(ParticleError::DomainError(..)) => {
                 self.status = IntegrationStatus::Escaped;
             }
+            Err(ParticleError::TimedOut(..)) => {
+                self.status = IntegrationStatus::TimedOut(start.elapsed());
+            }
             Err(err) => {
-                self.status = IntegrationStatus::Failed;
-                unreachable!("{err}");
+                self.status = IntegrationStatus::Failed { reason: err.into() };
             }
             Ok(_) => (),
         }
@@ -151,8 +148,8 @@ impl Particle {
             PoincareSection::ConstZeta => &self.evolution.zeta,
             PoincareSection::ConstTheta => &self.evolution.theta,
         };
-        if check_accuracy(intersections, self.config.map_threshold).is_err() {
-            self.status = IntegrationStatus::Failed;
+        if let Some(err) = check_accuracy(intersections, MAP_THRESHOLD).err() {
+            self.status = IntegrationStatus::Failed { reason: err.into() };
         };
 
         self.evolution.duration = start.elapsed();

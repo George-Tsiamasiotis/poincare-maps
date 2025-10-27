@@ -109,6 +109,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "config"
+version = "0.1.0"
+
+[[package]]
 name = "config-file"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -751,6 +755,7 @@ dependencies = [
 name = "particle"
 version = "0.1.0"
 dependencies = [
+ "config",
  "config-file",
  "equilibrium",
  "rsl-interpolation",

@@ -183,7 +183,7 @@ impl Harmonic {
         acc: &mut Accelerator,
     ) -> Result<f64> {
         if !cache.is_updated(psip, theta, zeta) {
-            cache.update(&self, psip, theta, zeta, acc)?
+            cache.update(self, psip, theta, zeta, acc)?
         };
         Ok(cache.alpha * cache.cos)
     }
@@ -217,7 +217,7 @@ impl Harmonic {
         acc: &mut Accelerator,
     ) -> Result<f64> {
         if !cache.is_updated(psip, theta, zeta) {
-            cache.update(&self, psip, theta, zeta, acc)?
+            cache.update(self, psip, theta, zeta, acc)?
         };
         Ok(cache.dalpha * cache.cos)
     }
@@ -251,7 +251,7 @@ impl Harmonic {
         acc: &mut Accelerator,
     ) -> Result<f64> {
         if !cache.is_updated(psip, theta, zeta) {
-            cache.update(&self, psip, theta, zeta, acc)?
+            cache.update(self, psip, theta, zeta, acc)?
         };
         Ok(cache.alpha * (-self.m) * cache.sin)
     }
@@ -285,7 +285,7 @@ impl Harmonic {
         acc: &mut Accelerator,
     ) -> Result<f64> {
         if !cache.is_updated(psip, theta, zeta) {
-            cache.update(&self, psip, theta, zeta, acc)?
+            cache.update(self, psip, theta, zeta, acc)?
         };
         Ok(cache.alpha * self.n * cache.sin)
     }

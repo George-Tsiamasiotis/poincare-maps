@@ -1,4 +1,3 @@
-mod config;
 mod error;
 mod evolution;
 mod mapping;
@@ -7,7 +6,6 @@ mod point;
 mod rkf45;
 mod state;
 
-pub use config::get_config;
 pub use error::ParticleError;
 pub use evolution::Evolution;
 pub use mapping::*;

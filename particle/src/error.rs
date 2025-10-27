@@ -22,3 +22,9 @@ pub enum ParticleError {
     #[error("Intersection accuracy check failed.")]
     IntersectionError,
 }
+
+impl From<ParticleError> for Box<str> {
+    fn from(value: ParticleError) -> Self {
+        value.to_string().into_boxed_str()
+    }
+}
