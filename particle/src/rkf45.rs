@@ -1,9 +1,7 @@
 use self::tableau::*;
 use crate::*;
+use config::*;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
-
-const SAFETY_FACTOR: f64 = 0.9;
-const REL_TOL: f64 = 1e-11;
 
 /// Runge-kutta-Fehlberg method coefficients (Wikipedia)
 mod tableau {
@@ -305,9 +303,13 @@ impl Solver {
         // // smaller due to the `REL_TOL/energy_diff` factor, so we need to bound it
         let energy_diff = ((initial_energy - final_energy) / initial_energy)
             .abs()
-            .max(REL_TOL / 2.0);
-        let exp = if energy_diff >= REL_TOL { 0.2 } else { 0.25 };
-        SAFETY_FACTOR * h * (REL_TOL / energy_diff).powf(exp)
+            .max(ENERGY_REL_TOL / 2.0);
+        let exp = if energy_diff >= ENERGY_REL_TOL {
+            0.2
+        } else {
+            0.25
+        };
+        SAFETY_FACTOR * h * (ENERGY_REL_TOL / energy_diff).powf(exp)
     }
 
     /// Source:
@@ -324,11 +326,11 @@ impl Solver {
         .abs();
         // When all errors happen to be smaller than REL_TOL, the optimal step keeps getting
         // smaller due to the `REL_TOL/max_error` factor, so we need to bound it
-        max_error = max_error.max(REL_TOL / 2.0);
+        max_error = max_error.max(STEP_REL_TOL / 2.0);
 
         // 0.2 = 1/*(p+1), where p the order
-        let exp = if max_error >= REL_TOL { 0.2 } else { 0.25 };
-        SAFETY_FACTOR * h * (REL_TOL / max_error).powf(exp)
+        let exp = if max_error >= STEP_REL_TOL { 0.2 } else { 0.25 };
+        SAFETY_FACTOR * h * (STEP_REL_TOL / max_error).powf(exp)
     }
 
     pub(crate) fn next_state(&mut self, h: f64) -> State {

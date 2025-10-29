@@ -7,11 +7,14 @@ pub const MAX_STEPS: usize = 10_000_000;
 /// for fast particles. The value is empirical.
 pub const RKF45_FIRST_STEP: f64 = 1e-3;
 
+/// The safety factor of the solver. Should be less than 1.0
+pub const SAFETY_FACTOR: f64 = 0.9;
+
 /// The relative tolerance of the energy error in every step.
-pub const ENERGY_REL_TOL: f64 = 1e-10;
+pub const ENERGY_REL_TOL: f64 = 1e-11;
 
 /// The relative tolerance of the stepping error in every step.
-pub const STEP_REL_TOL: f64 = 1e-9;
+pub const STEP_REL_TOL: f64 = 1e-11;
 
 // ==================== Mapping
 
