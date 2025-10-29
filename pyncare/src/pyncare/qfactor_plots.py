@@ -1,7 +1,7 @@
-import pyncare as pm
+from pyncare import Qfactor
 
 
-def q_plot(ax, qfactor: pm.Qfactor):
+def q_plot(ax, qfactor: Qfactor):
     """Plots the q factor extraced and derived data, as a function of ψp."""
     psip_data = qfactor.psip_data()
     q_data = qfactor.q_data()
@@ -19,7 +19,7 @@ def q_plot(ax, qfactor: pm.Qfactor):
     ax.legend()
 
 
-def psi_plot(ax, qfactor: pm.Qfactor):
+def psi_plot(ax, qfactor: Qfactor):
     """Plots the ψ extraced data, as a function of ψp."""
     psip_data = qfactor.psip_data()
     psi_data = qfactor.psi_data()

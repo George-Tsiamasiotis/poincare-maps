@@ -8,18 +8,18 @@
 # ///
 import matplotlib
 import matplotlib.pyplot as plt
-from pyncare import Qfactor, q_plot, psi_plot
+from pyncare import Current, g_plot, i_plot
 
 
 matplotlib.use("gtk3agg")
 
-qfactor = Qfactor("./data.nc", "akima")
+current = Current("./data.nc", "steffen")
 
-fig = plt.figure(**{"figsize": (11, 5), "layout": "constrained"})
-fig.suptitle("q-factor Profile")
+fig = plt.figure(**{"figsize": (15, 5), "layout": "constrained"})
+fig.suptitle("Plasma Currents")
 
 ax = fig.subplots(1, 2)
-q_plot(ax[0], qfactor)
-psi_plot(ax[1], qfactor)
+g_plot(ax[0], current)
+i_plot(ax[1], current)
 
 plt.show()
