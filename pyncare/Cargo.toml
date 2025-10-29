@@ -6,8 +6,11 @@ edition = "2021"
 [lib]
 name = "_core"
 crate-type = ["cdylib"]
+test = false # linker issues, not needed anyway
 
 [dependencies]
 config = {path = "../config"}
 equilibrium = {path = "../equilibrium"}
-pyo3 = { version = "0.27.1", features = ["extension-module", "abi3-py314"] }
+rsl-interpolation = {workspace = true}
+pyo3 = { version = "0.27.1", features = ["extension-module", "abi3-py314", "multiple-pymethods"] }
+numpy = "0.27.0"

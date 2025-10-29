@@ -1,3 +1,4 @@
+mod error;
 mod pylibrium;
 
 use pyo3::prelude::*;

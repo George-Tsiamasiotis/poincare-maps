@@ -7,7 +7,9 @@ authors = [
     { name = "George-Tsiamasiotis", email = "gt.develop@protonmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "numpy>=2.3.4",
+]
 
 [tool.maturin]
 module-name = "pyncare._core"
@@ -21,5 +23,12 @@ build-backend = "maturin"
 [dependency-groups]
 dev = [
     "ipython>=9.6.0",
+    "maturin-import-hook>=0.3.0",
+    "patchelf>=0.17.2.4",
     "pygobject>=3.54.5",
+    "pytest>=8.4.2",
 ]
+
+[tool.pytest.ini_options]
+testpaths = "./pytests"
+addopts = "--durations 2"
