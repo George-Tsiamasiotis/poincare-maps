@@ -1,6 +1,8 @@
+mod bfield;
 mod current;
 mod qfactor;
 
+pub use bfield::PyBfield;
 pub use current::PyCurrent;
 pub use qfactor::PyQfactor;
 
@@ -17,7 +19,20 @@ macro_rules! to_numpy1D_impl {
     };
 }
 
-/// Generates an eval method from the wrapped Rust object.
+/// Generates getter pymethods that return a 2D numpy array.
+#[macro_export]
+macro_rules! to_numpy2D_impl {
+    ($py_object:ident, $rust_object:ident, $name:ident) => {
+        #[pymethods]
+        impl $py_object {
+            pub fn $name<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
+                self.$rust_object.$name().into_pyarray(py)
+            }
+        }
+    };
+}
+
+/// Generates a 1D eval method from the wrapped Rust object.
 #[macro_export]
 macro_rules! eval1D_impl {
     ($py_object:ident, $rust_object:ident, $name:ident) => {
@@ -25,6 +40,25 @@ macro_rules! eval1D_impl {
         impl $py_object {
             pub fn $name(&mut self, psip: f64) -> Result<f64, PyEqError> {
                 Ok(self.$rust_object.$name(psip, &mut self.acc)?)
+            }
+        }
+    };
+}
+
+/// Generates a 2D eval method from the wrapped Rust object.
+#[macro_export]
+macro_rules! eval2D_impl {
+    ($py_object:ident, $rust_object:ident, $name:ident) => {
+        #[pymethods]
+        impl $py_object {
+            pub fn $name(&mut self, psip: f64, theta: f64) -> Result<f64, PyEqError> {
+                Ok(self.$rust_object.$name(
+                    psip,
+                    theta,
+                    &mut self.xacc,
+                    &mut self.yacc,
+                    &mut self.cache,
+                )?)
             }
         }
     };

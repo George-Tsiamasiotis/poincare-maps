@@ -12,3 +12,9 @@ def qfactor():
 def current():
     """Creates a Current object from "./data.nc" netCDF file."""
     return pm.Current("./data.nc", "akima")
+
+
+@pytest.fixture(scope="session")
+def bfield():
+    """Creates a Bfiel object from "./data.nc" netCDF file."""
+    return pm.Bfield("./data.nc", "bicubic")
