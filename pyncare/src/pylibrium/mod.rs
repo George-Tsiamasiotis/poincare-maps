@@ -1,5 +1,7 @@
+mod current;
 mod qfactor;
 
+pub use current::PyCurrent;
 pub use qfactor::PyQfactor;
 
 /// Generates getter pymethods that return a 1D numpy array.

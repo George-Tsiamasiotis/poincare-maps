@@ -8,5 +8,6 @@ pub use pylibrium::*;
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyQfactor>()?;
+    m.add_class::<PyCurrent>()?;
     Ok(())
 }

@@ -19,8 +19,6 @@ pub struct Current {
 
     /// The value of the poloidal angle ψp at the wall.
     pub psip_wall: f64,
-    /// The value of the toroidal angle ψ at the wall.
-    pub psi_wall: f64,
 }
 
 /// Creation
@@ -56,9 +54,6 @@ impl Current {
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
             .to_vec();
-        let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
-            .as_standard_layout()
-            .to_vec();
         let g_data = extract_1d_var(&eq.file, CURRENT_G)?
             .as_standard_layout()
             .to_vec();
@@ -70,7 +65,6 @@ impl Current {
         let i_spline = make_spline(typ, &psip_data, &i_data)?;
 
         let psip_wall = psip_data.last().copied().unwrap();
-        let psi_wall = psi_data.last().copied().unwrap();
 
         Ok(Self {
             path: path.to_owned(),
@@ -78,7 +72,6 @@ impl Current {
             g_spline,
             i_spline,
             psip_wall,
-            psi_wall,
         })
     }
 }
@@ -126,6 +119,48 @@ impl Current {
     pub fn i(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
         Ok(self.i_spline.eval(psip, acc)?)
     }
+
+    /// Calculates `𝜕g(ψp)/𝜕ψp`
+    ///
+    /// # Example
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let current = Current::from_dataset(&path, "cubic")?;
+    ///
+    /// let mut acc = Accelerator::new();
+    /// let dg = current.dg_dpsip(0.015, &mut acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn dg_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
+        Ok(self.g_spline.eval_deriv(psip, acc)?)
+    }
+
+    /// Calculates `𝜕I(ψp)/𝜕ψp`
+    ///
+    /// # Example
+    /// ```
+    /// # use equilibrium::*;
+    /// # use std::path::PathBuf;
+    /// # use rsl_interpolation::*;
+    /// #
+    /// # fn main() -> Result<()> {
+    /// let path = PathBuf::from("../data.nc");
+    /// let current = Current::from_dataset(&path, "cubic")?;
+    ///
+    /// let mut acc = Accelerator::new();
+    /// let di = current.di_dpsip(0.015, &mut acc)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn di_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
+        Ok(self.i_spline.eval_deriv(psip, acc)?)
+    }
 }
 
 /// Data Extraction
@@ -170,57 +205,12 @@ impl Current {
     }
 }
 
-impl Current {
-    /// Calculates `𝜕g(ψp)/𝜕ψp`
-    ///
-    /// # Example
-    /// ```
-    /// # use equilibrium::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let current = Current::from_dataset(&path, "cubic")?;
-    ///
-    /// let mut acc = Accelerator::new();
-    /// let dg = current.dg_dpsip(0.015, &mut acc)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn dg_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        Ok(self.g_spline.eval_deriv(psip, acc)?)
-    }
-
-    /// Calculates `𝜕I(ψp)/𝜕ψp`
-    ///
-    /// # Example
-    /// ```
-    /// # use equilibrium::*;
-    /// # use std::path::PathBuf;
-    /// # use rsl_interpolation::*;
-    /// #
-    /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let current = Current::from_dataset(&path, "cubic")?;
-    ///
-    /// let mut acc = Accelerator::new();
-    /// let di = current.di_dpsip(0.015, &mut acc)?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn di_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        Ok(self.i_spline.eval_deriv(psip, acc)?)
-    }
-}
-
 impl std::fmt::Debug for Current {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Current")
             .field("path", &self.path)
             .field("typ", &self.typ)
             .field("ψp_wall", &format!("{:.7}", self.psip_wall))
-            .field("ψ_wall", &format!("{:.7}", self.psi_wall))
             .field("len", &self.g_spline.xa.len())
             .finish()
     }

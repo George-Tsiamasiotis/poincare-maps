@@ -44,3 +44,55 @@ class Qfactor:
 
     def q_data_derived() -> np.ndarray:
         """The q values, as calculated from dψ/dψp, at the ψp data."""
+
+class Current:
+    """
+    Plasma current reconstructed from a NetCDF file.
+
+    Parameters
+    ----------
+    path: str
+        The path to the NetCDF file.
+    typ: str
+        The type of Interpolation. Available types: "Linear", "Cubic", "Akima", "AkimaPeriodic",
+        "Steffen".
+
+    Attributes
+    ----------
+    psip_wall: float
+        The value of the poloidal flux ψp at the wall.
+    path: str
+        The path to the NetCDF file.
+    typ: str
+        The type of Interpolation.
+    """
+
+    def __init__(self, path: str, typ: str):
+        """Constructor"""
+
+    def g(psip: float) -> float:
+        """The g value evaluated at ψp"""
+
+    def i(psip: float) -> float:
+        """The I value evaluated at ψp"""
+
+    def dg_dpsip(psip: float) -> float:
+        """The dg/dψp value evaluated at ψp"""
+
+    def di_dpsip(psip: float) -> float:
+        """The dI/dψp value evaluated at ψp"""
+
+    def psip_data() -> np.ndarray:
+        """The NetCDF ψp data used to construct the g(ψp) and I(ψp) splines."""
+
+    def g_data() -> np.ndarray:
+        """The NetCDF g data used to construct the g(ψp) spline."""
+
+    def i_data() -> np.ndarray:
+        """The NetCDF I data used to construct the I(ψp) spline."""
+
+    def dg_dpsip_data() -> np.ndarray:
+        """The dg/dψp values evaluated at the ψp data"""
+
+    def di_dpsip_data() -> np.ndarray:
+        """The dI/dψp values evaluated at the ψp data"""

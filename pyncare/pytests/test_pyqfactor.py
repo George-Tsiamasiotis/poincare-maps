@@ -12,8 +12,8 @@ def test_pyqfactor_derived_fields(qfactor):
 
 def test_pyqfactor_eval(qfactor):
     psip = 0.015
-    qfactor.q(psip)
-    qfactor.psi(psip)
+    assert isinstance(qfactor.q(psip), float)
+    assert isinstance(qfactor.psi(psip), float)
 
 
 def test_data_extraction(qfactor):
