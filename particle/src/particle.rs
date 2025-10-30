@@ -176,7 +176,7 @@ impl std::fmt::Debug for Particle {
         f.debug_struct("Particle")
             .field("ψ-acc", &self.final_state.xacc)
             .field("θ-acc", &self.final_state.yacc)
-            .field("hcache", &self.final_state.hcache.first().unwrap())
+            .field("hcache", &self.final_state.hcache.first().or(None))
             .field("Initial", &Display::from_state(&self.initial_state))
             .field(
                 "Initial parallel energy",

@@ -3,21 +3,25 @@
 # requires-python = ">=3.14"
 # dependencies = [
 #   "pyncare"
+#   "matplotlib"
 # ]
 # ///
-import pyncare as pm
+import matplotlib
+import pyncare as pc
 
-qfactor = pm.Qfactor("./data.nc", "akima")
-current = pm.Current("./data.nc", "akima")
-bfield = pm.Bfield("./data.nc", "bicubic")
-per = pm.Perturbation(
+matplotlib.use("gtk3agg")
+
+qfactor = pc.Qfactor("./data.nc", "akima")
+current = pc.Current("./data.nc", "akima")
+bfield = pc.Bfield("./data.nc", "bicubic")
+per = pc.Perturbation(
     [
-        pm.Harmonic("./data.nc", "akima", m=1, n=2, phase=0),
-        pm.Harmonic("./data.nc", "akima", m=3, n=2, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=1, n=2, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=3, n=2, phase=0),
     ]
 )
 
-initial = pm.InitialConditions(
+initial = pc.InitialConditions(
     t0=0,
     theta0=3.14,
     psip0=0.5 * qfactor.psip_wall,
@@ -26,10 +30,15 @@ initial = pm.InitialConditions(
     mu=0,
 )
 
-particle = pm.Particle(initial)
+particle = pc.Particle(initial)
 
 particle.integrate(
-    qfactor=qfactor, current=current, bfield=bfield, per=per, t_eval=[0, 100000]
+    qfactor=qfactor,
+    current=current,
+    bfield=bfield,
+    per=per,
+    t_eval=[0, 20000],
 )
-
 print(particle)
+
+pc.orbit_plot(particle)

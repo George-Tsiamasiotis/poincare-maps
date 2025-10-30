@@ -3,6 +3,7 @@ from pyncare._core import InitialConditions, Particle, Evolution
 from pyncare.qfactor_plots import q_plot, psi_plot
 from pyncare.current_plots import g_plot, i_plot
 from pyncare.bfield_plots import b_plot, db_plot
+from pyncare.orbit_plot import orbit_plot
 
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "i_plot",
     "b_plot",
     "db_plot",
+    "orbit_plot",
 ]
