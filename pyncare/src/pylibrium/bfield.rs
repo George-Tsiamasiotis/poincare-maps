@@ -10,7 +10,6 @@ use crate::error::PyEqError;
 use crate::{eval2D_impl, repr_impl, to_numpy1D_impl, to_numpy2D_impl};
 
 #[pyclass]
-#[derive(Debug)]
 #[pyo3(name = "Bfield")]
 pub struct PyBfield {
     pub bfield: Bfield,
@@ -76,3 +75,13 @@ to_numpy2D_impl!(PyBfield, bfield, r_data);
 to_numpy2D_impl!(PyBfield, bfield, z_data);
 to_numpy2D_impl!(PyBfield, bfield, db_dpsip_data);
 to_numpy2D_impl!(PyBfield, bfield, db_dtheta_data);
+
+impl std::fmt::Debug for PyBfield {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PyBfield")
+            .field("bfield", &self.bfield)
+            .field("xacc", &self.xacc)
+            .field("yacc", &self.yacc)
+            .finish()
+    }
+}

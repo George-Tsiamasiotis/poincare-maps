@@ -1,9 +1,11 @@
 mod bfield;
 mod current;
+mod harmonic;
 mod qfactor;
 
 pub use bfield::PyBfield;
 pub use current::PyCurrent;
+pub use harmonic::PyHarmonic;
 pub use qfactor::PyQfactor;
 
 /// Generates getter pymethods that return a 1D numpy array.
@@ -59,6 +61,21 @@ macro_rules! eval2D_impl {
                     &mut self.yacc,
                     &mut self.cache,
                 )?)
+            }
+        }
+    };
+}
+
+/// Generates an eval method from the wrapped Rust [`Harmonic`] object.
+#[macro_export]
+macro_rules! eval_harmonic_impl {
+    ($py_object:ident, $rust_object:ident, $name:ident) => {
+        #[pymethods]
+        impl $py_object {
+            pub fn $name(&mut self, psip: f64, theta: f64, zeta: f64) -> Result<f64, PyEqError> {
+                Ok(self
+                    .$rust_object
+                    .$name(psip, theta, zeta, &mut self.cache, &mut self.acc)?)
             }
         }
     };

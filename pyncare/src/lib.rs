@@ -10,5 +10,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyQfactor>()?;
     m.add_class::<PyCurrent>()?;
     m.add_class::<PyBfield>()?;
+    m.add_class::<PyHarmonic>()?;
     Ok(())
 }

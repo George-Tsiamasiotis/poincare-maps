@@ -10,7 +10,6 @@ use crate::error::PyEqError;
 use crate::{eval1D_impl, repr_impl, to_numpy1D_impl};
 
 #[pyclass]
-#[derive(Debug)]
 #[pyo3(name = "Current")]
 pub struct PyCurrent {
     pub current: Current,
@@ -56,3 +55,13 @@ to_numpy1D_impl!(PyCurrent, current, g_data);
 to_numpy1D_impl!(PyCurrent, current, i_data);
 to_numpy1D_impl!(PyCurrent, current, dg_dpsip_data);
 to_numpy1D_impl!(PyCurrent, current, di_dpsip_data);
+
+/// Remove duplicate entries
+impl std::fmt::Debug for PyCurrent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PyCurrent")
+            .field("current", &self.current)
+            .field("acc", &self.acc)
+            .finish()
+    }
+}

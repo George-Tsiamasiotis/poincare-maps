@@ -165,3 +165,53 @@ class Bfield:
 
     def db_dtheta_data(self) -> np.ndarray:
         """The db/dψp values evaluated at the (ψp, θ) data"""
+
+class Harmonic:
+    """A single perturbation harmonic.
+
+    Attributes
+    ----------
+    amax: float
+        The maximum value of the `α` values.
+    psip_wall: float
+        The value of the poloidal flux ψp at the wall.
+    """
+
+    def __init__(self, path: str, typ: str, m: float, n: float, phase: float):
+        """Creates a single perturbation harmonic.
+
+        Parameters
+        ----------
+        path: str
+            The path to the NetCDF file.
+        typ: str
+            The type of Interpolation. Available types: "Linear", "Cubic", "Akima", "AkimaPeriodic",
+            "Steffen".
+        m: float
+            The `θ` frequency number.
+        n: float
+            The `ζ` frequency number.
+        phase: float
+            The initial phase of the harmonic.
+        """
+
+    def h(self, psip: float, theta: float, zeta: float) -> float:
+        """The h value (value of the whole harmonic) evaluated at (ψp, θ, ζ)."""
+
+    def dh_dpsip(self, psip: float, theta: float, zeta: float) -> float:
+        """The dh/dψp value evaluated at (ψp, θ, ζ)."""
+
+    def dh_dtheta(self, psip: float, theta: float, zeta: float) -> float:
+        """The dh/dθ value evaluated at (ψp, θ, ζ)."""
+
+    def dh_dzeta(self, psip: float, theta: float, zeta: float) -> float:
+        """The dh/dζ value evaluated at (ψp, θ, ζ)."""
+
+    def dh_dt(self, psip: float, theta: float, zeta: float) -> float:
+        """The dh/dt value evaluated at (ψp, θ, ζ)."""
+
+    def psip_data(self) -> np.ndarray:
+        """The NetCDF ψp data used to construct the a(ψp) spline."""
+
+    def a_data(self) -> np.ndarray:
+        """The NetCDF a data used to construct the a(ψp) spline."""

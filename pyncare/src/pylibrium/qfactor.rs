@@ -10,7 +10,6 @@ use crate::error::PyEqError;
 use crate::{eval1D_impl, repr_impl, to_numpy1D_impl};
 
 #[pyclass]
-#[derive(Debug)]
 #[pyo3(name = "Qfactor")]
 pub struct PyQfactor {
     pub qfactor: Qfactor,
@@ -57,3 +56,13 @@ to_numpy1D_impl!(PyQfactor, qfactor, q_data);
 to_numpy1D_impl!(PyQfactor, qfactor, psip_data);
 to_numpy1D_impl!(PyQfactor, qfactor, psi_data);
 to_numpy1D_impl!(PyQfactor, qfactor, q_data_derived);
+
+/// Remove duplicate entries
+impl std::fmt::Debug for PyQfactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PyQfactor")
+            .field("qfactor", &self.qfactor)
+            .field("acc", &self.acc)
+            .finish()
+    }
+}
