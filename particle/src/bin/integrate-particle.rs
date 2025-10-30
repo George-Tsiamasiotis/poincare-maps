@@ -16,7 +16,16 @@ fn main() {
 
     let psip_wall = qfactor.psip_wall;
 
-    let mut particle = Particle::new(0.0, 0.0, 0.5 * psip_wall, 0.005, 0.0, 0.0);
+    let initial = InitialConditions {
+        t0: 0.0,
+        theta0: 1.0,
+        psip0: 0.5 * psip_wall,
+        rho0: 0.005,
+        zeta0: 0.0,
+        mu: 0.0,
+    };
+
+    let mut particle = Particle::new(&initial);
     match particle.integrate(&qfactor, &bfield, &current, &per, (0.0, 100000.0)) {
         Ok(_) => dbg!(&particle),
         Err(err) => {

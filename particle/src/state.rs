@@ -96,11 +96,11 @@ pub struct State {
 
     /// The intermediate value .
     pub mu_par: f64,
-    /// The intermediate value [<psip derivatives>].
+    /// The intermediate value [psip derivatives].
     pub psip_brace: f64,
-    /// The intermediate value [<theta derivatives>].
+    /// The intermediate value [theta derivatives].
     pub theta_brace: f64,
-    /// The intermediate value [<zeta derivatives>].
+    /// The intermediate value [zeta derivatives].
     pub zeta_brace: f64,
     /// The intermediate value ρ*B^2/D.
     pub rho_bsquared_d: f64,

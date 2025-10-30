@@ -2,6 +2,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use crate::Evolution;
+use crate::InitialConditions;
 use crate::Mapping;
 use crate::ParticleError;
 use crate::PoincareSection;
@@ -42,8 +43,8 @@ pub struct Particle {
 
 impl Particle {
     /// Creates a new [`Particle`] from the initial conditions.
-    pub fn new(t0: f64, theta0: f64, psip0: f64, rho0: f64, zeta0: f64, mu: f64) -> Self {
-        let point = Point::new(t0, theta0, psip0, rho0, zeta0, mu);
+    pub fn new(initial: &InitialConditions) -> Self {
+        let point = initial.to_point();
         let mut evolution = Evolution::with_capacity(EVOLUTION_INIT_CAPACITY);
         evolution.push_point(&point);
 
@@ -89,6 +90,7 @@ impl Particle {
                 }
                 Err(err) => {
                     self.status = IntegrationStatus::Failed { reason: err.into() };
+                    break;
                 }
                 Ok(_) => (),
             }

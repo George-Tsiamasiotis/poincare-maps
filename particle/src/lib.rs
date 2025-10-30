@@ -1,5 +1,6 @@
 mod error;
 mod evolution;
+mod initial;
 mod mapping;
 mod particle;
 mod point;
@@ -8,6 +9,7 @@ mod state;
 
 pub use error::ParticleError;
 pub use evolution::Evolution;
+pub use initial::InitialConditions;
 pub use mapping::*;
 pub use particle::{IntegrationStatus, Particle};
 pub use point::Point;
