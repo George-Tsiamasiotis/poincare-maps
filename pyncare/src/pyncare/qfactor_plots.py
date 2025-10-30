@@ -1,7 +1,11 @@
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from pyncare import Qfactor
 
+plt.rcParams["text.usetex"] = True
 
-def q_plot(ax, qfactor: Qfactor):
+
+def q_plot(ax: Axes, qfactor: Qfactor):
     """Plots the q factor extraced and derived data, as a function of ψp."""
     psip_data = qfactor.psip_data()
     q_data = qfactor.q_data()
@@ -19,7 +23,7 @@ def q_plot(ax, qfactor: Qfactor):
     ax.legend()
 
 
-def psi_plot(ax, qfactor: Qfactor):
+def psi_plot(ax: Axes, qfactor: Qfactor):
     """Plots the ψ extraced data, as a function of ψp."""
     psip_data = qfactor.psip_data()
     psi_data = qfactor.psi_data()
