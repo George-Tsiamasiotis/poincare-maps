@@ -1,11 +1,13 @@
 mod bfield;
 mod current;
 mod harmonic;
+mod perturbation;
 mod qfactor;
 
 pub use bfield::PyBfield;
 pub use current::PyCurrent;
 pub use harmonic::PyHarmonic;
+pub use perturbation::PyPerturbation;
 pub use qfactor::PyQfactor;
 
 /// Generates getter pymethods that return a 1D numpy array.

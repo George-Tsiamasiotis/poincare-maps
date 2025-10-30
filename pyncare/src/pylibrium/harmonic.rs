@@ -10,6 +10,7 @@ use crate::{eval_harmonic_impl, repr_impl, to_numpy1D_impl};
 
 #[pyclass]
 #[pyo3(name = "Harmonic")]
+#[derive(Clone)]
 pub struct PyHarmonic {
     pub harmonic: Harmonic,
 

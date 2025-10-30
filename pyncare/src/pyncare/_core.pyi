@@ -215,3 +215,33 @@ class Harmonic:
 
     def a_data(self) -> np.ndarray:
         """The NetCDF a data used to construct the a(ψp) spline."""
+
+class Perturbation:
+    """A sum of different perturbation harmonics."""
+
+    def __init__(self, harmonics: list[Harmonic]):
+        """Creates a Perturbation.
+
+        Parameters
+        ----------
+        harmonics: list[Harmonics]
+            The list of harmonics that appear in the perturbation.
+        """
+
+    def __getitem__(self, n: int) -> Harmonic:
+        """Returns the n-th harmonic"""
+
+    def p(self, psip: float, theta: float, zeta: float) -> float:
+        """The p value (value of the whole harmonic) evaluated at (ψp, θ, ζ)."""
+
+    def dp_dpsip(self, psip: float, theta: float, zeta: float) -> float:
+        """The dp/dψp value evaluated at (ψp, θ, ζ)."""
+
+    def dp_dtheta(self, psip: float, theta: float, zeta: float) -> float:
+        """The dp/dθ value evaluated at (ψp, θ, ζ)."""
+
+    def dp_dzeta(self, psip: float, theta: float, zeta: float) -> float:
+        """The dp/dζ value evaluated at (ψp, θ, ζ)."""
+
+    def dp_dt(self, psip: float, theta: float, zeta: float) -> float:
+        """The dp/dt value evaluated at (ψp, θ, ζ)."""

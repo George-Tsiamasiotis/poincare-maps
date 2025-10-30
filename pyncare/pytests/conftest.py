@@ -30,3 +30,9 @@ def harmonic1():
 def harmonic2():
     """Creates a Harmonic object from "./data.nc" netCDF file."""
     return pm.Harmonic("./data.nc", "akima", m=3, n=2, phase=0)
+
+
+@pytest.fixture(scope="session")
+def perturbation(harmonic1, harmonic2):
+    """Creates a Perturbation object with the 2 fixture harmonics."""
+    return pm.Perturbation(harmonics=[harmonic1, harmonic2])
