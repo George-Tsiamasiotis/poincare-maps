@@ -55,6 +55,26 @@ impl Evolution {
     }
 }
 
+/// Generates getter for the evolution time series Vectors, needed for exposing them to Python.
+macro_rules! to_array_impl {
+    ($name:ident) => {
+        impl Evolution {
+            pub fn $name(&self) -> Vec<f64> {
+                self.$name.clone()
+            }
+        }
+    };
+}
+
+to_array_impl!(time);
+to_array_impl!(theta);
+to_array_impl!(psip);
+to_array_impl!(rho);
+to_array_impl!(zeta);
+to_array_impl!(psi);
+to_array_impl!(ptheta);
+to_array_impl!(pzeta);
+
 impl Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Evolution")

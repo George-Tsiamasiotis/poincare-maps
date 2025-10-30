@@ -245,3 +245,79 @@ class Perturbation:
 
     def dp_dt(self, psip: float, theta: float, zeta: float) -> float:
         """The dp/dt value evaluated at (ψp, θ, ζ)."""
+
+# =========================================================================================
+
+class InitialConditions:
+    """A set of initial conditions."""
+
+    def __init__(
+        self,
+        t0: float,
+        theta0: float,
+        psip0: float,
+        rho0: float,
+        zeta0: float,
+        mu: float,
+    ):
+        """Creates a set of initial conditions.
+
+        Parameters
+        ----------
+        t0: float
+            The initial time.
+        theta0: float
+            The initial `θ` angle.
+        psip0: float
+            The initial poloidal magnetic flux `ψp`.
+        rho0: float
+            The initial parallel gyro radius `ρ`.
+        zeta0: float
+            The initial `ζ` angle.
+        mu: float
+            The magnetic moment `μ`.
+        """
+
+class Particle:
+    """A particle."""
+
+    def __init__(self, initial: InitialConditions):
+        """Creates a Particle from an `InitialConditions` set.
+
+        Parameters
+        ----------
+        initial: InitialConditions
+            The initial conditions set.
+        """
+
+    def integrate(
+        self,
+        qfactor: Qfactor,
+        current: Current,
+        bfield: Bfield,
+        per: Perturbation,
+        t_eval: list[float],
+    ):
+        """Integrates the particle, storing its evolution.
+
+        Parameters
+        ----------
+        qfactor: Qfactor
+            The equilibrium's qfactor.
+        current: Current
+            The equilibrium's plasma current.
+        bfield: Bfield
+            The equilibrium's magnetic field.
+        per: Perturbation
+            The equilibrium's perturbation.
+        t_eval: list[float]
+            The time span [t0, tf] in which to integrate the particle.
+        """
+
+        # TODO: add mapping
+
+class Evolution:
+    """Time series of the particle's orbit.
+
+    Not meant to be constructed. It is stored as a particle's attribute.
+    """

@@ -19,11 +19,11 @@ def test_pycurrent_eval(current):
 
 def test_data_extraction(current):
     """Tests that all extracted data are numpy arrays of the correct shape."""
-    psip_data = current.psip_data()
-    g_data = current.g_data()
-    i_data = current.i_data()
-    dg_psip_data = current.dg_dpsip_data()
-    di_psip_data = current.di_dpsip_data()
+    psip_data = current.psip_data
+    g_data = current.g_data
+    i_data = current.i_data
+    dg_psip_data = current.dg_dpsip_data
+    di_psip_data = current.di_dpsip_data
 
     assert psip_data.ndim == 1
     assert g_data.ndim == 1

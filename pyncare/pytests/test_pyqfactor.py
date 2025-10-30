@@ -18,10 +18,10 @@ def test_pyqfactor_eval(qfactor):
 
 def test_data_extraction(qfactor):
     """Tests that all extracted data are numpy arrays of the correct shape."""
-    q_data = qfactor.q_data()
-    psip_data = qfactor.psip_data()
-    psi_data = qfactor.psi_data()
-    q_data_derived = qfactor.q_data_derived()
+    q_data = qfactor.q_data
+    psip_data = qfactor.psip_data
+    psi_data = qfactor.psi_data
+    q_data_derived = qfactor.q_data_derived
 
     assert psip_data.ndim == 1
     assert q_data.ndim == 1

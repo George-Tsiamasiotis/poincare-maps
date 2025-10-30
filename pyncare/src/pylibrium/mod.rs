@@ -16,6 +16,7 @@ macro_rules! to_numpy1D_impl {
     ($py_object:ident, $rust_object:ident, $name:ident) => {
         #[pymethods]
         impl $py_object {
+            #[getter]
             pub fn $name<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
                 self.$rust_object.$name().into_pyarray(py)
             }
@@ -29,6 +30,7 @@ macro_rules! to_numpy2D_impl {
     ($py_object:ident, $rust_object:ident, $name:ident) => {
         #[pymethods]
         impl $py_object {
+            #[getter]
             pub fn $name<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
                 self.$rust_object.$name().into_pyarray(py)
             }

@@ -865,6 +865,7 @@ dependencies = [
  "config",
  "equilibrium",
  "numpy",
+ "particle",
  "pyo3",
  "rsl-interpolation",
 ]

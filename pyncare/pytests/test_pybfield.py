@@ -25,13 +25,13 @@ def test_pybfield_eval(bfield):
 
 def test_data_extraction(bfield):
     """Tests that all extracted data are numpy arrays of the correct shape."""
-    psip_data = bfield.psip_data()
-    theta_data = bfield.theta_data()
-    b_data = bfield.b_data()
-    r_data = bfield.r_data()
-    z_data = bfield.z_data()
-    db_dpsip_data = bfield.db_dpsip_data()
-    db_dtheta_data = bfield.db_dtheta_data()
+    psip_data = bfield.psip_data
+    theta_data = bfield.theta_data
+    b_data = bfield.b_data
+    r_data = bfield.r_data
+    z_data = bfield.z_data
+    db_dpsip_data = bfield.db_dpsip_data
+    db_dtheta_data = bfield.db_dtheta_data
 
     assert psip_data.ndim == 1
     assert theta_data.ndim == 1

@@ -1,4 +1,5 @@
 use equilibrium::EqError;
+use particle::ParticleError;
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;
 
@@ -18,7 +19,7 @@ macro_rules! to_pyerr_impl {
         }
 
         impl From<$error_type> for $py_error_type {
-            fn from(other: EqError) -> Self {
+            fn from(other: $error_type) -> Self {
                 Self(other)
             }
         }
@@ -26,3 +27,4 @@ macro_rules! to_pyerr_impl {
 }
 
 to_pyerr_impl!(EqError, PyEqError);
+to_pyerr_impl!(ParticleError, PyParticleError);

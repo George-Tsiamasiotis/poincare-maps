@@ -36,3 +36,36 @@ def harmonic2():
 def perturbation(harmonic1, harmonic2):
     """Creates a Perturbation object with the 2 fixture harmonics."""
     return pm.Perturbation(harmonics=[harmonic1, harmonic2])
+
+
+@pytest.fixture(scope="session")
+def initial_conditions(qfactor):
+    """Creates an InitialConditons object."""
+    psip_wall = qfactor.psip_wall
+    return pm.InitialConditions(
+        t0=0,
+        theta0=3.14,
+        psip0=0.5 * psip_wall,
+        rho0=0.001,
+        zeta0=0.0,
+        mu=0,
+    )
+
+
+@pytest.fixture(scope="function")
+def particle(initial_conditions):
+    """Creates a Particle object from the initial conditions fixture."""
+    return pm.Particle(initial_conditions)
+
+
+@pytest.fixture(scope="function")
+def integrated_particle(qfactor, current, bfield, perturbation, particle):
+    """Creates a Particle object and integrates it."""
+    particle.integrate(
+        qfactor=qfactor,
+        current=current,
+        bfield=bfield,
+        per=perturbation,
+        t_eval=[0, 10],
+    )
+    return particle

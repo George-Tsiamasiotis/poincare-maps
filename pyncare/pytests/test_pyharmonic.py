@@ -26,8 +26,8 @@ def test_pyharmonic1_eval(harmonic1):
 
 def test_data_extraction(harmonic1):
     """Tests that all extracted data are numpy arrays of the correct shape."""
-    psip_data = harmonic1.psip_data()
-    a_data = harmonic1.a_data()
+    psip_data = harmonic1.psip_data
+    a_data = harmonic1.a_data
 
     assert psip_data.ndim == 1
     assert a_data.ndim == 1
