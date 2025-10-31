@@ -40,7 +40,7 @@ impl Mapping {
     }
 }
 
-/// Calculates the ζ=const intersections.
+/// Calculates the PoincareSection=const intersections.
 pub fn map_integrate(
     particle: &mut Particle,
     qfactor: &Qfactor,
@@ -227,7 +227,9 @@ fn calculate_intersection_state(
 fn intersected(old_angle: f64, new_angle: f64, surface_angle: f64) -> bool {
     let diff1 = new_angle - surface_angle;
     let diff2 = old_angle - surface_angle;
-    ((diff1) / 2.0).sin() * ((diff2) / 2.0).sin() < 0.0
+    // NOTE: Use `<=` here for the case `surface_angle == 0`, since the sine of angles very close
+    // to 0 (but not very close to 2π, 4π, ...)  return exactly 0.0.
+    ((diff1) / 2.0).sin() * ((diff2) / 2.0).sin() <= 0.0
 }
 
 /// Checks if all the value diffs in the array are within the threshold.
@@ -242,5 +244,101 @@ pub fn check_accuracy(array: &[f64], threshold: f64) -> Result<()> {
     {
         true => Ok(()),
         false => Err(crate::ParticleError::IntersectionError),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// as defined in std
+    const PI: f64 = 3.141592653589793;
+    const TAU: f64 = 6.283185307179586;
+
+    #[test]
+    fn test_intersected() {
+        // No need to check for negative numbers, since the signs would negate each other.
+
+        assert!(intersected(1.0 - 1e-12, 1.0 + 1e-12, 1.0));
+        assert!(intersected(1.0f64.next_down(), 1.0f64.next_up(), 1.0));
+        assert!(!intersected(1.0 - 1e-12, 1.0 - 2e-12, 1.0));
+        assert!(!intersected(1.0 + 1e-12, 1.0 + 2e-12, 1.0));
+        assert!(!intersected(1.0 - 1e-12, 1.0 - 1e-12, 1.0));
+        assert!(!intersected(1.0 + 1e-12, 1.0 + 1e-12, 1.0));
+        assert!(!intersected(1.0f64.next_down(), 1.0f64.next_down(), 1.0));
+        assert!(!intersected(1.0f64.next_up(), 1.0f64.next_up(), 1.0));
+
+        assert!(intersected(10.0 - 1e-12, 10.0 + 1e-12, 10.0));
+        assert!(intersected(10.0f64.next_down(), 10.0f64.next_up(), 10.0));
+        assert!(!intersected(10.0 - 1e-12, 10.0 - 2e-12, 10.0));
+        assert!(!intersected(10.0 + 1e-12, 10.0 + 2e-12, 10.0));
+        assert!(!intersected(10.0 - 1e-12, 10.0 - 1e-12, 10.0));
+        assert!(!intersected(10.0 + 1e-12, 10.0 + 1e-12, 10.0));
+        assert!(!intersected(10.0f64.next_down(), 10.0f64.next_down(), 10.0));
+        assert!(!intersected(10.0f64.next_up(), 10.0f64.next_up(), 10.0));
+
+        assert!(intersected(PI - 1e-12, PI + 1e-12, PI));
+        assert!(intersected(PI.next_down(), PI.next_up(), PI));
+        assert!(!intersected(PI - 1e-12, PI - 2e-12, PI));
+        assert!(!intersected(PI + 1e-12, PI + 2e-12, PI));
+        assert!(!intersected(PI - 1e-12, PI - 1e-12, PI));
+        assert!(!intersected(PI + 1e-12, PI + 1e-12, PI));
+        assert!(!intersected(PI.next_down(), PI.next_down(), PI));
+        assert!(!intersected(PI.next_up(), PI.next_up(), PI));
+
+        assert!(intersected(TAU - 1e-12, TAU + 1e-12, TAU));
+        assert!(intersected(TAU.next_down(), TAU.next_up(), TAU));
+        assert!(!intersected(TAU - 1e-12, TAU - 2e-12, TAU));
+        assert!(!intersected(TAU + 1e-12, TAU + 2e-12, TAU));
+        assert!(!intersected(TAU - 1e-12, TAU - 1e-12, TAU));
+        assert!(!intersected(TAU + 1e-12, TAU + 1e-12, TAU));
+        assert!(!intersected(TAU.next_down(), TAU.next_down(), TAU));
+        assert!(!intersected(TAU.next_up(), TAU.next_up(), TAU));
+
+        assert!(intersected(0.0 - 1e-12, 0.0 + 1e-12, 0.0));
+        assert!(intersected(0.0f64.next_down(), 0.0f64.next_up(), 0.0));
+        assert!(!intersected(0.0 - 1e-12, 0.0 - 2e-12, 0.0));
+        assert!(!intersected(0.0 + 1e-12, 0.0 + 2e-12, 0.0));
+        assert!(!intersected(0.0 - 1e-12, 0.0 - 1e-12, 0.0));
+        assert!(!intersected(0.0 + 1e-12, 0.0 + 1e-12, 0.0));
+        // VERY corner case since all arguements have a sine of 0.0. Not worth working around. If
+        // a particle is unlucky enough to reach this point, it would just be rejected from the
+        // accuracy test.
+        // assert!(!intersected(0.0f64.next_down(), 0.0f64.next_down(), 0.0));
+        // assert!(!intersected(0.0f64.next_up(), 0.0f64.next_up(), 0.0));
+
+        assert!(intersected(
+            (2.0 * PI + PI).next_down(),
+            (2.0 * PI + PI).next_up(),
+            PI
+        ));
+
+        assert!(intersected(TAU.next_down(), TAU.next_up(), TAU));
+        assert!(intersected(
+            (2.0 * PI + TAU).next_down(),
+            (2.0 * PI + TAU).next_up(),
+            TAU
+        ));
+    }
+
+    #[test]
+    fn test_accuracy_check() {
+        let ok1 = [0.0, 0.0, 0.0 + 1e-12, 0.0 - 1e-12];
+        let ok2 = [1.0, 0.0, 0.0, 0.0 + 1e-12, 0.0 - 1e-12];
+        let ok3 = [2.0, 1.0, 1.0, 1.0 + 1e-12, 1.0 - 1e-12];
+        let ok4 = [2.0, -1.0, -1.0, -1.0 + 1e-12, -1.0 - 1e-12];
+
+        assert!(check_accuracy(&ok1, MAP_THRESHOLD).is_ok());
+        assert!(check_accuracy(&ok2, MAP_THRESHOLD).is_ok());
+        assert!(check_accuracy(&ok3, MAP_THRESHOLD).is_ok());
+        assert!(check_accuracy(&ok4, MAP_THRESHOLD).is_ok());
+
+        let not_ok1 = [0.0, 0.0, 0.0 + 1e-5, 0.0 - 1e-5];
+        let not_ok2 = [0.0, 1.0, 0.0 + 1e-12, 0.0 - 1e-12];
+        let not_ok3 = [1.0, 0.0, 1.0, 0.0 + 1e-12, 0.0 - 1e-12];
+
+        assert!(check_accuracy(&not_ok1, MAP_THRESHOLD).is_err());
+        assert!(check_accuracy(&not_ok2, MAP_THRESHOLD).is_err());
+        assert!(check_accuracy(&not_ok3, MAP_THRESHOLD).is_err());
     }
 }
