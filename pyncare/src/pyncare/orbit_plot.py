@@ -24,7 +24,7 @@ def orbit_plot(particle: Particle, percentage: float = 100):
     pzeta = particle.evolution.pzeta[:points]
     ptheta = particle.evolution.ptheta[:points]
 
-    fig = plt.figure(**{"figsize": figsize, "layout": "constrained", "dpi": dpi})
+    fig = plt.figure(figsize=figsize, layout="constrained", dpi=dpi)
     ax = fig.subplots(6, 1, sharex=True)
     ax[0].scatter(time, theta, s, c)
     ax[1].scatter(time, psip, s, c)

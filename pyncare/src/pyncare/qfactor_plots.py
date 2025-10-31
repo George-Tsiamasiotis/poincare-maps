@@ -7,9 +7,9 @@ plt.rcParams["text.usetex"] = True
 
 def q_plot(ax: Axes, qfactor: Qfactor):
     """Plots the q factor extraced and derived data, as a function of ψp."""
-    psip_data = qfactor.psip_data()
-    q_data = qfactor.q_data()
-    q_data_derived = qfactor.q_data_derived()
+    psip_data = qfactor.psip_data
+    q_data = qfactor.q_data
+    q_data_derived = qfactor.q_data_derived
 
     ax.scatter(psip_data, q_data, c="k", s=2, zorder=2, alpha=0.8, label="data points")
     ax.plot(psip_data, q_data, c="b", label=r"$q(\psi_p)$")
@@ -25,8 +25,8 @@ def q_plot(ax: Axes, qfactor: Qfactor):
 
 def psi_plot(ax: Axes, qfactor: Qfactor):
     """Plots the ψ extraced data, as a function of ψp."""
-    psip_data = qfactor.psip_data()
-    psi_data = qfactor.psi_data()
+    psip_data = qfactor.psip_data
+    psi_data = qfactor.psi_data
 
     ax.scatter(
         psip_data, psi_data, c="k", s=2, zorder=2, alpha=0.8, label="data points"

@@ -15,7 +15,7 @@ matplotlib.use("gtk3agg")
 
 bfield = Bfield("./data.nc", "bicubic")
 
-fig = plt.figure(**{"figsize": (15, 5), "layout": "constrained"})
+fig = plt.figure(figsize=(15, 5), layout="constrained")
 fig.suptitle("Magnetic Field Profile")
 
 ax = fig.subplots(1, 3)

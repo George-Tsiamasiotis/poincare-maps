@@ -28,6 +28,7 @@ dev = [
     "patchelf>=0.17.2.4",
     "pygobject>=3.54.5",
     "pytest>=8.4.2",
+    "mypy>=1.18.2",
 ]
 
 [tool.pytest.ini_options]

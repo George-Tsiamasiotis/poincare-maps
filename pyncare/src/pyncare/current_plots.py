@@ -7,10 +7,10 @@ plt.rcParams["text.usetex"] = True
 
 
 def g_plot(ax: Axes, current: Current):
-    psip_data = current.psip_data()
-    g_data = current.g_data()
+    psip_data = current.psip_data
+    g_data = current.g_data
     # Smooth derivative curve
-    psips = np.linspace(current.psip_data()[0], current.psip_data()[-1], 1000)
+    psips = np.linspace(current.psip_data[0], current.psip_data[-1], 1000)
     dg_dpsip = np.zeros((len(psips)))
     for i in range(len(dg_dpsip)):
         dg_dpsip[i] = current.dg_dpsip(psips[i])
@@ -29,13 +29,13 @@ def g_plot(ax: Axes, current: Current):
 
 
 def i_plot(ax: Axes, current: Current):
-    psip_data = current.psip_data()
-    i_data = current.i_data()
-    psips = np.linspace(current.psip_data()[0], current.psip_data()[-1], 1000)
+    psip_data = current.psip_data
+    i_data = current.i_data
+    psips = np.linspace(current.psip_data[0], current.psip_data[-1], 1000)
     di_dpsip = np.zeros((len(psips)))
+    # Smooth derivative curve
     for i in range(len(di_dpsip)):
         di_dpsip[i] = current.di_dpsip(psips[i])
-    # Smooth derivative curve
 
     dax = ax.twinx()
     ax.scatter(psip_data, i_data, c="k", s=2, zorder=2, alpha=0.8, label="data points")

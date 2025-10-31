@@ -1,8 +1,9 @@
 import pytest
 from pathlib import PosixPath
+from pyncare import Harmonic
 
 
-def test_pyharmonic1_derived_fields(harmonic1):
+def test_pyharmonic1_derived_fields(harmonic1: Harmonic):
     """Tests that the fields derived from the wrapped Rust object are the correct type."""
     assert isinstance(harmonic1.path, PosixPath)
     assert isinstance(harmonic1.typ, str)
@@ -13,7 +14,7 @@ def test_pyharmonic1_derived_fields(harmonic1):
     assert isinstance(harmonic1.psip_wall, float)
 
 
-def test_pyharmonic1_eval(harmonic1):
+def test_pyharmonic1_eval(harmonic1: Harmonic):
     psip = 0.015
     theta = 1
     zeta = 2
@@ -24,7 +25,7 @@ def test_pyharmonic1_eval(harmonic1):
     assert isinstance(harmonic1.dh_dt(psip, theta, zeta), float)
 
 
-def test_data_extraction(harmonic1):
+def test_data_extraction(harmonic1: Harmonic):
     """Tests that all extracted data are numpy arrays of the correct shape."""
     psip_data = harmonic1.psip_data
     a_data = harmonic1.a_data
@@ -33,7 +34,7 @@ def test_data_extraction(harmonic1):
     assert a_data.ndim == 1
 
 
-def test_immutability(harmonic1):
+def test_immutability(harmonic1: Harmonic):
     """Tests that harmonic1 fields are immutable."""
     with pytest.raises(AttributeError):
         harmonic1.psip_wall += 1
@@ -45,5 +46,5 @@ def test_immutability(harmonic1):
         harmonic1.typ = ""
 
 
-def test_repr(harmonic1):
+def test_repr(harmonic1: Harmonic):
     str(harmonic1)

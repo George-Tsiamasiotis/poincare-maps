@@ -1,4 +1,4 @@
-from pyncare import *
+from pyncare import Qfactor, Current, Bfield, Perturbation, Particle
 
 
 def test_particle_integration(

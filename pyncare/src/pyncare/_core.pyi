@@ -5,17 +5,34 @@ class Qfactor:
 
     Attributes
     ----------
-    psip_wall: float
-        The value of the poloidal flux ψp at the wall.
-    psi_wall: float
-        The value of the toroidal flux ψ at the wall.
     path: str
         The path to the NetCDF file.
     typ: str
         The type of Interpolation.
+    psip_wall: float
+        The value of the poloidal flux ψp at the wall.
+    psi_wall: float
+        The value of the toroidal flux ψ at the wall.
+    psip_data: np.ndarray
+        The NetCDF ψp data used to construct the q(ψp) and ψ(ψp) splines.
+    q_data: np.ndarray
+        The NetCDF q data used to construct the q(ψp) spline.
+    psi_data: np.ndarray
+        The NetCDF ψp data used to construct the ψ(ψp) spline.
+    q_data_derived: np.ndarray
+        The q values, as calculated from dψ/dψp, at the ψp data.
     """
 
-    def __init__(self, path: str, typ: str):
+    path: str
+    typ: str
+    psip_wall: float
+    psi_wall: float
+    psip_data: np.ndarray
+    q_data: np.ndarray
+    psi_data: np.ndarray
+    q_data_derived: np.ndarray
+
+    def __init__(self, path: str, typ: str) -> None:
         """q-factor reconstructed from a NetCDF file.
 
         Parameters
@@ -33,30 +50,37 @@ class Qfactor:
     def psi(self, psip: float) -> float:
         """The ψ value evaluated at ψp"""
 
-    def psip_data(self) -> np.ndarray:
-        """The NetCDF ψp data used to construct the q(ψp) and ψ(ψp) splines."""
-
-    def q_data(self) -> np.ndarray:
-        """The NetCDF q data used to construct the q(ψp) spline."""
-
-    def psi_data(self) -> np.ndarray:
-        """The NetCDF ψp data used to construct the ψ(ψp) spline."""
-
-    def q_data_derived(self) -> np.ndarray:
-        """The q values, as calculated from dψ/dψp, at the ψp data."""
-
 class Current:
     """Plasma current reconstructed from a NetCDF file.
 
     Attributes
     ----------
-    psip_wall: float
-        The value of the poloidal flux ψp at the wall.
     path: str
         The path to the NetCDF file.
     typ: str
         The type of Interpolation.
+    psip_wall: float
+        The value of the poloidal flux ψp at the wall.
+    psip_data: np.ndarray
+        The NetCDF ψp data used to construct the g(ψp) and I(ψp) splines.
+    g_data: np.ndarray
+        The NetCDF g data used to construct the g(ψp) spline.
+    i_data: np.ndarray
+        The NetCDF I data used to construct the I(ψp) spline.
+    dg_dpsip_data: np.ndarray
+        The dg/dψp values evaluated at the ψp data
+    di_dpsip_data: np.ndarray
+        The dI/dψp values evaluated at the ψp data
     """
+
+    path: str
+    typ: str
+    psip_wall: float
+    psip_data: np.ndarray
+    g_data: np.ndarray
+    i_data: np.ndarray
+    dg_dpsip_data: np.ndarray
+    di_dpsip_data: np.ndarray
 
     def __init__(self, path: str, typ: str):
         """Plasma current reconstructed from a NetCDF file.
@@ -82,26 +106,15 @@ class Current:
     def di_dpsip(self, psip: float) -> float:
         """The dI/dψp value evaluated at ψp"""
 
-    def psip_data(self) -> np.ndarray:
-        """The NetCDF ψp data used to construct the g(ψp) and I(ψp) splines."""
-
-    def g_data(self) -> np.ndarray:
-        """The NetCDF g data used to construct the g(ψp) spline."""
-
-    def i_data(self) -> np.ndarray:
-        """The NetCDF I data used to construct the I(ψp) spline."""
-
-    def dg_dpsip_data(self) -> np.ndarray:
-        """The dg/dψp values evaluated at the ψp data"""
-
-    def di_dpsip_data(self) -> np.ndarray:
-        """The dI/dψp values evaluated at the ψp data"""
-
 class Bfield:
     """Magnetic field reconstructed from a NetCDF file.
 
     Attributes
     ----------
+    path: str
+        The path to the NetCDF file.
+    typ: str
+        The type of Interpolation.
     baxis: float
         The magnetic field strength on the axis in [T].
     raxis: float
@@ -110,11 +123,35 @@ class Bfield:
         The value of the poloidal flux ψp at the wall.
     psi_wall: float
         The value of the toroidal flux ψ at the wall.
-    path: str
-        The path to the NetCDF file.
-    typ: str
-        The type of Interpolation.
+    psip_data: np.ndarray
+        The NetCDF ψp data used to construct the b(ψp, θ) spline.
+    theta_data: np.ndarray
+        The NetCDF θ data used to construct the b(ψp, θ) spline.
+    b_data: np.ndarray
+        The NetCDF b data used to construct the b(ψp, θ) spline.
+    r_data: np.ndarray
+        The NetCDF R data used to construct the R(ψp, θ) spline.
+    z_data: np.ndarray
+        The NetCDF Z data used to construct the Z(ψp, θ) spline.
+    db_dpsip_data: np.ndarray
+        The db/dψp values evaluated at the (ψp, θ) data.
+    db_dtheta_data: np.ndarray
+        The db/dψp values evaluated at the (ψp, θ) data.
     """
+
+    path: str
+    typ: str
+    baxis: float
+    raxis: float
+    psip_wall: float
+    psi_wall: float
+    psip_data: np.ndarray
+    theta_data: np.ndarray
+    b_data: np.ndarray
+    r_data: np.ndarray
+    z_data: np.ndarray
+    db_dpsip_data: np.ndarray
+    db_dtheta_data: np.ndarray
 
     def __init__(self, path: str, typ: str):
         """Magnetic field reconstructed from a NetCDF file.
@@ -145,37 +182,34 @@ class Bfield:
     def d2b_dpsip_dtheta(self, psip: float, theta: float) -> float:
         """The d2b/dψpdθ value evaluated at (ψp, θ)"""
 
-    def psip_data(self) -> np.ndarray:
-        """The NetCDF ψp data used to construct the b(ψp, θ) spline."""
-
-    def theta_data(self) -> np.ndarray:
-        """The NetCDF θ data used to construct the b(ψp, θ) spline."""
-
-    def b_data(self) -> np.ndarray:
-        """The NetCDF b data used to construct the b(ψp, θ) spline."""
-
-    def r_data(self) -> np.ndarray:
-        """The NetCDF R data used to construct the R(ψp, θ) spline."""
-
-    def z_data(self) -> np.ndarray:
-        """The NetCDF Z data used to construct the Z(ψp, θ) spline."""
-
-    def db_dpsip_data(self) -> np.ndarray:
-        """The db/dψp values evaluated at the (ψp, θ) data"""
-
-    def db_dtheta_data(self) -> np.ndarray:
-        """The db/dψp values evaluated at the (ψp, θ) data"""
-
 class Harmonic:
     """A single perturbation harmonic.
 
     Attributes
     ----------
+    path: str
+        The path to the NetCDF file.
+    typ: str
+        The type of Interpolation.
     amax: float
         The maximum value of the `α` values.
     psip_wall: float
         The value of the poloidal flux ψp at the wall.
+    psip_data: float
+        The NetCDF ψp data used to construct the a(ψp) spline.
+    a_data: float
+        The NetCDF a data used to construct the a(ψp) spline.
     """
+
+    path: str
+    typ: str
+    m: float
+    n: float
+    phase: float
+    amax: float
+    psip_wall: float
+    psip_data: np.ndarray
+    a_data: np.ndarray
 
     def __init__(self, path: str, typ: str, m: float, n: float, phase: float):
         """Creates a single perturbation harmonic.
@@ -210,14 +244,10 @@ class Harmonic:
     def dh_dt(self, psip: float, theta: float, zeta: float) -> float:
         """The dh/dt value evaluated at (ψp, θ, ζ)."""
 
-    def psip_data(self) -> np.ndarray:
-        """The NetCDF ψp data used to construct the a(ψp) spline."""
-
-    def a_data(self) -> np.ndarray:
-        """The NetCDF a data used to construct the a(ψp) spline."""
-
 class Perturbation:
     """A sum of different perturbation harmonics."""
+
+    harmonics: list[Harmonic]
 
     def __init__(self, harmonics: list[Harmonic]):
         """Creates a Perturbation.
@@ -251,6 +281,13 @@ class Perturbation:
 class InitialConditions:
     """A set of initial conditions."""
 
+    t0: float
+    theta0: float
+    psip0: float
+    rho0: float
+    zeta0: float
+    mu: float
+
     def __init__(
         self,
         t0: float,
@@ -280,6 +317,9 @@ class InitialConditions:
 
 class Particle:
     """A particle."""
+
+    evolution: Evolution
+    status: str
 
     def __init__(self, initial: InitialConditions):
         """Creates a Particle from an `InitialConditions` set.
@@ -321,3 +361,12 @@ class Evolution:
 
     Not meant to be constructed. It is stored as a particle's attribute.
     """
+
+    time: np.ndarray
+    theta: np.ndarray
+    psip: np.ndarray
+    rho: np.ndarray
+    zeta: np.ndarray
+    psi: np.ndarray
+    ptheta: np.ndarray
+    pzeta: np.ndarray

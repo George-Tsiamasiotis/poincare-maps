@@ -1,8 +1,9 @@
 import pytest
 from pathlib import PosixPath
+from pyncare import Bfield
 
 
-def test_pybfield_derived_fields(bfield):
+def test_pybfield_derived_fields(bfield: Bfield):
     """Tests that the fields derived from the wrapped Rust object are the correct type."""
     assert isinstance(bfield.path, PosixPath)
     assert isinstance(bfield.typ, str)
@@ -12,7 +13,7 @@ def test_pybfield_derived_fields(bfield):
     assert isinstance(bfield.psi_wall, float)
 
 
-def test_pybfield_eval(bfield):
+def test_pybfield_eval(bfield: Bfield):
     psip = 0.015
     theta = 1
     assert isinstance(bfield.b(psip, theta), float)
@@ -23,7 +24,7 @@ def test_pybfield_eval(bfield):
     assert isinstance(bfield.d2b_dpsip_dtheta(psip, theta), float)
 
 
-def test_data_extraction(bfield):
+def test_data_extraction(bfield: Bfield):
     """Tests that all extracted data are numpy arrays of the correct shape."""
     psip_data = bfield.psip_data
     theta_data = bfield.theta_data
@@ -42,7 +43,7 @@ def test_data_extraction(bfield):
     assert db_dtheta_data.ndim == 2
 
 
-def test_immutability(bfield):
+def test_immutability(bfield: Bfield):
     """Tests that bfield fields are immutable."""
     with pytest.raises(AttributeError):
         bfield.psip_wall += 1
@@ -53,5 +54,5 @@ def test_immutability(bfield):
         bfield.typ = ""
 
 
-def test_repr(bfield):
+def test_repr(bfield: Bfield):
     str(bfield)

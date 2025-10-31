@@ -2,8 +2,8 @@
 # /// script
 # requires-python = ">=3.14"
 # dependencies = [
+#   "matplotlib",
 #   "pyncare"
-#   "matplotlib"
 # ]
 # ///
 import matplotlib

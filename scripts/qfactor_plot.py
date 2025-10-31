@@ -15,7 +15,7 @@ matplotlib.use("gtk3agg")
 
 qfactor = Qfactor("./data.nc", "akima")
 
-fig = plt.figure(**{"figsize": (11, 5), "layout": "constrained"})
+fig = plt.figure(figsize=(11, 5), layout="constrained")
 fig.suptitle("q-factor Profile")
 
 ax = fig.subplots(1, 2)
