@@ -11,7 +11,7 @@ use std::f64::consts::TAU;
 use std::time::Duration;
 
 /// Defines the surface of the Poincare section.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum PoincareSection {
     ConstTheta,
     ConstZeta,
@@ -19,7 +19,7 @@ pub enum PoincareSection {
 
 /// Defines all the necessary parameters of a Poincare Map.
 #[non_exhaustive]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Mapping {
     /// The surface of section Σ, defined by an equation xᵢ= α, where xᵢ= θ or ζ.
     pub section: PoincareSection,

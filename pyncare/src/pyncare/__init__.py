@@ -1,5 +1,6 @@
 from pyncare._core import Qfactor, Current, Bfield, Harmonic, Perturbation
 from pyncare._core import InitialConditions, Particle, Evolution
+from pyncare._core import Mapping
 from pyncare.qfactor_plots import q_plot, psi_plot
 from pyncare.current_plots import g_plot, i_plot
 from pyncare.bfield_plots import b_plot, db_plot
@@ -17,6 +18,8 @@ __all__ = [
     "InitialConditions",
     "Particle",
     "Evolution",
+    # Mapping
+    "Mapping",
     # plots
     "q_plot",
     "psi_plot",

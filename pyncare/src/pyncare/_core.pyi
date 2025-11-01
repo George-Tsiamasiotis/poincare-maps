@@ -354,6 +354,31 @@ class Particle:
             The time span [t0, tf] in which to integrate the particle.
         """
 
+    def map(
+        self,
+        qfactor: Qfactor,
+        current: Current,
+        bfield: Bfield,
+        per: Perturbation,
+        mapping: Mapping,
+    ):
+        """Integrates the particle, storing its intersections with the Poincare
+        surface defined by `Mapping`.
+
+        Parameters
+        ----------
+        qfactor: Qfactor
+            The equilibrium's qfactor.
+        current: Current
+            The equilibrium's plasma current.
+        bfield: Bfield
+            The equilibrium's magnetic field.
+        per: Perturbation
+            The equilibrium's perturbation.
+        mapping: Mapping
+            The parameters of the Poincare mapping.
+        """
+
         # TODO: add mapping
 
 class Evolution:
@@ -370,3 +395,33 @@ class Evolution:
     psi: np.ndarray
     ptheta: np.ndarray
     pzeta: np.ndarray
+
+class Mapping:
+    """Defines all the necessary parameters of a Poincare Map.
+
+    Attributes
+    ----------
+    section: str
+        The surface of section Σ, defined by an equation xᵢ= α, where xᵢ= θ or ζ.
+    alpha: float
+        The constant that defines the surface of section (modulo 2π).
+    intersections: int
+        The number of interections to calculate.
+    """
+
+    section: str
+    alpha: float
+    intersections: int
+
+    def __init__(self, section: str, alpha: float, intersections: int):
+        """Defines all the necessary parameters of a Poincare Map.
+
+        Parameters
+        ----------
+        section: str
+            The surface of section Σ, defined by an equation xᵢ= α, where xᵢ= θ or ζ.
+        alpha: float
+            The constant that defines the surface of section (modulo 2π).
+        intersections: int
+            The number of interections to calculate.
+        """

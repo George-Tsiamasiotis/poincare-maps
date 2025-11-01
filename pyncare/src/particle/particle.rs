@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 
 use crate::error::PyParticleError;
-use crate::{repr_impl, PyBfield, PyCurrent, PyPerturbation, PyQfactor};
+use crate::{repr_impl, PyBfield, PyCurrent, PyMapping, PyPerturbation, PyQfactor};
 use crate::{PyEvolution, PyInitialConditions};
 
 #[pyclass]
@@ -47,7 +47,22 @@ impl PyParticle {
         Ok(())
     }
 
-    // TODO: add mapping and test it
+    pub fn map<'py>(
+        &mut self,
+        qfactor: &PyQfactor,
+        bfield: &PyBfield,
+        current: &PyCurrent,
+        per: &PyPerturbation,
+        mapping: &PyMapping,
+    ) -> Result<(), PyParticleError> {
+        Ok(self.particle.map(
+            &qfactor.qfactor,
+            &bfield.bfield,
+            &current.current,
+            &per.perturbation,
+            &mapping.mapping,
+        )?)
+    }
 
     #[getter]
     pub fn get_evolution(&self) -> PyEvolution {

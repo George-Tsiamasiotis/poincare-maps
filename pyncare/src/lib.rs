@@ -19,5 +19,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyInitialConditions>()?;
     m.add_class::<PyParticle>()?;
     m.add_class::<PyEvolution>()?;
+    // Mapping
+    m.add_class::<PyMapping>()?;
     Ok(())
 }

@@ -150,8 +150,8 @@ impl Particle {
             PoincareSection::ConstZeta => &self.evolution.zeta,
             PoincareSection::ConstTheta => &self.evolution.theta,
         };
-        if let Some(err) = check_accuracy(intersections, MAP_THRESHOLD).err() {
-            self.status = IntegrationStatus::Failed { reason: err.into() };
+        if check_accuracy(intersections, MAP_THRESHOLD).is_err() {
+            self.status = IntegrationStatus::InvalidIntersections;
         };
 
         self.evolution.duration = start.elapsed();

@@ -69,3 +69,9 @@ def integrated_particle(qfactor, current, bfield, perturbation, particle):
         t_eval=[0, 10],
     )
     return particle
+
+
+@pytest.fixture(scope="session")
+def mapping():
+    """Creates a Mapping object."""
+    return pm.Mapping("theta", 3.14, 10)
