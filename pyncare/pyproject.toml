@@ -32,5 +32,5 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = "./pytests"
+testpaths = "./pyncare/pytests" # Run from workspace root
 addopts = "--durations 2"

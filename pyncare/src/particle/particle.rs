@@ -47,7 +47,7 @@ impl PyParticle {
         Ok(())
     }
 
-    pub fn map<'py>(
+    pub fn map(
         &mut self,
         qfactor: &PyQfactor,
         bfield: &PyBfield,

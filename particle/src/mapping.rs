@@ -73,7 +73,11 @@ pub fn map_integrate(
         // `theta`. Checking its value in every function and every loop has negligible performance
         // impact and produces much more readable code, instead of rewritting the same function
         // twice.
-        if intersected(state1.zeta, state2.zeta, mapping.alpha) {
+        let (old_angle, new_angle) = match mapping.section {
+            PoincareSection::ConstTheta => (state1.theta, state2.theta),
+            PoincareSection::ConstZeta => (state1.zeta, state2.zeta),
+        };
+        if intersected(old_angle, new_angle, mapping.alpha) {
             let mod_state1 = calculate_mod_state1(&state1, &mapping.section);
             let dtau = calculate_mod_step(&state1, &state2, mapping);
             let mod_state2 = calculate_mod_state2(qfactor, bfield, current, per, mod_state1, dtau)?;
@@ -240,7 +244,7 @@ pub fn check_accuracy(array: &[f64], threshold: f64) -> Result<()> {
     match array
         .windows(2)
         .skip(1) // Skip the starting point, since it is usually not on the intersection
-        .all(|v| (v[1] % TAU - v[0] % TAU).abs() < threshold)
+        .all(|v| (v[1] - v[0]).abs() - TAU < threshold)
     {
         true => Ok(()),
         false => Err(crate::ParticleError::IntersectionError),
@@ -323,19 +327,56 @@ mod test {
 
     #[test]
     fn test_accuracy_check() {
-        let ok1 = [0.0, 0.0, 0.0 + 1e-12, 0.0 - 1e-12];
-        let ok2 = [1.0, 0.0, 0.0, 0.0 + 1e-12, 0.0 - 1e-12];
-        let ok3 = [2.0, 1.0, 1.0, 1.0 + 1e-12, 1.0 - 1e-12];
-        let ok4 = [2.0, -1.0, -1.0, -1.0 + 1e-12, -1.0 - 1e-12];
+        let ok1 = [
+            0.0 * TAU,
+            1.0 * TAU,
+            2.0 * TAU + 1e-12,
+            3.0 * TAU - 1e-12,
+            4.0 * TAU,
+        ];
+        let ok2 = [
+            100.0,
+            0.0 * TAU,
+            1.0 * TAU,
+            2.0 * TAU + 1e-12,
+            3.0 * TAU - 1e-12,
+            4.0 * TAU,
+        ];
+        let ok3 = [
+            1.0 + 0.0 * TAU,
+            1.0 + 1.0 * TAU,
+            1.0 + 2.0 * TAU + 1e-12,
+            1.0 + 3.0 * TAU - 1e-12,
+            1.0 + 4.0 * TAU,
+        ];
 
         assert!(check_accuracy(&ok1, MAP_THRESHOLD).is_ok());
         assert!(check_accuracy(&ok2, MAP_THRESHOLD).is_ok());
         assert!(check_accuracy(&ok3, MAP_THRESHOLD).is_ok());
-        assert!(check_accuracy(&ok4, MAP_THRESHOLD).is_ok());
 
-        let not_ok1 = [0.0, 0.0, 0.0 + 1e-5, 0.0 - 1e-5];
-        let not_ok2 = [0.0, 1.0, 0.0 + 1e-12, 0.0 - 1e-12];
-        let not_ok3 = [1.0, 0.0, 1.0, 0.0 + 1e-12, 0.0 - 1e-12];
+        let not_ok1 = [
+            0.0 * TAU,
+            1.0 * TAU,
+            // 2.0 * TAU + 1e-12,
+            3.0 * TAU - 1e-12,
+            4.0 * TAU,
+        ];
+        let not_ok2 = [
+            100.0,
+            0.0 * TAU,
+            1.0 * TAU,
+            // 2.0 * TAU + 1e-12,
+            3.0 * TAU - 1e-12,
+            4.0 * TAU,
+        ];
+        let not_ok3 = [
+            100.0,
+            1.0 * TAU,
+            2.0 * TAU,
+            3.0 * TAU + 1.0,
+            4.0 * TAU,
+            5.0 * TAU,
+        ];
 
         assert!(check_accuracy(&not_ok1, MAP_THRESHOLD).is_err());
         assert!(check_accuracy(&not_ok2, MAP_THRESHOLD).is_err());
