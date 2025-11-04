@@ -7,15 +7,14 @@ pub use initial::PyInitialConditions;
 pub use mapping::PyMapping;
 
 use crate::error::PyParticleError;
-use crate::{repr_impl, PyBfield, PyCurrent, PyPerturbation, PyQfactor};
-
+use crate::{PyBfield, PyCurrent, PyPerturbation, PyQfactor};
 use particle::Particle;
+use utils::repr_impl;
 
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
-#[pyclass]
-#[pyo3(name = "Particle")]
+#[pyclass(name = "Particle")]
 pub struct PyParticle {
     pub particle: Particle,
 }

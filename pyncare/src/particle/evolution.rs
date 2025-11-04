@@ -19,6 +19,14 @@ impl PyEvolution {
     }
 }
 
+#[pymethods]
+impl PyEvolution {
+    #[getter]
+    pub fn get_duration(&self) -> String {
+        format!("{:?}", self.evolution.duration)
+    }
+}
+
 repr_impl!(PyEvolution);
 to_numpy1D_impl!(PyEvolution, evolution, time);
 to_numpy1D_impl!(PyEvolution, evolution, theta);

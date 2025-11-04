@@ -1,5 +1,5 @@
-use crate::repr_impl;
 use particle::Mapping;
+use utils::{repr_impl, to_pyfloat_impl};
 
 use pyo3::prelude::*;
 
@@ -28,17 +28,13 @@ impl PyMapping {
     }
 
     #[getter]
-    pub fn get_alpha(&self) -> f64 {
-        self.mapping.alpha
-    }
-
-    #[getter]
     pub fn get_intersections(&self) -> usize {
         self.mapping.intersections
     }
 }
 
 repr_impl!(PyMapping);
+to_pyfloat_impl!(PyMapping, mapping, alpha);
 
 impl std::fmt::Debug for PyMapping {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
