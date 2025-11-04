@@ -38,6 +38,9 @@ def perturbation(harmonic1, harmonic2):
     return pm.Perturbation(harmonics=[harmonic1, harmonic2])
 
 
+# =========================================================================================
+
+
 @pytest.fixture(scope="session")
 def initial_conditions(qfactor):
     """Creates an InitialConditons object."""

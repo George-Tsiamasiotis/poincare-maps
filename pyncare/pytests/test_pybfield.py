@@ -1,11 +1,9 @@
 import pytest
-from pathlib import PosixPath
 from pyncare import Bfield
 
 
 def test_pybfield_derived_fields(bfield: Bfield):
-    """Tests that the fields derived from the wrapped Rust object are the correct type."""
-    assert isinstance(bfield.path, PosixPath)
+    assert isinstance(bfield.path, str)
     assert isinstance(bfield.typ, str)
     assert isinstance(bfield.baxis, float)
     assert isinstance(bfield.raxis, float)
@@ -25,26 +23,16 @@ def test_pybfield_eval(bfield: Bfield):
 
 
 def test_data_extraction(bfield: Bfield):
-    """Tests that all extracted data are numpy arrays of the correct shape."""
-    psip_data = bfield.psip_data
-    theta_data = bfield.theta_data
-    b_data = bfield.b_data
-    r_data = bfield.r_data
-    z_data = bfield.z_data
-    db_dpsip_data = bfield.db_dpsip_data
-    db_dtheta_data = bfield.db_dtheta_data
-
-    assert psip_data.ndim == 1
-    assert theta_data.ndim == 1
-    assert b_data.ndim == 2
-    assert r_data.ndim == 2
-    assert z_data.ndim == 2
-    assert db_dpsip_data.ndim == 2
-    assert db_dtheta_data.ndim == 2
+    assert bfield.psip_data.ndim == 1
+    assert bfield.theta_data.ndim == 1
+    assert bfield.b_data.ndim == 2
+    assert bfield.r_data.ndim == 2
+    assert bfield.z_data.ndim == 2
+    assert bfield.db_dpsip_data.ndim == 2
+    assert bfield.db_dtheta_data.ndim == 2
 
 
 def test_immutability(bfield: Bfield):
-    """Tests that bfield fields are immutable."""
     with pytest.raises(AttributeError):
         bfield.psip_wall += 1
         bfield.psi_wall += 1

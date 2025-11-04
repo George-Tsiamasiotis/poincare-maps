@@ -67,10 +67,6 @@ class Current:
         The NetCDF g data used to construct the g(ψp) spline.
     i_data: np.ndarray
         The NetCDF I data used to construct the I(ψp) spline.
-    dg_dpsip_data: np.ndarray
-        The dg/dψp values evaluated at the ψp data
-    di_dpsip_data: np.ndarray
-        The dI/dψp values evaluated at the ψp data
     """
 
     path: str
@@ -79,8 +75,6 @@ class Current:
     psip_data: np.ndarray
     g_data: np.ndarray
     i_data: np.ndarray
-    dg_dpsip_data: np.ndarray
-    di_dpsip_data: np.ndarray
 
     def __init__(self, path: str, typ: str):
         """Plasma current reconstructed from a NetCDF file.
@@ -134,9 +128,9 @@ class Bfield:
     z_data: np.ndarray
         The NetCDF Z data used to construct the Z(ψp, θ) spline.
     db_dpsip_data: np.ndarray
-        The db/dψp values evaluated at the (ψp, θ) data.
+        The db/dψp values evaluated at the (ψp, θ) data, through interpolation.
     db_dtheta_data: np.ndarray
-        The db/dψp values evaluated at the (ψp, θ) data.
+        The db/dψp values evaluated at the (ψp, θ) data, through interpolation.
     """
 
     path: str
@@ -378,8 +372,6 @@ class Particle:
         mapping: Mapping
             The parameters of the Poincare mapping.
         """
-
-        # TODO: add mapping
 
 class Evolution:
     """Time series of the particle's orbit.

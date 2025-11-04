@@ -3,7 +3,6 @@ from pyncare import Harmonic, Perturbation
 
 
 def test_pyperturbation_derived_fields(perturbation: Perturbation):
-    """Tests that the fields derived from the wrapped Rust object are the correct type."""
     assert isinstance(perturbation.harmonics, list)
 
 
