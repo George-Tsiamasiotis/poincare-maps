@@ -103,7 +103,6 @@ impl Qfactor {
     /// # }
     /// ```
     pub fn q(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        debug_assert!(psip.is_sign_positive());
         Ok(self.q_spline.eval(psip, acc)?)
     }
 
@@ -126,7 +125,6 @@ impl Qfactor {
     /// # }
     /// ```
     pub fn psi(&self, psip: f64, acc: &mut Accelerator) -> Result<f64> {
-        debug_assert!(psip.is_sign_positive());
         Ok(self.psi_spline.eval(psip, acc)?)
     }
 }
