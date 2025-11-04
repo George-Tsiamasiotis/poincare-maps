@@ -871,6 +871,7 @@ dependencies = [
  "particle",
  "pyo3",
  "rsl-interpolation",
+ "utils",
 ]
 
 [[package]]

@@ -2,31 +2,17 @@ use std::path::PathBuf;
 
 use equilibrium::Bfield;
 use rsl_interpolation::{Accelerator, Cache};
+use utils::{eval2D_impl, repr_impl, to_numpy1D_impl, to_numpy2D_impl};
+use utils::{to_pyfloat_impl, to_pystr_impl};
 
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::prelude::*;
 
 use crate::error::PyEqError;
-use crate::{eval2D_impl, repr_impl, to_numpy1D_impl, to_numpy2D_impl};
 
-#[pyclass]
-#[pyo3(name = "Bfield")]
+#[pyclass(name = "Bfield")]
 pub struct PyBfield {
     pub bfield: Bfield,
-
-    // Derived from [`Bfield`].
-    #[pyo3(get)]
-    pub path: PathBuf,
-    #[pyo3(get)]
-    pub typ: String,
-    #[pyo3(get)]
-    pub baxis: f64,
-    #[pyo3(get)]
-    pub raxis: f64,
-    #[pyo3(get)]
-    pub psip_wall: f64,
-    #[pyo3(get)]
-    pub psi_wall: f64,
 
     // for Python-exposed evaluations
     pub xacc: Accelerator,
@@ -36,24 +22,14 @@ pub struct PyBfield {
 
 #[pymethods]
 impl PyBfield {
+    /// Creates a new PyBfield object.
     #[new]
     pub fn new(path: &str, typ: &str) -> Result<Self, PyEqError> {
         let path = PathBuf::from(path);
         let bfield = Bfield::from_dataset(&path, typ)?;
-        let typ = bfield.typ.clone();
-        let baxis = bfield.baxis;
-        let raxis = bfield.baxis;
-        let psip_wall = bfield.psip_wall;
-        let psi_wall = bfield.psi_wall;
 
         Ok(Self {
             bfield,
-            path,
-            typ,
-            baxis,
-            raxis,
-            psip_wall,
-            psi_wall,
             xacc: Accelerator::new(),
             yacc: Accelerator::new(),
             cache: Cache::new(),
@@ -62,6 +38,12 @@ impl PyBfield {
 }
 
 repr_impl!(PyBfield);
+to_pystr_impl!(PyBfield, bfield, typ);
+to_pystr_impl!(PyBfield, bfield, path);
+to_pyfloat_impl!(PyBfield, bfield, baxis);
+to_pyfloat_impl!(PyBfield, bfield, raxis);
+to_pyfloat_impl!(PyBfield, bfield, psi_wall);
+to_pyfloat_impl!(PyBfield, bfield, psip_wall);
 eval2D_impl!(PyBfield, bfield, b);
 eval2D_impl!(PyBfield, bfield, db_dtheta);
 eval2D_impl!(PyBfield, bfield, db_dpsip);
@@ -76,6 +58,7 @@ to_numpy2D_impl!(PyBfield, bfield, z_data);
 to_numpy2D_impl!(PyBfield, bfield, db_dpsip_data);
 to_numpy2D_impl!(PyBfield, bfield, db_dtheta_data);
 
+/// Remove Cache
 impl std::fmt::Debug for PyBfield {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PyBfield")

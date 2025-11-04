@@ -1,19 +1,18 @@
 use equilibrium::{Harmonic, HarmonicCache, Perturbation};
-use pyo3::types::PyList;
 use rsl_interpolation::Accelerator;
 
 use crate::error::PyEqError;
-use crate::{eval_harmonic_impl, repr_impl, PyHarmonic};
+use crate::PyHarmonic;
+use utils::{eval_harmonic_impl, repr_impl};
 
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 
-#[pyclass]
-#[pyo3(name = "Perturbation")]
+#[pyclass(name = "Perturbation")]
 pub struct PyPerturbation {
-    pub perturbation: Perturbation,
     #[pyo3(get)]
     pub harmonics: Vec<PyHarmonic>,
-
+    pub perturbation: Perturbation,
     // for Python-exposed evaluations
     pub cache: Vec<HarmonicCache>,
     pub acc: Accelerator,

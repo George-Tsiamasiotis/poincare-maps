@@ -10,6 +10,7 @@ test = false # linker issues, not needed anyway
 
 [dependencies]
 config = {path = "../config"}
+utils = {path = "../utils"}
 equilibrium = {path = "../equilibrium"}
 particle = {path = "../particle"}
 rsl-interpolation = {workspace = true}

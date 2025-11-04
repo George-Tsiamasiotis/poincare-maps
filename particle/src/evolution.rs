@@ -58,14 +58,14 @@ impl Evolution {
     }
 }
 
-array1D_getter_impl!(Evolution, get_time, time);
-array1D_getter_impl!(Evolution, get_theta, theta);
-array1D_getter_impl!(Evolution, get_psip, psip);
-array1D_getter_impl!(Evolution, get_rho, rho);
-array1D_getter_impl!(Evolution, get_zeta, zeta);
-array1D_getter_impl!(Evolution, get_psi, psi);
-array1D_getter_impl!(Evolution, get_ptheta, ptheta);
-array1D_getter_impl!(Evolution, get_pzeta, pzeta);
+array1D_getter_impl!(Evolution, time, time);
+array1D_getter_impl!(Evolution, theta, theta);
+array1D_getter_impl!(Evolution, psip, psip);
+array1D_getter_impl!(Evolution, rho, rho);
+array1D_getter_impl!(Evolution, zeta, zeta);
+array1D_getter_impl!(Evolution, psi, psi);
+array1D_getter_impl!(Evolution, ptheta, ptheta);
+array1D_getter_impl!(Evolution, pzeta, pzeta);
 
 impl Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
