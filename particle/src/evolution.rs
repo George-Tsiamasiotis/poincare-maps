@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 use std::time::Duration;
 
+use ndarray::Array1;
+use utils::array1D_getter_impl;
+
 use crate::Point;
 
 /// Time series for a Particle's orbit.
@@ -55,25 +58,14 @@ impl Evolution {
     }
 }
 
-/// Generates getter for the evolution time series Vectors, needed for exposing them to Python.
-macro_rules! to_array_impl {
-    ($name:ident) => {
-        impl Evolution {
-            pub fn $name(&self) -> Vec<f64> {
-                self.$name.clone()
-            }
-        }
-    };
-}
-
-to_array_impl!(time);
-to_array_impl!(theta);
-to_array_impl!(psip);
-to_array_impl!(rho);
-to_array_impl!(zeta);
-to_array_impl!(psi);
-to_array_impl!(ptheta);
-to_array_impl!(pzeta);
+array1D_getter_impl!(Evolution, get_time, time);
+array1D_getter_impl!(Evolution, get_theta, theta);
+array1D_getter_impl!(Evolution, get_psip, psip);
+array1D_getter_impl!(Evolution, get_rho, rho);
+array1D_getter_impl!(Evolution, get_zeta, zeta);
+array1D_getter_impl!(Evolution, get_psi, psi);
+array1D_getter_impl!(Evolution, get_ptheta, ptheta);
+array1D_getter_impl!(Evolution, get_pzeta, pzeta);
 
 impl Debug for Evolution {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -87,7 +79,7 @@ impl Debug for Evolution {
                 ),
             )
             .field("duration", &self.duration)
-            .field("steps", &self.time.len())
+            .field("length", &self.time.len())
             .finish()
     }
 }

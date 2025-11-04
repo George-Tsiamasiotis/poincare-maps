@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, DynSpline};
+use utils::array1D_getter_impl;
 
 use crate::Result;
 
@@ -163,47 +164,9 @@ impl Current {
     }
 }
 
-/// Data Extraction
-impl Current {
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.g_spline.xa.to_vec())
-    }
-
-    /// Returns the `g` data as a 1D array.
-    pub fn g_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.g_spline.ya.to_vec())
-    }
-
-    /// Returns the `I` data as a 1D array.
-    pub fn i_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.i_spline.ya.to_vec())
-    }
-
-    /// Returns the `𝜕g(ψp)/𝜕ψp` data as a 1D array.
-    pub fn dg_dpsip_data(&self) -> Array1<f64> {
-        let mut acc = Accelerator::new();
-        let psip_data = &self.g_spline.xa;
-        let dg_dpsip_vec: Vec<f64> = psip_data
-            .iter()
-            .map(|psip| self.dg_dpsip(*psip, &mut acc).unwrap())
-            .collect();
-
-        Array1::from_vec(dg_dpsip_vec)
-    }
-
-    /// Returns the `𝜕I(ψp)/𝜕ψp` data as a 1D array.
-    pub fn di_dpsip_data(&self) -> Array1<f64> {
-        let mut acc = Accelerator::new();
-        let psip_data = &self.i_spline.xa;
-        let di_dpsip_vec: Vec<f64> = psip_data
-            .iter()
-            .map(|psip| self.di_dpsip(*psip, &mut acc).unwrap())
-            .collect();
-
-        Array1::from_vec(di_dpsip_vec)
-    }
-}
+array1D_getter_impl!(Current, psip_data, g_spline.xa);
+array1D_getter_impl!(Current, g_data, g_spline.ya);
+array1D_getter_impl!(Current, i_data, g_spline.ya);
 
 impl std::fmt::Debug for Current {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -238,8 +201,6 @@ mod test {
         assert_eq!(c.psip_data().shape(), [101]);
         assert_eq!(c.g_data().shape(), [101]);
         assert_eq!(c.i_data().shape(), [101]);
-        assert_eq!(c.dg_dpsip_data().shape(), [101]);
-        assert_eq!(c.di_dpsip_data().shape(), [101]);
     }
 
     #[test]

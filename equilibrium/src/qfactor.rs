@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use rsl_interpolation::{Accelerator, DynSpline};
+use utils::array1D_getter_impl;
 
 use crate::Result;
 
@@ -129,33 +130,22 @@ impl Qfactor {
     }
 }
 
-/// Data extraction
 impl Qfactor {
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.q_spline.xa.to_vec())
-    }
-
-    /// Returns the `q` data as a 1D array.
-    pub fn q_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.q_spline.ya.to_vec())
-    }
-
-    /// Returns the `psi` data as a 1D array.
-    pub fn psi_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.psi_spline.ya.to_vec())
-    }
-
     /// Returns the `q` data calculated from `dψ/dψp` as a 1D array.
     pub fn q_data_derived(&self) -> Array1<f64> {
         let mut acc = Accelerator::new();
-        self.psip_data()
+        self.q_spline
+            .xa
             .iter()
             .map(|psip| self.psi_spline.eval_deriv(*psip, &mut acc).unwrap())
             .collect::<Vec<f64>>()
             .into()
     }
 }
+
+array1D_getter_impl!(Qfactor, psip_data, q_spline.xa);
+array1D_getter_impl!(Qfactor, q_data, q_spline.ya);
+array1D_getter_impl!(Qfactor, psi_data, psi_spline.ya);
 
 impl std::fmt::Debug for Qfactor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -191,6 +181,7 @@ mod test {
         assert_eq!(q.psip_data().shape(), [101]);
         assert_eq!(q.q_data().shape(), [101]);
         assert_eq!(q.psi_data().shape(), [101]);
+        assert_eq!(q.q_data_derived().shape(), [101]);
     }
 
     #[test]

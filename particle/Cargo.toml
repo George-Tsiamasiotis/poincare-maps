@@ -6,8 +6,10 @@ authors.workspace = true
 
 [dependencies]
 serde = { workspace = true }
+ndarray= {workspace = true}
 thiserror = {workspace = true}
 rsl-interpolation = {workspace = true}
+utils= {path = "../utils"}
 config = {path = "../config"}
 equilibrium = {path = "../equilibrium"}
 

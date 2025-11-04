@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use ndarray::{Array1, Array2};
 use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
+use utils::array1D_getter_impl;
 
 use crate::Result;
 
@@ -319,45 +320,28 @@ impl Bfield {
     }
 }
 
+/// Generates getters that return [T] fields to Array1<T>.
+///
+/// Since the data is internally stored as a Vec in Fortran order, we need a specialized macro.
+///
+/// This is needed for implementing python getter wrappers.
+macro_rules! array2D_getter_impl {
+    ($fun_name:ident, $spline:ident) => {
+        pub fn $fun_name(&self) -> Array2<f64> {
+            // `Spline.za` is in Fortran order.
+            let shape = (self.$spline.ya.len(), self.$spline.xa.len());
+            Array2::from_shape_vec(shape, self.$spline.za.to_vec())
+                .expect("Error extracting 2D spline data")
+                .reversed_axes()
+        }
+    };
+}
+
 /// Data Extraction
 impl Bfield {
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.b_spline.xa.to_vec())
-    }
-
-    /// Returns the `theta` coordinate data as a 1D array.
-    pub fn theta_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.b_spline.ya.to_vec())
-    }
-
-    /// Returns the `R` data grid as a 2D array.
-    pub fn r_data(&self) -> Array2<f64> {
-        let shape = (self.r_spline.ya.len(), self.r_spline.xa.len());
-        match Array2::from_shape_vec(shape, self.r_spline.za.to_vec()) {
-            Ok(r_grid) => r_grid.reversed_axes(),
-            Err(_) => unreachable!(),
-        }
-    }
-
-    /// Returns the `Z` data grid as a 2D array.
-    pub fn z_data(&self) -> Array2<f64> {
-        let shape = (self.z_spline.ya.len(), self.z_spline.xa.len());
-        match Array2::from_shape_vec(shape, self.z_spline.za.to_vec()) {
-            Ok(z_grid) => z_grid.reversed_axes(),
-            Err(_) => unreachable!(),
-        }
-    }
-
-    /// Returns the `B` data grid as a 2D array.
-    pub fn b_data(&self) -> Array2<f64> {
-        let shape = (self.b_spline.ya.len(), self.b_spline.xa.len());
-        match Array2::from_shape_vec(shape, self.b_spline.za.to_vec()) {
-            // `Spline.za` is in Fortran order.
-            Ok(b_grid) => b_grid.reversed_axes(),
-            Err(_) => unreachable!(),
-        }
-    }
+    array2D_getter_impl!(b_data, b_spline);
+    array2D_getter_impl!(r_data, b_spline);
+    array2D_getter_impl!(z_data, b_spline);
 
     /// Returns the `𝜕B(ψp, θ) /𝜕ψp` data as a 2D array.
     ///
@@ -418,6 +402,9 @@ impl Bfield {
         db_dtheta_grid.reversed_axes()
     }
 }
+
+array1D_getter_impl!(Bfield, psip_data, b_spline.xa);
+array1D_getter_impl!(Bfield, theta_data, b_spline.ya);
 
 /// Returns θ % 2π.
 fn mod2pi(theta: f64) -> f64 {

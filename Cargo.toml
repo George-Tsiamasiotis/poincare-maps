@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
-members = [ "config","equilibrium", "particle", "poincare", "pyncare"]
+members = [ "config","equilibrium", "particle", "poincare", "pyncare", "utils"]
 
 [workspace.dependencies]
+ndarray = "0.16.1"
 thiserror = "2.0.17"
 serde = {version = "1.0.228", features = ["serde_derive"]}
 rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "cache-dev" }

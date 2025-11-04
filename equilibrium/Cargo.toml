@@ -6,9 +6,10 @@ authors = {workspace = true}
 description = "Representation of Tokamak Equilibria from experimental data."
 
 [dependencies]
-ndarray = "0.16.1"
+ndarray = {workspace = true}
 thiserror = {workspace = true}
 rsl-interpolation = {workspace = true}
+utils = {path = "../utils"}
 tokamak-netcdf = { git = "https://github.com/George-Tsiamasiotis/tokamak-netcdf", version = "0.1.3" }
 
 [features]

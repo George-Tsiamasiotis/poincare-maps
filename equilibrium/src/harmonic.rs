@@ -2,6 +2,7 @@ use std::f64::consts::TAU;
 use std::path::PathBuf;
 
 use rsl_interpolation::{Accelerator, DynSpline, make_spline};
+use utils::array1D_getter_impl;
 
 use crate::Result;
 
@@ -59,6 +60,7 @@ impl HarmonicCache {
     }
 
     pub fn is_updated(&mut self, psip: f64, theta: f64, zeta: f64) -> bool {
+        // Comparing floats is OK here since they are simply copied between every call.
         if (self.psip == psip) & (self.theta == theta) & (self.zeta == zeta) {
             self.hits += 1;
             true
@@ -76,7 +78,6 @@ impl HarmonicCache {
         zeta: f64,
         acc: &mut Accelerator,
     ) -> Result<()> {
-        // Comparing floats is OK here since they are simply copied between every call.
         self.psip = psip;
         self.theta = theta;
         self.zeta = zeta;
@@ -324,18 +325,8 @@ impl Harmonic {
     }
 }
 
-/// Data extraction
-impl Harmonic {
-    /// Returns the `psip` coordinate data as a 1D array.
-    pub fn psip_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.a_spline.xa.to_vec())
-    }
-
-    /// Returns the `α` perturbation amplitude data as a 1D array.
-    pub fn a_data(&self) -> Array1<f64> {
-        Array1::from_vec(self.a_spline.ya.to_vec())
-    }
-}
+array1D_getter_impl!(Harmonic, psip_data, a_spline.xa);
+array1D_getter_impl!(Harmonic, a_data, a_spline.ya);
 
 /// A simple gaussian distribution to emulate reconstructed perturbations.
 /// TODO: remove
@@ -378,6 +369,14 @@ impl std::fmt::Debug for Harmonic {
             .finish()
     }
 }
+impl std::fmt::Debug for HarmonicCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HarmonicCache")
+            .field("hits  ", &self.hits)
+            .field("misses", &self.misses)
+            .finish()
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -393,19 +392,47 @@ mod test {
     }
 
     #[test]
+    fn test_cache_update() {
+        let path = PathBuf::from("../data.nc");
+        let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
+        let mut acc = Accelerator::new();
+        let mut cache = HarmonicCache::new();
+
+        let (psip, theta, zeta) = (0.015, 0.0, 3.14);
+        harmonic.h(psip, theta, zeta, &mut cache, &mut acc).unwrap();
+        harmonic
+            .dh_dpsip(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dtheta(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dzeta(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dt(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        let (psip, theta, zeta) = (0.01, 0.01, 3.15);
+        harmonic.h(psip, theta, zeta, &mut cache, &mut acc).unwrap();
+        harmonic
+            .dh_dpsip(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dtheta(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dzeta(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+        harmonic
+            .dh_dt(psip, theta, zeta, &mut cache, &mut acc)
+            .unwrap();
+    }
+
+    #[test]
     fn test_harmonic_misc() {
         let path = PathBuf::from("../data.nc");
         let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
         let _ = harmonic.clone();
         let _ = format!("{harmonic:?}");
-    }
-}
-
-impl std::fmt::Debug for HarmonicCache {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HarmonicCache")
-            .field("hits  ", &self.hits)
-            .field("misses", &self.misses)
-            .finish()
     }
 }
