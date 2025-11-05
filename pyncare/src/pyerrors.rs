@@ -1,5 +1,6 @@
 use equilibrium::EqError;
 use particle::ParticleError;
+use poincare::PoincareError;
 use pyo3::exceptions::PyException;
 use pyo3::PyErr;
 
@@ -28,3 +29,4 @@ macro_rules! to_pyerr_impl {
 
 to_pyerr_impl!(EqError, PyEqError);
 to_pyerr_impl!(ParticleError, PyParticleError);
+to_pyerr_impl!(PoincareError, PyPoincareError);

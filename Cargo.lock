@@ -875,6 +875,7 @@ dependencies = [
  "equilibrium",
  "numpy",
  "particle",
+ "poincare",
  "pyo3",
  "rsl-interpolation",
  "utils",

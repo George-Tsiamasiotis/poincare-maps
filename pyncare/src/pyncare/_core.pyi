@@ -417,3 +417,38 @@ class Mapping:
         intersections: int
             The number of interections to calculate.
         """
+
+# =========================================================================================
+
+class PoincareInit:
+    """Sets up the initial conditions for a poincare map."""
+
+    thetas: np.ndarray
+    psips: np.ndarray
+    rhos: np.ndarray
+    zetas: np.ndarray
+    mus: np.ndarray
+
+    def __init__(
+        self,
+        thetas: np.ndarray,
+        psips: np.ndarray,
+        rhos: np.ndarray,
+        zetas: np.ndarray,
+        mus: np.ndarray,
+    ):
+        """Constructor.
+
+        Parameters
+        ----------
+        thetas: np.ndarray
+            The initial `θ` angles.
+        psips: np.ndarray
+            The initial poloidal magnetic fluxes `ψp`.
+        rhos: np.ndarray
+            The initial parallel gyro radii `ρ`.
+        zetas: np.ndarray
+            The initial `ζ` angles.
+        mus: np.ndarray
+            The magnetic moments `μ`.
+        """

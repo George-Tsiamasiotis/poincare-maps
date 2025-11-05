@@ -1,10 +1,12 @@
 mod particle;
+mod poincare;
 mod pyerrors;
 mod pylibrium;
 
 use pyo3::prelude::*;
 
 pub use particle::*;
+pub use poincare::*;
 pub use pyerrors::*;
 pub use pylibrium::*;
 
@@ -20,7 +22,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyInitialConditions>()?;
     m.add_class::<PyParticle>()?;
     m.add_class::<PyEvolution>()?;
-    // Mapping
     m.add_class::<PyMapping>()?;
+    // Poincare
+    m.add_class::<PyPoincareInit>()?;
     Ok(())
 }
