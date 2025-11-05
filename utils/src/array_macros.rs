@@ -1,4 +1,4 @@
-/// Generates getters that return [T] fields to Array1<T>
+/// Generates getters that return \[T\] fields to Array1<T>
 ///
 /// This is needed for implementing python getter wrappers.
 #[macro_export]
