@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use config::PBAR_STYLE;
 use equilibrium::{Bfield, Current, Perturbation, Qfactor};
 use utils::array2D_getter_impl;
@@ -48,13 +50,14 @@ impl Poincare {
         let pbar = ProgressBar::new(self.particles.len() as u64).with_style(
             ProgressStyle::with_template(PBAR_STYLE).unwrap_or(ProgressStyle::default_bar()),
         );
+        pbar.enable_steady_tick(Duration::from_millis(100));
 
         self.particles.par_iter_mut().try_for_each(|p| {
             p.map(qfactor, bfield, current, per, &self.mapping)
                 .inspect(|()| pbar.inc(1))
         })?;
 
-        self.results = PoincareResults::new(&self, &self.mapping);
+        self.results = PoincareResults::new(self, &self.mapping);
         Ok(())
     }
 

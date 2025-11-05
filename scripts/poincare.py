@@ -15,15 +15,15 @@ current = pc.Current("./data.nc", "akima")
 bfield = pc.Bfield("./data.nc", "bicubic")
 per = pc.Perturbation(
     [
-        pc.Harmonic("./data.nc", "akima", m=1, n=2, phase=0),
-        pc.Harmonic("./data.nc", "akima", m=3, n=2, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=7, n=1, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=9, n=1, phase=0),
     ]
 )
 
 num = 20
 init = pc.PoincareInit(
     thetas=np.linspace(0, np.pi, num),
-    psips=np.linspace(0.0, 0.8, num) * qfactor.psip_wall,
+    psips=np.linspace(0.0, 1.0, num) * qfactor.psip_wall,
     rhos=0.001 * np.ones(num),
     zetas=np.zeros(num),
     mus=np.zeros(num),

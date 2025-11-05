@@ -1,7 +1,7 @@
 // ==================== Solver
 
 /// The maximum amount of steps a particle can make before terminating its integration.
-pub const MAX_STEPS: usize = 10_000_000;
+pub const MAX_STEPS: usize = 1_000_000;
 
 /// The initial time step for the RKF45 adaptive step method. Should be small enough to account
 /// for fast particles. The value is empirical.

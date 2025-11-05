@@ -81,10 +81,11 @@ impl Particle {
                 // if they are invalid.
                 let result = state.evaluate(qfactor, current, bfield, per);
                 self.evolution.push_point(&Point::from_state(&state));
+                self.evolution.steps += 1;
                 result
             };
             match res {
-                Err(ParticleError::DomainError(..)) => {
+                Err(ParticleError::EqError(..)) => {
                     self.status = IntegrationStatus::Escaped;
                     break;
                 }
@@ -95,7 +96,7 @@ impl Particle {
                 Ok(_) => (),
             }
 
-            if self.evolution.time.len() == MAX_STEPS {
+            if self.evolution.steps_taken() >= MAX_STEPS {
                 self.status = IntegrationStatus::TimedOut(start.elapsed());
                 break;
             }
@@ -134,7 +135,7 @@ impl Particle {
         let start = Instant::now();
 
         match map_integrate(self, qfactor, bfield, current, per, mapping) {
-            Err(ParticleError::DomainError(..)) => {
+            Err(ParticleError::EqError(..)) => {
                 self.status = IntegrationStatus::Escaped;
             }
             Err(ParticleError::TimedOut(..)) => {

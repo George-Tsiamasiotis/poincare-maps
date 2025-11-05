@@ -64,8 +64,7 @@ pub fn map_integrate(
         state2 = solver.next_state(dt);
         state2.evaluate(qfactor, current, bfield, per)?;
 
-        if particle.evolution.time.len() == MAX_STEPS {
-            // FIXME:
+        if particle.evolution.steps_taken() >= MAX_STEPS {
             return Err(ParticleError::TimedOut(Duration::default()));
         }
 
@@ -97,7 +96,8 @@ pub fn map_integrate(
             // a valid state with a valid step size within the solver's tolerance.
         }
         // In both cases, continue from the next state.
-        state1 = state2
+        state1 = state2;
+        particle.evolution.steps += 1;
     }
     Ok(())
 }

@@ -1,4 +1,12 @@
-def test_evolution_extraction(integrated_particle):
+from pyncare._core import Particle
+
+
+def test_evolution_fields(integrated_particle: Particle):
+    assert isinstance(integrated_particle.evolution.steps_taken, int)
+    assert isinstance(integrated_particle.evolution.steps_stored, int)
+
+
+def test_evolution_extraction(integrated_particle: Particle):
     evolution = integrated_particle.evolution
 
     assert evolution.time.ndim == 1
@@ -11,7 +19,7 @@ def test_evolution_extraction(integrated_particle):
     assert evolution.pzeta.ndim == 1
 
 
-def test_evolution_array_lengths(integrated_particle):
+def test_evolution_array_lengths(integrated_particle: Particle):
     evolution = integrated_particle.evolution
 
     length = len(evolution.time)
@@ -25,5 +33,5 @@ def test_evolution_array_lengths(integrated_particle):
     assert len(evolution.pzeta) == length
 
 
-def test_repr(integrated_particle):
+def test_repr(integrated_particle: Particle):
     str(integrated_particle.evolution)

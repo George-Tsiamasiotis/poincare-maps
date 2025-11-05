@@ -387,6 +387,8 @@ class Evolution:
     psi: np.ndarray
     ptheta: np.ndarray
     pzeta: np.ndarray
+    steps_taken: int
+    steps_stored: int
 
 class Mapping:
     """Defines all the necessary parameters of a Poincare Map.

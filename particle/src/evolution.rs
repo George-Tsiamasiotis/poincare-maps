@@ -18,6 +18,7 @@ pub struct Evolution {
     pub ptheta: Vec<f64>,
     pub pzeta: Vec<f64>,
     pub duration: Duration,
+    pub steps: usize,
 }
 
 impl Evolution {
@@ -32,7 +33,16 @@ impl Evolution {
             ptheta: Vec::with_capacity(capacity),
             pzeta: Vec::with_capacity(capacity),
             duration: Duration::default(),
+            steps: 0,
         }
+    }
+
+    pub fn steps_taken(&self) -> usize {
+        self.steps
+    }
+
+    pub fn steps_stored(&self) -> usize {
+        self.time.len()
     }
 
     pub fn push_point(&mut self, point: &Point) {
@@ -79,7 +89,8 @@ impl Debug for Evolution {
                 ),
             )
             .field("duration", &self.duration)
-            .field("length", &self.time.len())
+            .field("steps taken", &self.steps_taken())
+            .field("steps stored", &self.steps_stored())
             .finish()
     }
 }

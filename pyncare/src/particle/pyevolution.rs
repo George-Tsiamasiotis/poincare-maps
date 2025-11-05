@@ -25,6 +25,16 @@ impl PyEvolution {
     pub fn get_duration(&self) -> String {
         format!("{:?}", self.evolution.duration)
     }
+
+    #[getter]
+    pub fn get_steps_taken(&self) -> usize {
+        self.evolution.steps_taken()
+    }
+
+    #[getter]
+    pub fn get_steps_stored(&self) -> usize {
+        self.evolution.steps_stored()
+    }
 }
 
 repr_impl!(PyEvolution);
