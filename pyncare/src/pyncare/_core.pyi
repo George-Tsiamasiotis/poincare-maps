@@ -452,3 +452,44 @@ class PoincareInit:
         mus: np.ndarray
             The magnetic moments `μ`.
         """
+
+class Poincare:
+    """Calculates Poincare maps."""
+
+    init: PoincareInit
+    section: str
+    alpha: int
+    angles: np.ndarray
+    fluxes: np.ndarray
+
+    def __init__(self, init: PoincareInit, mapping: Mapping):
+        """Constructor
+
+        Parameters
+        ----------
+        init: PoincareInit
+            The initial conditions arrays.
+        mapping: Mapping
+            The integration parameters.
+        """
+
+    def run(
+        self,
+        qfactor: Qfactor,
+        current: Current,
+        bfield: Bfield,
+        per: Perturbation,
+    ):
+        """Integrates the particle, storing its evolution.
+
+        Parameters
+        ----------
+        qfactor: Qfactor
+            The equilibrium's qfactor.
+        current: Current
+            The equilibrium's plasma current.
+        bfield: Bfield
+            The equilibrium's magnetic field.
+        per: Perturbation
+            The equilibrium's perturbation.
+        """

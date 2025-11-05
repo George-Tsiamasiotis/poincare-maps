@@ -9,7 +9,7 @@ macro_rules! to_numpy1D_impl {
         impl $py_object {
             #[getter]
             pub fn $name<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f64>> {
-                self.$rust_object.$name().into_pyarray(py)
+                self.$rust_object.$name$(.$field),*().into_pyarray(py)
             }
         }
     };
@@ -26,7 +26,7 @@ macro_rules! to_numpy2D_impl {
         impl $py_object {
             #[getter]
             pub fn $name<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
-                self.$rust_object.$name().into_pyarray(py)
+                self.$rust_object.$name$(.$field),*().into_pyarray(py)
             }
         }
     };

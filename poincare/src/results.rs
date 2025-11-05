@@ -1,15 +1,23 @@
 use ndarray::{Array2, Axis};
 use particle::Mapping;
+use utils::array2D_getter_impl;
 
 use crate::Poincare;
 
-#[derive(Default)]
+/// Stores the results of the Poincare map calculation
+#[derive(Default, Clone)]
 pub struct PoincareResults {
+    /// The calculated angles, corresponding to either `zeta` or `theta`, depending on the
+    /// [`PoincareSection`]
     pub angles: Array2<f64>,
+    /// The calculated fluxes, corresponding to either `psip` or `psi`, depending on the
+    /// [`PoincareSection`]
     pub fluxes: Array2<f64>,
+    // TODO: statistics
 }
 
 impl PoincareResults {
+    /// Creates a [`PoincareResults`] from an already calculated Poincare map.
     pub fn new(poincare: &Poincare, mapping: &Mapping) -> Self {
         // Include initiali point
         let shape = (poincare.particles.len(), mapping.intersections + 1);
@@ -32,10 +40,10 @@ impl PoincareResults {
         // Remove intial points
         angles.remove_index(Axis(1), 0);
         fluxes.remove_index(Axis(1), 0);
-        debug_assert_eq!(
-            angles.shape(),
-            &[poincare.particles.len(), mapping.intersections]
-        );
         Self { angles, fluxes }
     }
 }
+
+// Make them availiable to Poincare
+array2D_getter_impl!(PoincareResults, angles, angles);
+array2D_getter_impl!(PoincareResults, fluxes, fluxes);

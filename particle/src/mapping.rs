@@ -65,6 +65,7 @@ pub fn map_integrate(
         state2.evaluate(qfactor, current, bfield, per)?;
 
         if particle.evolution.time.len() == MAX_STEPS {
+            // FIXME:
             return Err(ParticleError::TimedOut(Duration::default()));
         }
 

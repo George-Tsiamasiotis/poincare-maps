@@ -27,6 +27,6 @@ fn test_normal_particle_int() {
 
     let mapping = Mapping::new(PoincareSection::ConstTheta, PI, 10);
 
-    let mut p = Poincare::new(init);
-    p.run(&qfactor, &bfield, &current, &per, &mapping).unwrap();
+    let mut p = Poincare::new(init, mapping);
+    p.run(&qfactor, &bfield, &current, &per).unwrap();
 }

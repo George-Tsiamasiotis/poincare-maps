@@ -95,3 +95,9 @@ def poincare_init(qfactor: pc.Qfactor):
         zetas=np.zeros(num),
         mus=np.zeros(num),
     )
+
+
+@pytest.fixture(scope="session")
+def poincare(poincare_init: pc.PoincareInit, mapping: pc.Mapping):
+    """Creates a Poincare object."""
+    return pc.Poincare(init=poincare_init, mapping=mapping)

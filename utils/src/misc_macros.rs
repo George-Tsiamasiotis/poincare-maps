@@ -16,12 +16,12 @@ macro_rules! repr_impl {
 
 #[macro_export]
 macro_rules! to_pyfloat_impl {
-    ($py_object:ident, $rust_object:ident, $name:ident) => {
+    ($py_object:ident, $rust_object:ident, $name:ident$(.$field:ident),*) => {
         #[pymethods]
         impl $py_object {
             #[getter]
             pub fn $name(&self) -> f64 {
-                self.$rust_object.$name.into()
+                self.$rust_object.$name$(.$field),*.into()
             }
         }
     };
@@ -48,12 +48,12 @@ macro_rules! to_pystr_impl {
             }
         }
     };
-    ($py_object:ident, $rust_object:ident, $name:ident) => {
+    ($py_object:ident, $rust_object:ident, $name:ident$(.$field:ident),*) => {
         #[pymethods]
         impl $py_object {
             #[getter]
             pub fn $name(&self) -> String {
-                String::from(self.$rust_object.$name.clone())
+                String::from(self.$rust_object.$name$(.$field),*.clone())
             }
         }
     };

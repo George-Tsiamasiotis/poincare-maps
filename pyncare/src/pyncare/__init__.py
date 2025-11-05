@@ -1,10 +1,11 @@
 from pyncare._core import Qfactor, Current, Bfield, Harmonic, Perturbation
 from pyncare._core import InitialConditions, Particle, Evolution, Mapping
-from pyncare._core import PoincareInit
+from pyncare._core import PoincareInit, Poincare
 from pyncare.qfactor_plots import q_plot, psi_plot
 from pyncare.current_plots import g_plot, i_plot
 from pyncare.bfield_plots import b_plot, db_plot
 from pyncare.orbit_plot import orbit_plot
+from pyncare.poincare_plot import poincare_plot
 
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "Mapping",
     # Poincare
     "PoincareInit",
+    "Poincare",
     # plots
     "q_plot",
     "psi_plot",
@@ -29,4 +31,5 @@ __all__ = [
     "b_plot",
     "db_plot",
     "orbit_plot",
+    "poincare_plot",
 ]

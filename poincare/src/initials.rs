@@ -6,6 +6,7 @@ use utils::array1D_getter_impl;
 use crate::{PoincareError, Result};
 
 /// Stores the initial conditions arrays.
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct PoincareInit {
     pub thetas: Array1<f64>,

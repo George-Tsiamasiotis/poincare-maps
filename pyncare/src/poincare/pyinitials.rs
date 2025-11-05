@@ -6,9 +6,10 @@ use pyo3::prelude::*;
 
 use crate::PyPoincareError;
 
+#[derive(Clone)]
 #[pyclass(name = "PoincareInit")]
 pub struct PyPoincareInit {
-    poincare_init: PoincareInit,
+    pub poincare_init: PoincareInit,
 }
 
 #[pymethods]

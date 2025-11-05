@@ -25,5 +25,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyMapping>()?;
     // Poincare
     m.add_class::<PyPoincareInit>()?;
+    m.add_class::<PyPoincare>()?;
     Ok(())
 }
