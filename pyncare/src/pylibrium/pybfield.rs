@@ -8,7 +8,7 @@ use utils::{to_pyfloat_impl, to_pystr_impl};
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::prelude::*;
 
-use crate::error::PyEqError;
+use crate::PyEqError;
 
 #[pyclass(name = "Bfield")]
 pub struct PyBfield {

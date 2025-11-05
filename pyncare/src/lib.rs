@@ -1,10 +1,11 @@
-mod error;
 mod particle;
+mod pyerrors;
 mod pylibrium;
 
 use pyo3::prelude::*;
 
 pub use particle::*;
+pub use pyerrors::*;
 pub use pylibrium::*;
 
 #[pymodule]

@@ -1,7 +1,7 @@
 use equilibrium::{Harmonic, HarmonicCache, Perturbation};
 use rsl_interpolation::Accelerator;
 
-use crate::error::PyEqError;
+use crate::PyEqError;
 use crate::PyHarmonic;
 use utils::{eval_harmonic_impl, repr_impl};
 
