@@ -25,3 +25,9 @@ pub const MAP_THRESHOLD: f64 = 1e-9;
 
 /// The starting capacity of the Evolution time series vectors.
 pub const EVOLUTION_INIT_CAPACITY: usize = 2000;
+
+// ==================== Display
+
+/// The Poincare map calculation progress bar style.
+pub const PBAR_STYLE: &str =
+    "[{elapsed_precise}] {wide_bar:.cyan/blue} {spinner} {pos:>4}/{len:4} {msg}";
