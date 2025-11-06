@@ -1,10 +1,13 @@
 use std::path::PathBuf;
 
-use ndarray::{Array1, Array2};
 use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
 use utils::array1D_getter_impl;
 
 use crate::Result;
+use crate::{Flux, Radians};
+
+use ndarray::{Array1, Array2};
+use safe_unwrap::safe_unwrap;
 
 /// Magnetic field reconstructed from a netCDF file.
 pub struct Bfield {
@@ -12,25 +15,19 @@ pub struct Bfield {
     pub path: PathBuf,
     /// Interpolation type.
     pub typ: String,
-
     /// Spline over the magnetic field strength data, as a function of ψp, θ.
     pub b_spline: DynSpline2d<f64>,
     /// Spline over the R coordinate, as a function of ψp, θ.
     pub r_spline: DynSpline2d<f64>,
     /// Spline over the Z coordinate, as a function of ψp, θ.
     pub z_spline: DynSpline2d<f64>,
-
     /// Magnetic field strength on the axis **in \[T\]**.
     pub baxis: f64,
     /// The tokamak's major radius **in \[m\]**.
     pub raxis: f64,
-    /// The value of the poloidal angle ψp at the wall.
-    pub psip_wall: f64,
-    /// The value of the toroidal angle ψ at the wall.
-    pub psi_wall: f64,
 }
 
-/// Creation
+// Creation
 impl Bfield {
     /// Constructs a [`Bfield`] from a netCDF file at `path`, with spline of `typ` interpolation type.
     ///
@@ -50,19 +47,17 @@ impl Bfield {
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
-        let path = std::path::absolute(path).unwrap();
+        // Make path absolute for display purposes.
+        let path = std::path::absolute(path)?;
 
         let eq = Equilibrium::from_file(&path)?;
 
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
-            .to_vec();
-        // For `psi_wall`
-        let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
+            .to_owned();
+        let theta_data = extract_1d_var(&eq.file, THETA_COORD)?
             .as_standard_layout()
-            .to_vec();
-        let theta_data = eq.get_1d(THETA_COORD)?.to_vec();
+            .to_owned();
 
         let b_data = eq.get_2d(B_FIELD)?;
         let r_data = eq.get_2d(R)?;
@@ -71,28 +66,30 @@ impl Bfield {
         let raxis = eq.get_scalar(R_AXIS)?;
         // let zaxis_val = eq.get_scalar(Z_AXIS)?;
 
-        // Transpose of gcmotion
-        // let b_axis_values = Array2::from_elem((1, b_data.ncols()), 1.0); // B0 = 1 [NU]
-        // let b_data = concatenate![Axis(0), b_axis_values, b_data]; // e.g. [101, 3620]
-
         // `Spline.za` is in Fortran order.
         let order = ndarray::Order::ColumnMajor;
-        let b_data_flat = b_data.flatten_with_order(order).to_vec();
+        let b_data_flat = b_data.flatten_with_order(order).to_owned();
+        let r_data_flat = r_data.flatten_with_order(order).to_owned();
+        let z_data_flat = z_data.flatten_with_order(order).to_owned();
 
-        // let r_axis_values = Array2::from_elem((1, r_data.ncols()), raxis_val);
-        // let r_data = concatenate![Axis(0), r_axis_values, r_data];
-        let r_data_flat = r_data.flatten_with_order(order).to_vec();
-        //
-        // let z_axis_values = Array2::from_elem((1, z_data.ncols()), zaxis_val);
-        // let z_data = concatenate![Axis(0), z_axis_values, z_data];
-        let z_data_flat = z_data.flatten_with_order(order).to_vec();
-
-        let b_spline = make_spline2d(typ, &psip_data, &theta_data, &b_data_flat)?;
-        let r_spline = make_spline2d(typ, &psip_data, &theta_data, &r_data_flat)?;
-        let z_spline = make_spline2d(typ, &psip_data, &theta_data, &z_data_flat)?;
-
-        let psip_wall = psip_data.last().copied().unwrap();
-        let psi_wall = psi_data.last().copied().unwrap();
+        let b_spline = make_spline2d(
+            typ,
+            safe_unwrap!("array is non-empty", psip_data.as_slice()),
+            safe_unwrap!("array is non-empty", theta_data.as_slice()),
+            safe_unwrap!("array is non-empty", b_data_flat.as_slice()),
+        )?;
+        let r_spline = make_spline2d(
+            typ,
+            safe_unwrap!("array is non-empty", psip_data.as_slice()),
+            safe_unwrap!("array is non-empty", theta_data.as_slice()),
+            safe_unwrap!("array is non-empty", r_data_flat.as_slice()),
+        )?;
+        let z_spline = make_spline2d(
+            typ,
+            safe_unwrap!("array is non-empty", psip_data.as_slice()),
+            safe_unwrap!("array is non-empty", theta_data.as_slice()),
+            safe_unwrap!("array is non-empty", z_data_flat.as_slice()),
+        )?;
 
         Ok(Self {
             path: path.to_owned(),
@@ -102,13 +99,11 @@ impl Bfield {
             z_spline,
             baxis,
             raxis,
-            psip_wall,
-            psi_wall,
         })
     }
 }
 
-/// Interpolation
+// Interpolation
 impl Bfield {
     /// Calculates `B(ψp, θ)`,
     ///
@@ -134,8 +129,8 @@ impl Bfield {
     /// ```
     pub fn b(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
@@ -144,6 +139,11 @@ impl Bfield {
     }
 
     /// Calculates `𝜕B(ψp, θ) /𝜕𝜃`.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
     ///
     /// # Example
     ///
@@ -167,19 +167,23 @@ impl Bfield {
     /// ```
     pub fn db_dtheta(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
     ) -> Result<f64> {
-        // Ok(self.db_dtheta_spline.eval(psi, theta, xacc, yacc)?)
         Ok(self
             .b_spline
             .eval_deriv_y(psip, mod2pi(theta), xacc, yacc, cache)?)
     }
 
     /// Calculates `𝜕B(ψp, θ) /𝜕ψp`.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
     ///
     /// # Example
     ///
@@ -203,8 +207,8 @@ impl Bfield {
     /// ```
     pub fn db_dpsip(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
@@ -215,6 +219,11 @@ impl Bfield {
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕𝜓p²`.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
     ///
     /// # Example
     ///
@@ -238,8 +247,8 @@ impl Bfield {
     /// ```
     pub fn d2b_dpsip2(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
@@ -250,6 +259,11 @@ impl Bfield {
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕θ²`.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
     ///
     /// # Example
     ///
@@ -273,8 +287,8 @@ impl Bfield {
     /// ```
     pub fn d2b_dtheta2(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
@@ -285,6 +299,11 @@ impl Bfield {
     }
 
     /// Calculates `𝜕²B(ψp, θ) /𝜕ψp𝜕θ`.
+    ///
+    /// # Note:
+    ///
+    /// The data are calculated by evaluating the bfield spline's derivative, rather than
+    /// extracting the data arrays from the netCDF file.
     ///
     /// # Example
     ///
@@ -308,8 +327,8 @@ impl Bfield {
     /// ```
     pub fn d2b_dpsip_dtheta(
         &self,
-        psip: f64,
-        theta: f64,
+        psip: Flux,
+        theta: Radians,
         xacc: &mut Accelerator,
         yacc: &mut Accelerator,
         cache: &mut Cache<f64>,
@@ -330,15 +349,19 @@ macro_rules! array2D_getter_impl {
         pub fn $fun_name(&self) -> Array2<f64> {
             // `Spline.za` is in Fortran order.
             let shape = (self.$spline.ya.len(), self.$spline.xa.len());
-            Array2::from_shape_vec(shape, self.$spline.za.to_vec())
-                .expect("Error extracting 2D spline data")
-                .reversed_axes()
+            safe_unwrap!(
+                "checked by spline",
+                Array2::from_shape_vec(shape, self.$spline.za.to_vec())
+            )
+            .reversed_axes()
         }
     };
 }
 
-/// Data Extraction
+// Data Extraction
 impl Bfield {
+    array1D_getter_impl!(psip_data, b_spline.xa, Flux);
+    array1D_getter_impl!(theta_data, b_spline.ya, Flux);
     array2D_getter_impl!(b_data, b_spline);
     array2D_getter_impl!(r_data, b_spline);
     array2D_getter_impl!(z_data, b_spline);
@@ -349,7 +372,7 @@ impl Bfield {
     ///
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
-    pub fn db_dpsip_data(&self) -> Array2<f64> {
+    pub fn db_dpsip_data(&self) -> Result<Array2<f64>> {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
@@ -362,15 +385,13 @@ impl Bfield {
             for i in 0..shape.1 {
                 let psip = self.b_spline.xa[i];
                 let theta = self.b_spline.ya[j];
-                let db_dtheta = self
-                    .db_dpsip(psip, theta, &mut xacc, &mut yacc, &mut cache)
-                    .unwrap();
+                let db_dtheta = self.db_dpsip(psip, theta, &mut xacc, &mut yacc, &mut cache)?;
                 db_dpsip_vec.push(db_dtheta);
             }
         }
 
-        let db_dpsip_grid = Array2::from_shape_vec(shape, db_dpsip_vec).unwrap();
-        db_dpsip_grid.reversed_axes()
+        let db_dpsip_grid = Array2::from_shape_vec(shape, db_dpsip_vec)?;
+        Ok(db_dpsip_grid.reversed_axes())
     }
 
     /// Returns the `𝜕B(ψp, θ) /𝜕𝜃` data as a 2D array.
@@ -379,7 +400,7 @@ impl Bfield {
     ///
     /// The data are calculated by evaluating the bfield spline's derivative, rather than
     /// extracting the data arrays from the netCDF file.
-    pub fn db_dtheta_data(&self) -> Array2<f64> {
+    pub fn db_dtheta_data(&self) -> Result<Array2<f64>> {
         // `Spline.za` is in Fortran order.
         let mut xacc = Accelerator::new();
         let mut yacc = Accelerator::new();
@@ -391,20 +412,20 @@ impl Bfield {
             for i in 0..shape.1 {
                 let psip = self.b_spline.xa[i];
                 let theta = self.b_spline.ya[j];
-                let db_dtheta = self
-                    .db_dtheta(psip, theta, &mut xacc, &mut yacc, &mut cache)
-                    .unwrap();
+                let db_dtheta = self.db_dtheta(psip, theta, &mut xacc, &mut yacc, &mut cache)?;
                 db_dtheta_vec.push(db_dtheta);
             }
         }
 
-        let db_dtheta_grid = Array2::from_shape_vec(shape, db_dtheta_vec).unwrap();
-        db_dtheta_grid.reversed_axes()
+        let db_dtheta_grid = Array2::from_shape_vec(shape, db_dtheta_vec)?;
+        Ok(db_dtheta_grid.reversed_axes())
+    }
+
+    /// Returns the value of the poloidal angle ψp at the wall.
+    pub fn psip_wall(&self) -> Flux {
+        safe_unwrap!("ya is non-empty", self.b_spline.ya.last().copied())
     }
 }
-
-array1D_getter_impl!(Bfield, psip_data, b_spline.xa);
-array1D_getter_impl!(Bfield, theta_data, b_spline.ya);
 
 /// Returns θ % 2π.
 fn mod2pi(theta: f64) -> f64 {
@@ -419,8 +440,7 @@ impl std::fmt::Debug for Bfield {
             .field("typ", &self.typ)
             .field("Baxis [T]", &format!("{:.7}", self.baxis))
             .field("Raxis [m]", &format!("{:.7}", self.raxis))
-            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
-            .field("ψ_wall", &format!("{:.7}", self.psi_wall))
+            .field("ψp_wall", &format!("{:.7}", self.psip_wall()))
             .field("shape", &(self.b_spline.xa.len(), self.b_spline.ya.len()))
             .finish()
     }
@@ -450,8 +470,8 @@ mod test {
         assert_eq!(b.r_data().ndim(), 2);
         assert_eq!(b.z_data().ndim(), 2);
         assert_eq!(b.b_data().ndim(), 2);
-        assert_eq!(b.db_dpsip_data().ndim(), 2);
-        assert_eq!(b.db_dtheta_data().ndim(), 2);
+        assert_eq!(b.db_dpsip_data().unwrap().ndim(), 2);
+        assert_eq!(b.db_dtheta_data().unwrap().ndim(), 2);
     }
 
     #[test]

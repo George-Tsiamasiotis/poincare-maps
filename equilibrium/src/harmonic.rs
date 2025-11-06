@@ -5,8 +5,10 @@ use rsl_interpolation::{Accelerator, DynSpline, make_spline};
 use utils::array1D_getter_impl;
 
 use crate::Result;
+use crate::{Flux, Radians};
 
 use ndarray::Array1;
+use safe_unwrap::safe_unwrap;
 
 /// Single perturbation harmonic reconstructed from a netCDF file.
 ///
@@ -17,7 +19,6 @@ pub struct Harmonic {
     pub path: PathBuf,
     /// Interpolation type.
     pub typ: String,
-
     /// Spline over the perturbation amplitude `α` data, as a function of ψp.
     pub a_spline: DynSpline<f64>,
     /// The `θ` frequency number.
@@ -25,17 +26,13 @@ pub struct Harmonic {
     /// The `ζ` frequency number.
     pub n: f64,
     /// The initial phase of the harmonic.
-    pub phase: f64,
-
-    /// The maximum value of the `α` values.
-    pub amax: f64,
-    /// The value of the poloidal angle ψp at the wall.
-    pub psip_wall: f64,
+    pub phase: Radians,
 }
 
-/// Holds the Harmonic's values evalutated at a specific spot. Since all the harmonic's methods are
-/// called consecutively over the same coordinates, most terms do not need to be calculated every
-/// time.
+/// Holds the Harmonic's values evalutated at a specific point.
+///
+/// Since all the harmonic's methods are called consecutively over the same coordinates, most terms
+/// do not need to be calculated every time.
 ///
 /// Similar to the Accelerators, they are stored inside State, and do not affect the behavior of the
 /// equilibrium objects themselves.
@@ -45,9 +42,9 @@ pub struct Harmonic {
 pub struct HarmonicCache {
     pub hits: usize,
     pub misses: usize,
-    pub psip: f64,
-    pub theta: f64,
-    pub zeta: f64,
+    pub psip: Flux,
+    pub theta: Radians,
+    pub zeta: Radians,
     pub alpha: f64,
     pub dalpha: f64,
     pub sin: f64,
@@ -59,8 +56,11 @@ impl HarmonicCache {
         Self::default()
     }
 
-    pub fn is_updated(&mut self, psip: f64, theta: f64, zeta: f64) -> bool {
-        // Comparing floats is OK here since they are simply copied between every call.
+    /// Checks if the cache's fields are valid.
+    ///
+    /// Comparing floats is OK here since they are simply copied between every call, and we want
+    /// the check to fail with the slightest difference.
+    pub fn is_updated(&mut self, psip: Flux, theta: Radians, zeta: Radians) -> bool {
         if (self.psip == psip) & (self.theta == theta) & (self.zeta == zeta) {
             self.hits += 1;
             true
@@ -70,12 +70,13 @@ impl HarmonicCache {
         }
     }
 
+    /// Updates the cache's fields.
     pub fn update(
         &mut self,
         h: &Harmonic,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         acc: &mut Accelerator,
     ) -> Result<()> {
         self.psip = psip;
@@ -83,24 +84,19 @@ impl HarmonicCache {
         self.zeta = zeta;
         self.alpha = h.a_spline.eval(psip, acc)?;
         self.dalpha = h.a_spline.eval_deriv(psip, acc)?;
-        let mod_arg = (h.m * theta - h.n * zeta) % TAU;
+        let mod_arg = (h.m * theta - h.n * zeta + h.phase) % TAU;
         (self.sin, self.cos) = mod_arg.sin_cos();
         Ok(())
     }
 }
 
-/// Creation
+// Creation
 impl Harmonic {
     /// Constructs a [`Harmonic`] from a netCDF file at `path`, with spline of `typ`
     /// interpolation type.
     ///
     /// The spline is only over the amplitude `α`, of the perturbation, and the rest of the
     /// exrpession is analytic.
-    ///
-    /// # Note
-    ///
-    /// The value `ψ = 0.0` is prepended at the ψ data array, and the first value of the q array is
-    /// prepended (duplicated) in the q array, to assure correct interpolation near the magnetic axis.
     ///
     /// # Example
     /// ```
@@ -113,47 +109,44 @@ impl Harmonic {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_dataset(path: &PathBuf, typ: &str, m: f64, n: f64, phase: f64) -> Result<Self> {
+    pub fn from_dataset(path: &PathBuf, typ: &str, m: f64, n: f64, phase: Radians) -> Result<Self> {
         use rsl_interpolation::*;
         use tokamak_netcdf::variable_names::*;
         use tokamak_netcdf::*;
 
-        // Make path absolute. Just unwrap, Equilibrium checks if it exists.
-        let path = std::path::absolute(path).unwrap();
+        // Make path absolute for display purposes.
+        let path = std::path::absolute(path)?;
 
         let eq = Equilibrium::from_file(&path)?;
 
         let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
             .as_standard_layout()
-            .to_vec();
-        let psip_wall = psip_data.last().copied().unwrap();
+            .to_owned();
 
         // TODO: update
         let mut a_data = Array1::zeros(psip_data.len());
         for i in 0..psip_data.len() {
-            a_data[i] = gaussian(psip_data[i], psip_wall)
+            a_data[i] = gaussian(psip_data[i], psip_data.last().copied().unwrap())
         }
-        let amax = *a_data
-            .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap_or(&0.0);
 
-        let a_spline = make_spline(typ, &psip_data, &a_data.to_vec())?;
+        let a_spline = make_spline(
+            typ,
+            safe_unwrap!("array is non-empty", psip_data.as_slice()),
+            safe_unwrap!("array is non-empty", a_data.as_slice()),
+        )?;
 
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             a_spline,
-            psip_wall,
             m,
             n,
             phase: phase % TAU,
-            amax,
         })
     }
 }
 
-/// Interpolation
+// Interpolation
 impl Harmonic {
     /// Calculates the harmonic `a(ψp) * <analytical term>`.
     ///
@@ -177,9 +170,9 @@ impl Harmonic {
     /// ```
     pub fn h(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -211,9 +204,9 @@ impl Harmonic {
     /// ```
     pub fn dh_dpsip(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -245,9 +238,9 @@ impl Harmonic {
     /// ```
     pub fn dh_dtheta(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -279,9 +272,9 @@ impl Harmonic {
     /// ```
     pub fn dh_dzeta(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -314,9 +307,9 @@ impl Harmonic {
     #[allow(unused_variables)]
     pub fn dh_dt(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut HarmonicCache,
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -325,8 +318,16 @@ impl Harmonic {
     }
 }
 
-array1D_getter_impl!(Harmonic, psip_data, a_spline.xa);
-array1D_getter_impl!(Harmonic, a_data, a_spline.ya);
+// Data extraction
+impl Harmonic {
+    array1D_getter_impl!(psip_data, a_spline.xa, Flux);
+    array1D_getter_impl!(a_data, a_spline.ya, Flux);
+
+    /// Returns the value of the poloidal angle ψp at the wall.
+    pub fn psip_wall(&self) -> Flux {
+        safe_unwrap!("ya is non-empty", self.a_spline.xa.last().copied())
+    }
+}
 
 /// A simple gaussian distribution to emulate reconstructed perturbations.
 /// TODO: remove
@@ -350,8 +351,6 @@ impl Clone for Harmonic {
             m: self.m,
             n: self.n,
             phase: self.phase,
-            amax: self.amax,
-            psip_wall: self.psip_wall,
         }
     }
 }
@@ -361,11 +360,10 @@ impl std::fmt::Debug for Harmonic {
         f.debug_struct("Harmonic")
             .field("path", &self.path)
             .field("typ", &self.typ)
-            .field("ψp_wall", &format!("{:.7}", self.psip_wall))
+            .field("ψp_wall", &format!("{:.7}", self.psip_wall()))
             .field("m", &self.m)
             .field("n", &self.n)
             .field("φ", &self.phase)
-            .field("α_max", &self.amax)
             .finish()
     }
 }

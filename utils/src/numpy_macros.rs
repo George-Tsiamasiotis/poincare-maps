@@ -1,6 +1,6 @@
-/// Generates getter pymethods that return a 1D numpy array.
+/// Generates getter `#[pymethods]` that return a 1D numpy array.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! to_numpy1D_impl {
@@ -15,9 +15,9 @@ macro_rules! to_numpy1D_impl {
     };
 }
 
-/// Generates getter pymethods that return a 2D numpy array.
+/// Generates getter `#[pymethods]` that return a 2D numpy array.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! to_numpy2D_impl {

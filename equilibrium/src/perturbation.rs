@@ -1,6 +1,8 @@
 use crate::Harmonic;
 use crate::HarmonicCache;
+
 use crate::Result;
+use crate::{Flux, Radians};
 
 use rsl_interpolation::Accelerator;
 
@@ -9,7 +11,7 @@ pub struct Perturbation {
     pub harmonics: Vec<Harmonic>,
 }
 
-/// Creation and 'data extraction'
+// Creation and data extraction
 impl Perturbation {
     pub fn from_harmonics(harmonics: &[Harmonic]) -> Self {
         Self {
@@ -22,7 +24,7 @@ impl Perturbation {
     }
 }
 
-/// Interpolation
+// Interpolation
 impl Perturbation {
     /// Calculates the Perturbation `Σ{ α(n,m)(ψp) * cos(mθ-nζ+φ0) }`.
     ///
@@ -51,9 +53,9 @@ impl Perturbation {
     /// ```
     pub fn p(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         caches: &mut [HarmonicCache],
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -91,9 +93,9 @@ impl Perturbation {
     /// ```
     pub fn dp_dpsip(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut [HarmonicCache],
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -131,9 +133,9 @@ impl Perturbation {
     /// ```
     pub fn dp_dtheta(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut [HarmonicCache],
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -171,9 +173,9 @@ impl Perturbation {
     /// ```
     pub fn dp_dzeta(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut [HarmonicCache],
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -211,9 +213,9 @@ impl Perturbation {
     /// ```
     pub fn dp_dt(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
+        psip: Flux,
+        theta: Radians,
+        zeta: Radians,
         cache: &mut [HarmonicCache],
         acc: &mut Accelerator,
     ) -> Result<f64> {
@@ -247,7 +249,7 @@ mod test {
         // Normally, this would happen inside State.
         let mut hcache1 = vec![HarmonicCache::default(); per1.harmonics.len()];
         let mut hcache2 = vec![HarmonicCache::default(); per2.harmonics.len()];
-        let psip = per1.harmonics[0].psip_wall / 2.0;
+        let psip = per1.harmonics[0].psip_wall() / 2.0;
         let theta = 1.0;
         let zeta = 1.0;
 

@@ -245,6 +245,7 @@ version = "0.1.0"
 dependencies = [
  "ndarray",
  "rsl-interpolation",
+ "safe_unwrap",
  "thiserror",
  "tokamak-netcdf",
  "utils",
@@ -1202,6 +1203,12 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "safe_unwrap"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd465bfa476b01ca5b4beba09e7b16d70fda1771648958e64142fa27cf64cccb"
 
 [[package]]
 name = "schannel"

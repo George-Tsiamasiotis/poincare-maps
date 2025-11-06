@@ -1,6 +1,6 @@
 /// Generates a `__repr__` method, corresponding to the wrapped Rust object's `Debug` representation.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! repr_impl {

@@ -1,6 +1,6 @@
 /// Generates a 1D eval method from the wrapped Rust object.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! eval1D_impl {
@@ -16,7 +16,7 @@ macro_rules! eval1D_impl {
 
 /// Generates a 2D eval method from the wrapped Rust object.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! eval2D_impl {
@@ -36,9 +36,9 @@ macro_rules! eval2D_impl {
     };
 }
 
-/// Generates an eval method from the wrapped Rust [`Harmonic`] object.
+/// Generates an eval method from the wrapped Rust Harmonic object.
 ///
-/// It is necessary to create a new #[pymethods] impl block every time, since #[pymethods] does not
+/// It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 /// allow macros to be used inside it.
 #[macro_export]
 macro_rules! eval_harmonic_impl {
