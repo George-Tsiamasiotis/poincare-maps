@@ -965,6 +965,7 @@ dependencies = [
  "poincare",
  "pyo3",
  "rsl-interpolation",
+ "safe_unwrap",
  "utils",
 ]
 

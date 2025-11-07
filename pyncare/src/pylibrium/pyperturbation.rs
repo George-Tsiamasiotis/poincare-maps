@@ -1,61 +1,61 @@
 use equilibrium::{Harmonic, HarmonicCache, Perturbation};
 use rsl_interpolation::Accelerator;
-
-use crate::PyEqError;
-use crate::PyHarmonic;
-use utils::{eval_harmonic_impl, repr_impl};
+use utils::{py_eval_perturbation, py_repr_impl};
 
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
+use crate::PyEqError;
+use crate::PyHarmonic;
+
 #[pyclass(name = "Perturbation")]
-pub struct PyPerturbation {
-    #[pyo3(get)]
-    pub harmonics: Vec<PyHarmonic>,
-    pub perturbation: Perturbation,
-    // for Python-exposed evaluations
-    pub cache: Vec<HarmonicCache>,
-    pub acc: Accelerator,
-}
+pub struct PyPerturbation(Perturbation);
 
 #[pymethods]
 impl PyPerturbation {
+    /// Creates a new PyPerturbation wrapper object.
     #[new]
-    pub fn new_py<'py>(harmonics: Bound<'py, PyList>) -> Result<Self, PyEqError> {
-        let pyharmonics_vec: Vec<PyHarmonic> =
-            harmonics.iter().map(|h| h.extract().unwrap()).collect();
+    pub fn new_py<'py>(pyharmonics: Bound<'py, PyList>) -> Result<Self, PyEqError> {
+        let pyharmonics_vec: Vec<PyHarmonic> = pyharmonics
+            .iter()
+            .map(|ph| {
+                ph.extract()
+                    .expect("Could not extract 'PyHarmonic' from python list")
+            })
+            .collect();
         let harmonics_vec: Vec<Harmonic> = pyharmonics_vec
             .clone()
             .iter()
-            .map(|p| p.harmonic.clone())
+            .map(|ph| ph.0.clone())
             .collect();
 
-        Ok(Self {
-            perturbation: Perturbation::from_harmonics(&harmonics_vec),
-            harmonics: pyharmonics_vec,
-            acc: Accelerator::new(),
-            cache: vec![HarmonicCache::new(); harmonics_vec.len()],
-        })
+        Ok(Self(Perturbation::from_harmonics(&harmonics_vec)))
     }
 
     /// Makes PyPerturbation indexable
-    pub fn __getitem__(&self, key: usize) -> PyHarmonic {
-        self.harmonics
-            .get(key)
-            .expect("Out of bounds access")
-            .clone()
+    pub fn __getitem__(&self, index: usize) -> PyHarmonic {
+        PyHarmonic::from(
+            self.0
+                .harmonics
+                .get(index)
+                .expect("Harmonic index out of bounds"),
+        )
+    }
+
+    /// Returns the number of Harmonics.
+    pub fn len(&self) -> usize {
+        self.0.harmonics.len()
+    }
+
+    /// Return `true` if the Perturbation contains no Harmonics.
+    pub fn is_empty(&self) -> bool {
+        self.0.harmonics.is_empty()
     }
 }
 
-repr_impl!(PyPerturbation);
-eval_harmonic_impl!(PyPerturbation, perturbation, p);
-eval_harmonic_impl!(PyPerturbation, perturbation, dp_dpsip);
-eval_harmonic_impl!(PyPerturbation, perturbation, dp_dtheta);
-eval_harmonic_impl!(PyPerturbation, perturbation, dp_dzeta);
-eval_harmonic_impl!(PyPerturbation, perturbation, dp_dt);
-
-impl std::fmt::Debug for PyPerturbation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.harmonics.fmt(f)
-    }
-}
+py_repr_impl!(PyPerturbation);
+py_eval_perturbation!(PyPerturbation, p);
+py_eval_perturbation!(PyPerturbation, dp_dpsip);
+py_eval_perturbation!(PyPerturbation, dp_dtheta);
+py_eval_perturbation!(PyPerturbation, dp_dzeta);
+py_eval_perturbation!(PyPerturbation, dp_dt);

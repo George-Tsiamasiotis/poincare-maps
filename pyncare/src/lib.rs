@@ -14,7 +14,7 @@ pub use pylibrium::*;
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Pylibrium
     m.add_class::<PyQfactor>()?;
-    m.add_class::<PyCurrent>()?;
+    m.add_class::<PyCurrents>()?;
     m.add_class::<PyBfield>()?;
     m.add_class::<PyHarmonic>()?;
     m.add_class::<PyPerturbation>()?;

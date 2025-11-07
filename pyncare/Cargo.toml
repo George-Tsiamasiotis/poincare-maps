@@ -9,11 +9,12 @@ crate-type = ["cdylib"]
 test = false # linker issues, not needed anyway
 
 [dependencies]
+safe_unwrap = {workspace = true}
+rsl-interpolation = {workspace = true}
 config = {path = "../config"}
 utils = {path = "../utils"}
 equilibrium = {path = "../equilibrium"}
 particle = {path = "../particle"}
 poincare = {path = "../poincare"}
-rsl-interpolation = {workspace = true}
 pyo3 = { version = "0.27.1", features = ["extension-module", "abi3-py314", "multiple-pymethods"] }
 numpy = "0.27.0"

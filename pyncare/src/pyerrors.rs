@@ -11,6 +11,7 @@ use pyo3::PyErr;
 /// [`https://pyo3.rs/main/function/error-handling#foreign-rust-error-types`]
 macro_rules! to_pyerr_impl {
     ($error_type:ident, $py_error_type: ident) => {
+        #[derive(Debug)]
         pub struct $py_error_type($error_type);
 
         impl From<$py_error_type> for PyErr {

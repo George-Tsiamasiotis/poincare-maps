@@ -1,46 +1,35 @@
-use std::path::PathBuf;
-
 use equilibrium::Qfactor;
 use rsl_interpolation::Accelerator;
-use utils::{eval1D_impl, repr_impl, to_numpy1D_impl};
-use utils::{to_pyfloat_impl, to_pystr_impl};
+use safe_unwrap::safe_unwrap;
+use utils::{py_eval1D, py_get_numpy1D, py_get_numpy1D_fallible, py_repr_impl};
+use utils::{py_get_float, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
 
 use crate::PyEqError;
 
-#[derive(Debug)]
 #[pyclass(name = "Qfactor")]
-pub struct PyQfactor {
-    pub qfactor: Qfactor,
-    // for Python-exposed evaluations
-    pub acc: Accelerator,
-}
+pub struct PyQfactor(pub Qfactor);
 
 #[pymethods]
 impl PyQfactor {
-    /// Creates a new PyQFactor object.
+    /// Creates a new PyQFactor wrapper object.
     #[new]
     pub fn new(path: &str, typ: &str) -> Result<Self, PyEqError> {
-        let path = PathBuf::from(path);
-        let qfactor = Qfactor::from_dataset(&path, typ)?;
-
-        Ok(Self {
-            qfactor,
-            acc: Accelerator::new(),
-        })
+        let path = std::path::PathBuf::from(path);
+        Ok(Self(Qfactor::from_dataset(&path, typ)?))
     }
 }
 
-repr_impl!(PyQfactor);
-to_pystr_impl!(PyQfactor, qfactor, typ);
-to_pystr_impl!(PyQfactor, qfactor, path);
-to_pyfloat_impl!(PyQfactor, qfactor, psi_wall);
-to_pyfloat_impl!(PyQfactor, qfactor, psip_wall);
-eval1D_impl!(PyQfactor, qfactor, q);
-eval1D_impl!(PyQfactor, qfactor, psi);
-to_numpy1D_impl!(PyQfactor, qfactor, q_data);
-to_numpy1D_impl!(PyQfactor, qfactor, psip_data);
-to_numpy1D_impl!(PyQfactor, qfactor, psi_data);
-to_numpy1D_impl!(PyQfactor, qfactor, q_data_derived);
+py_repr_impl!(PyQfactor);
+py_get_path!(PyQfactor);
+py_get_typ!(PyQfactor);
+py_get_float!(PyQfactor, psip_wall);
+py_get_float!(PyQfactor, psi_wall);
+py_eval1D!(PyQfactor, q);
+py_eval1D!(PyQfactor, psi);
+py_get_numpy1D!(PyQfactor, psip_data);
+py_get_numpy1D!(PyQfactor, psi_data);
+py_get_numpy1D!(PyQfactor, q_data);
+py_get_numpy1D_fallible!(PyQfactor, q_data_derived);

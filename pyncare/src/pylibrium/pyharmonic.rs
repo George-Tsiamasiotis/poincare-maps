@@ -1,9 +1,8 @@
-use std::path::PathBuf;
-
 use equilibrium::{Harmonic, HarmonicCache};
 use rsl_interpolation::Accelerator;
-use utils::{eval_harmonic_impl, repr_impl, to_numpy1D_impl};
-use utils::{to_pyfloat_impl, to_pystr_impl};
+use safe_unwrap::safe_unwrap;
+use utils::{py_eval_harmonic, py_get_numpy1D, py_repr_impl};
+use utils::{py_get_float, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
@@ -12,50 +11,44 @@ use crate::PyEqError;
 
 #[derive(Clone)]
 #[pyclass(name = "Harmonic")]
-pub struct PyHarmonic {
-    pub harmonic: Harmonic,
-    // for Python-exposed evaluations
-    pub cache: HarmonicCache,
-    pub acc: Accelerator,
-}
+pub struct PyHarmonic(pub Harmonic);
 
 #[pymethods]
 impl PyHarmonic {
+    /// Creates a new PyHarmonic wrapper object.
     #[new]
     pub fn new(path: &str, typ: &str, m: f64, n: f64, phase: f64) -> Result<Self, PyEqError> {
-        let path = PathBuf::from(path);
-        let harmonic = Harmonic::from_dataset(&path, typ, m, n, phase)?;
-
-        Ok(Self {
-            harmonic,
-            cache: HarmonicCache::new(),
-            acc: Accelerator::new(),
-        })
+        let path = std::path::PathBuf::from(path);
+        Ok(Self(Harmonic::from_dataset(&path, typ, m, n, phase)?))
     }
 }
 
-repr_impl!(PyHarmonic);
-to_pystr_impl!(PyHarmonic, harmonic, typ);
-to_pystr_impl!(PyHarmonic, harmonic, path);
-to_pyfloat_impl!(PyHarmonic, harmonic, m);
-to_pyfloat_impl!(PyHarmonic, harmonic, n);
-to_pyfloat_impl!(PyHarmonic, harmonic, amax);
-to_pyfloat_impl!(PyHarmonic, harmonic, phase);
-to_pyfloat_impl!(PyHarmonic, harmonic, psip_wall);
-to_numpy1D_impl!(PyHarmonic, harmonic, psip_data);
-to_numpy1D_impl!(PyHarmonic, harmonic, a_data);
-eval_harmonic_impl!(PyHarmonic, harmonic, h);
-eval_harmonic_impl!(PyHarmonic, harmonic, dh_dpsip);
-eval_harmonic_impl!(PyHarmonic, harmonic, dh_dtheta);
-eval_harmonic_impl!(PyHarmonic, harmonic, dh_dzeta);
-eval_harmonic_impl!(PyHarmonic, harmonic, dh_dt);
-
-/// Remove Cache
-impl std::fmt::Debug for PyHarmonic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PyHarmonic")
-            .field("harmonic", &self.harmonic)
-            .field("acc", &self.acc)
-            .finish()
+impl From<&Harmonic> for PyHarmonic {
+    fn from(harmonic: &Harmonic) -> Self {
+        safe_unwrap!(
+            "If harmonic exists, Pyharmonic::new() cannot fail",
+            PyHarmonic::new(
+                safe_unwrap!("file already opened", harmonic.path.to_str()),
+                harmonic.typ.as_str(),
+                harmonic.m,
+                harmonic.n,
+                harmonic.phase,
+            )
+        )
     }
 }
+
+py_repr_impl!(PyHarmonic);
+py_get_typ!(PyHarmonic);
+py_get_path!(PyHarmonic);
+py_get_float!(PyHarmonic, psip_wall);
+py_get_float!(PyHarmonic, m);
+py_get_float!(PyHarmonic, n);
+py_get_float!(PyHarmonic, phase);
+py_get_numpy1D!(PyHarmonic, psip_data);
+py_get_numpy1D!(PyHarmonic, a_data);
+py_eval_harmonic!(PyHarmonic, h);
+py_eval_harmonic!(PyHarmonic, dh_dpsip);
+py_eval_harmonic!(PyHarmonic, dh_dtheta);
+py_eval_harmonic!(PyHarmonic, dh_dzeta);
+py_eval_harmonic!(PyHarmonic, dh_dt);

@@ -25,7 +25,7 @@ pub struct Harmonic {
     pub m: f64,
     /// The `ζ` frequency number.
     pub n: f64,
-    /// The initial phase of the harmonic.
+    /// The phase offset of the harmonic.
     pub phase: Radians,
 }
 
@@ -327,6 +327,21 @@ impl Harmonic {
     pub fn psip_wall(&self) -> Flux {
         safe_unwrap!("ya is non-empty", self.a_spline.xa.last().copied())
     }
+
+    /// Returns the value of the `m` mode number.
+    pub fn m(&self) -> f64 {
+        self.m
+    }
+
+    /// Returns the value of the `n` mode number.
+    pub fn n(&self) -> f64 {
+        self.n
+    }
+
+    /// Returns the value of the harmonic's phase offset.
+    pub fn phase(&self) -> f64 {
+        self.phase
+    }
 }
 
 /// A simple gaussian distribution to emulate reconstructed perturbations.
@@ -384,6 +399,9 @@ mod test {
     fn test_data_extraction() {
         let path = PathBuf::from("../data.nc");
         let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
+        let _: f64 = harmonic.m();
+        let _: f64 = harmonic.n();
+        let _: f64 = harmonic.phase();
 
         assert_eq!(harmonic.psip_data().ndim(), 1);
         assert_eq!(harmonic.a_data().ndim(), 1);
