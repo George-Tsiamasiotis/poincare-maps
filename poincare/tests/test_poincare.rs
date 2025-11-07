@@ -3,7 +3,7 @@ mod common;
 use std::f64::consts::PI;
 
 use ndarray::Array1;
-use particle::{Mapping, PoincareSection};
+use particle::{MappingParameters, PoincareSection};
 use poincare::*;
 
 use crate::common::create_equilibrium;
@@ -11,7 +11,7 @@ use crate::common::create_equilibrium;
 #[test]
 fn test_normal_particle_int() {
     let (qfactor, current, bfield, per) = create_equilibrium();
-    let psip_wall = qfactor.psip_wall;
+    let psip_wall = qfactor.psip_wall();
 
     let num = 10;
     let init = PoincareInit::build(
@@ -25,8 +25,12 @@ fn test_normal_particle_int() {
     )
     .unwrap();
 
-    let mapping = Mapping::new(PoincareSection::ConstTheta, PI, 10);
+    let intersections = 10;
+    let mapping = MappingParameters::new(PoincareSection::ConstTheta, PI, intersections);
 
     let mut p = Poincare::new(init, mapping);
     p.run(&qfactor, &bfield, &current, &per).unwrap();
+
+    assert_eq!(p.angles().shape(), &[num, intersections]);
+    assert_eq!(p.fluxes().shape(), &[num, intersections]);
 }

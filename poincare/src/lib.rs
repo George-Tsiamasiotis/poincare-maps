@@ -9,3 +9,6 @@ pub use poincare::Poincare;
 pub use results::PoincareResults;
 
 pub type Result<T> = std::result::Result<T, PoincareError>;
+
+pub use equilibrium::{Flux, Radians};
+pub use particle::{Distance, MagneticMoment, Time};

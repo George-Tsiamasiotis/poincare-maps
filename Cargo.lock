@@ -916,6 +916,7 @@ dependencies = [
  "ndarray",
  "particle",
  "rayon",
+ "safe_unwrap",
  "thiserror",
  "utils",
 ]

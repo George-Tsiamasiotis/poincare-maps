@@ -3,17 +3,18 @@ use ndarray::Array1;
 use particle::{InitialConditions, Particle};
 use utils::array1D_getter_impl;
 
+use crate::{Distance, Flux, MagneticMoment, Radians};
 use crate::{PoincareError, Result};
 
 /// Stores the initial conditions arrays.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct PoincareInit {
-    pub thetas: Array1<f64>,
-    pub psips: Array1<f64>,
-    pub rhos: Array1<f64>,
-    pub zetas: Array1<f64>,
-    pub mus: Array1<f64>,
+    pub thetas: Array1<Radians>,
+    pub psips: Array1<Flux>,
+    pub rhos: Array1<Distance>,
+    pub zetas: Array1<Radians>,
+    pub mus: Array1<MagneticMoment>,
 }
 
 impl PoincareInit {
@@ -39,11 +40,11 @@ impl PoincareInit {
     /// # }
     /// ```
     pub fn build(
-        thetas: &[f64],
-        psips: &[f64],
-        rhos: &[f64],
-        zetas: &[f64],
-        mus: &[f64],
+        thetas: &[Radians],
+        psips: &[Flux],
+        rhos: &[Distance],
+        zetas: &[Radians],
+        mus: &[MagneticMoment],
     ) -> Result<Self> {
         let len = thetas.len();
         if !(thetas.len() == len
@@ -94,7 +95,7 @@ impl PoincareInit {
     /// Creates an [`InitialConditions`] set from the values at the position `index` of the arrays.
     fn initial_from_index(&self, index: usize) -> InitialConditions {
         InitialConditions {
-            t0: 0.0,
+            time0: 0.0,
             theta0: self.thetas[[index]],
             psip0: self.psips[[index]],
             rho0: self.rhos[[index]],
@@ -119,11 +120,13 @@ impl PoincareInit {
     }
 }
 
-array1D_getter_impl!(PoincareInit, thetas, thetas);
-array1D_getter_impl!(PoincareInit, psips, psips);
-array1D_getter_impl!(PoincareInit, rhos, rhos);
-array1D_getter_impl!(PoincareInit, zetas, zetas);
-array1D_getter_impl!(PoincareInit, mus, mus);
+impl PoincareInit {
+    array1D_getter_impl!(thetas, thetas, Radians);
+    array1D_getter_impl!(psips, psips, Flux);
+    array1D_getter_impl!(rhos, rhos, Distance);
+    array1D_getter_impl!(zetas, zetas, Radians);
+    array1D_getter_impl!(mus, mus, MagneticMoment);
+}
 
 impl std::fmt::Debug for PoincareInit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

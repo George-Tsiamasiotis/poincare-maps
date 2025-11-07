@@ -59,7 +59,7 @@ pub struct Particle {
 impl Particle {
     /// Creates a new [`Particle`] from the initial conditions.
     pub fn new(initial: &InitialConditions) -> Self {
-        let initial_state = State::from_initial(&initial);
+        let initial_state = State::from_initial(initial);
         let mut evolution = Evolution::with_capacity(EVOLUTION_INIT_CAPACITY);
         evolution.push_state(&initial_state);
 
