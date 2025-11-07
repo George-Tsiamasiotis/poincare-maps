@@ -1,54 +1,69 @@
 use poincare::Poincare;
-use utils::to_numpy2D_impl;
+use safe_unwrap::safe_unwrap;
+use utils::py_get_numpy2D;
+
+use crate::{PyBfield, PyCurrents, PyMappingParameters, PyPerturbation, PyQfactor};
+use crate::{PyPoincareError, PyPoincareInit};
 
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
-use crate::{PyBfield, PyCurrent, PyMapping, PyPerturbation, PyQfactor};
-use crate::{PyPoincareError, PyPoincareInit};
-
 #[pyclass(name = "Poincare")]
-pub struct PyPoincare {
-    pub poincare: Poincare,
-}
+pub struct PyPoincare(pub Poincare);
 
 #[pymethods]
 impl PyPoincare {
-    /// Creates a new [`PyPoincare`] object.
+    /// Creates a new PyPoincare object.
     #[new]
-    pub fn new(init: PyPoincareInit, mapping: &PyMapping) -> Self {
-        Self {
-            poincare: Poincare::new(init.poincare_init, mapping.mapping),
-        }
+    pub fn new(init: PyPoincareInit, mapping: &PyMappingParameters) -> Self {
+        Self(Poincare::new(init.0, mapping.0))
     }
 
     pub fn run(
         &mut self,
         qfactor: &PyQfactor,
         bfield: &PyBfield,
-        current: &PyCurrent,
-        per: &PyPerturbation,
+        currents: &PyCurrents,
+        perturbation: &PyPerturbation,
     ) -> Result<(), PyPoincareError> {
-        Ok(self.poincare.run(
-            &qfactor.qfactor,
-            &bfield.bfield,
-            &current.current,
-            &per.perturbation,
-        )?)
+        Ok(self
+            .0
+            .run(&qfactor.0, &bfield.0, &currents.0, &perturbation.0)?)
     }
 
-    // TODO: init and results getters
+    #[getter]
+    pub fn get_init(&self) -> PyPoincareInit {
+        let init = &self.0.init;
+        safe_unwrap!(
+            "cannot fail if self.0.init exists",
+            PyPoincareInit::new(
+                init.thetas().to_vec(),
+                init.psips().to_vec(),
+                init.rhos().to_vec(),
+                init.zetas().to_vec(),
+                init.mus().to_vec(),
+            )
+        )
+    }
 
     #[getter]
     pub fn get_section(&self) -> String {
-        format!("{:?}", self.poincare.mapping.section)
+        format!("{:?}", self.0.mapping.section)
     }
 
     #[getter]
     pub fn get_alpha(&self) -> f64 {
-        self.poincare.mapping.alpha
+        self.0.mapping.alpha
+    }
+
+    #[getter]
+    pub fn get_intersections(&self) -> usize {
+        self.0.mapping.intersections
     }
 }
 
-to_numpy2D_impl!(PyPoincare, poincare, angles);
-to_numpy2D_impl!(PyPoincare, poincare, fluxes);
+// TODO:
+// py_debug_impl!(PyPoincare);
+// py_repr_impl!(PyPoincare);
+py_get_numpy2D!(PyPoincare, angles);
+py_get_numpy2D!(PyPoincare, fluxes);

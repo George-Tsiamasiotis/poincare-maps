@@ -3,6 +3,18 @@
 //! It is necessary to create a new `#[pymethods]` impl block every time, since `#[pymethods]` does not
 //! allow macros to be used inside it.
 
+/// Generates a impl Debug block, using the innet type's Debug representation.
+#[macro_export]
+macro_rules! py_debug_impl {
+    ($py_object:ident) => {
+        impl std::fmt::Debug for $py_object {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+    };
+}
+
 /// Generates a `__repr__` method, corresponding to the inner type's `Debug` representation.
 #[macro_export]
 macro_rules! py_repr_impl {

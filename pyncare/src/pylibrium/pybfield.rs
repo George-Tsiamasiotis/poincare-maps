@@ -1,7 +1,9 @@
 use equilibrium::Bfield;
 use rsl_interpolation::{Accelerator, Cache};
 use safe_unwrap::safe_unwrap;
-use utils::{py_eval2D, py_get_numpy1D, py_get_numpy2D, py_get_numpy2D_fallible, py_repr_impl};
+use utils::{
+    py_debug_impl, py_eval2D, py_get_numpy1D, py_get_numpy2D, py_get_numpy2D_fallible, py_repr_impl,
+};
 use utils::{py_get_float, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1, PyArray2};
@@ -22,6 +24,7 @@ impl PyBfield {
     }
 }
 
+py_debug_impl!(PyBfield);
 py_repr_impl!(PyBfield);
 py_get_typ!(PyBfield);
 py_get_path!(PyBfield);

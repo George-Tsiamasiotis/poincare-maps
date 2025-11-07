@@ -22,7 +22,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyInitialConditions>()?;
     m.add_class::<PyParticle>()?;
     m.add_class::<PyEvolution>()?;
-    m.add_class::<PyMapping>()?;
+    m.add_class::<PyMappingParameters>()?;
     // Poincare
     m.add_class::<PyPoincareInit>()?;
     m.add_class::<PyPoincare>()?;

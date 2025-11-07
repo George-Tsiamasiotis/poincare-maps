@@ -1,5 +1,6 @@
 use equilibrium::{Harmonic, HarmonicCache, Perturbation};
 use rsl_interpolation::Accelerator;
+use utils::py_debug_impl;
 use utils::{py_eval_perturbation, py_repr_impl};
 
 use pyo3::prelude::*;
@@ -9,7 +10,7 @@ use crate::PyEqError;
 use crate::PyHarmonic;
 
 #[pyclass(name = "Perturbation")]
-pub struct PyPerturbation(Perturbation);
+pub struct PyPerturbation(pub Perturbation);
 
 #[pymethods]
 impl PyPerturbation {
@@ -53,6 +54,7 @@ impl PyPerturbation {
     }
 }
 
+py_debug_impl!(PyPerturbation);
 py_repr_impl!(PyPerturbation);
 py_eval_perturbation!(PyPerturbation, p);
 py_eval_perturbation!(PyPerturbation, dp_dpsip);

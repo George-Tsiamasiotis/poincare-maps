@@ -1,7 +1,7 @@
 use equilibrium::{Harmonic, HarmonicCache};
 use rsl_interpolation::Accelerator;
 use safe_unwrap::safe_unwrap;
-use utils::{py_eval_harmonic, py_get_numpy1D, py_repr_impl};
+use utils::{py_debug_impl, py_eval_harmonic, py_get_numpy1D, py_repr_impl};
 use utils::{py_get_float, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1};
@@ -38,6 +38,7 @@ impl From<&Harmonic> for PyHarmonic {
     }
 }
 
+py_debug_impl!(PyHarmonic);
 py_repr_impl!(PyHarmonic);
 py_get_typ!(PyHarmonic);
 py_get_path!(PyHarmonic);

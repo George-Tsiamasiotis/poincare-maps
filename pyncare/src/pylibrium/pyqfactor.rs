@@ -1,7 +1,7 @@
 use equilibrium::Qfactor;
 use rsl_interpolation::Accelerator;
 use safe_unwrap::safe_unwrap;
-use utils::{py_eval1D, py_get_numpy1D, py_get_numpy1D_fallible, py_repr_impl};
+use utils::{py_debug_impl, py_eval1D, py_get_numpy1D, py_get_numpy1D_fallible, py_repr_impl};
 use utils::{py_get_float, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1};
@@ -22,6 +22,7 @@ impl PyQfactor {
     }
 }
 
+py_debug_impl!(PyQfactor);
 py_repr_impl!(PyQfactor);
 py_get_path!(PyQfactor);
 py_get_typ!(PyQfactor);
