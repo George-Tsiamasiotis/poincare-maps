@@ -1,20 +1,34 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use crate::Evolution;
-use crate::InitialConditions;
-use crate::Mapping;
-use crate::ParticleError;
-use crate::PoincareSection;
-use crate::Point;
-use crate::Result;
-use crate::Solver;
-use crate::State;
-use crate::check_accuracy;
-use crate::map_integrate;
-use crate::state::Display;
 use config::*;
-use equilibrium::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
+
+use crate::state::Display;
+use crate::{Evolution, MappingParameters, PoincareSection, Solver, State};
+use crate::{check_accuracy, map_integrate};
+
+use crate::MagneticMoment;
+use crate::{Distance, Flux, ParticleError, Radians, Result, Time};
+
+use safe_unwrap::safe_unwrap;
+
+/// A set of a Particle's intial conditions.
+#[derive(Clone, Debug)]
+pub struct InitialConditions {
+    /// The initial time.
+    pub time0: Time,
+    /// The initial `θ` angle.
+    pub theta0: Radians,
+    /// The intial poloidal magnetic flux `ψp`.
+    pub psip0: Flux,
+    /// The initial parallel gyro radius `ρ`.
+    pub rho0: Distance,
+    /// The `ζ` angle.
+    pub zeta0: Flux,
+    /// The magnetic moment `μ`.
+    pub mu: MagneticMoment,
+}
 
 #[derive(Debug, Clone, Default)]
 pub enum IntegrationStatus {
@@ -25,10 +39,11 @@ pub enum IntegrationStatus {
     TimedOut(Duration),
     InvalidIntersections,
     Failed {
-        reason: Box<str>,
+        reason: String,
     },
 }
 
+/// Representation of a particle.
 #[derive(Clone)]
 pub struct Particle {
     /// The initial [`State`] of the particle.
@@ -44,28 +59,29 @@ pub struct Particle {
 impl Particle {
     /// Creates a new [`Particle`] from the initial conditions.
     pub fn new(initial: &InitialConditions) -> Self {
-        let point = initial.to_point();
+        let initial_state = State::from_initial(&initial);
         let mut evolution = Evolution::with_capacity(EVOLUTION_INIT_CAPACITY);
-        evolution.push_point(&point);
+        evolution.push_state(&initial_state);
 
         Self {
-            initial_state: State::from_point(&point),
+            initial_state,
             final_state: State::default(),
             status: IntegrationStatus::default(),
             evolution,
         }
     }
 
-    /// Integrates the particle, storing the calculated obrit in [`Evolution`].
+    /// Integrates the particle, storing the calculated orbit in [`Evolution`].
     pub fn integrate(
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
-        t_eval: (f64, f64),
+        currents: &Currents,
+        perturbation: &Perturbation,
+        t_eval: (Time, Time),
     ) -> Result<()> {
-        self.initial_state.evaluate(qfactor, current, bfield, per)?;
+        self.initial_state
+            .evaluate(qfactor, currents, bfield, perturbation)?;
 
         // Tracks the state of the particle in each step. Also keeps the Accelerators' states.
         let mut state = self.initial_state.clone();
@@ -79,8 +95,8 @@ impl Particle {
             let res = {
                 // Store the most recent state's point, including the intial and final points, even
                 // if they are invalid.
-                let result = state.evaluate(qfactor, current, bfield, per);
-                self.evolution.push_point(&Point::from_state(&state));
+                let result = state.evaluate(qfactor, currents, bfield, perturbation);
+                self.evolution.push_state(&state);
                 self.evolution.steps += 1;
                 result
             };
@@ -90,7 +106,9 @@ impl Particle {
                     break;
                 }
                 Err(err) => {
-                    self.status = IntegrationStatus::Failed { reason: err.into() };
+                    self.status = IntegrationStatus::Failed {
+                        reason: format!("{:?}", err),
+                    };
                     break;
                 }
                 Ok(_) => (),
@@ -104,7 +122,7 @@ impl Particle {
             // Perform a step
             let mut solver = Solver::default();
             solver.init(&state);
-            if let Err(err) = solver.start(dt, qfactor, bfield, current, per) {
+            if let Err(err) = solver.start(dt, qfactor, bfield, currents, perturbation) {
                 // This could only fail due to the solver's internal states' evaluate() calls.
                 // However, this will be already caught at the start of the loop, even if the
                 // initial state was invalid.
@@ -115,8 +133,8 @@ impl Particle {
         }
 
         self.evolution.duration = start.elapsed();
-        self.evolution.shrink_to_fit();
-        self.final_state = state.into_evaluated(qfactor, current, bfield, per)?;
+        self.evolution.finish();
+        self.final_state = state.into_evaluated(qfactor, currents, bfield, perturbation)?;
         Ok(())
     }
 
@@ -126,15 +144,16 @@ impl Particle {
         &mut self,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
-        mapping: &Mapping,
+        currents: &Currents,
+        perturbation: &Perturbation,
+        params: &MappingParameters,
     ) -> Result<()> {
-        self.initial_state.evaluate(qfactor, current, bfield, per)?;
+        self.initial_state
+            .evaluate(qfactor, currents, bfield, perturbation)?;
         self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
         let start = Instant::now();
 
-        match map_integrate(self, qfactor, bfield, current, per, mapping) {
+        match map_integrate(self, qfactor, bfield, currents, perturbation, params) {
             Err(ParticleError::EqError(..)) => {
                 self.status = IntegrationStatus::Escaped;
             }
@@ -142,12 +161,14 @@ impl Particle {
                 self.status = IntegrationStatus::TimedOut(start.elapsed());
             }
             Err(err) => {
-                self.status = IntegrationStatus::Failed { reason: err.into() };
+                self.status = IntegrationStatus::Failed {
+                    reason: format!("{:?}", err),
+                };
             }
             Ok(_) => (),
         }
 
-        let intersections = match mapping.section {
+        let intersections = match params.section {
             PoincareSection::ConstZeta => &self.evolution.zeta,
             PoincareSection::ConstTheta => &self.evolution.theta,
         };
@@ -156,17 +177,17 @@ impl Particle {
         };
 
         self.evolution.duration = start.elapsed();
-        self.evolution.shrink_to_fit();
+        self.evolution.finish();
         self.final_state = State {
             mu: self.initial_state.mu,
-            time: self.evolution.time.last().copied().unwrap_or_default(),
-            theta: self.evolution.theta.last().copied().unwrap_or_default(),
-            psip: self.evolution.psip.last().copied().unwrap_or_default(),
-            rho: self.evolution.rho.last().copied().unwrap_or_default(),
-            zeta: self.evolution.zeta.last().copied().unwrap_or_default(),
+            time: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
+            theta: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
+            psip: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
+            rho: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
+            zeta: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
             ..Default::default()
         }
-        .into_evaluated(qfactor, current, bfield, per)?;
+        .into_evaluated(qfactor, currents, bfield, perturbation)?;
 
         Ok(())
     }

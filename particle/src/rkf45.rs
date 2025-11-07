@@ -1,7 +1,7 @@
 use self::tableau::*;
 use crate::*;
 use config::*;
-use equilibrium::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
 
 /// Runge-kutta-Fehlberg method coefficients (Wikipedia)
 mod tableau {
@@ -77,15 +77,15 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         self.calculate_k1();
-        self.calculate_state_k2(h, qfactor, bfield, current, per)?;
-        self.calculate_state_k3(h, qfactor, bfield, current, per)?;
-        self.calculate_state_k4(h, qfactor, bfield, current, per)?;
-        self.calculate_state_k5(h, qfactor, bfield, current, per)?;
-        self.calculate_state_k6(h, qfactor, bfield, current, per)?;
+        self.calculate_state_k2(h, qfactor, bfield, currents, perturbation)?;
+        self.calculate_state_k3(h, qfactor, bfield, currents, perturbation)?;
+        self.calculate_state_k4(h, qfactor, bfield, currents, perturbation)?;
+        self.calculate_state_k5(h, qfactor, bfield, currents, perturbation)?;
+        self.calculate_state_k6(h, qfactor, bfield, currents, perturbation)?;
         self.calculate_embedded_weights();
         self.calculate_errors();
         Ok(())
@@ -105,8 +105,8 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbations: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A21 * self.k1[0],
@@ -126,7 +126,8 @@ impl Solver {
         self.state2.xacc = self.state1.xacc;
         self.state2.yacc = self.state1.yacc;
         self.state2.hcache = self.state1.hcache.clone();
-        self.state2.evaluate(qfactor, current, bfield, per)?;
+        self.state2
+            .evaluate(qfactor, currents, bfield, perturbations)?;
         self.k2 = [
             self.state2.theta_dot,
             self.state2.psip_dot,
@@ -141,8 +142,8 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A31 * self.k1[0] + A32 * self.k2[0],
@@ -160,7 +161,8 @@ impl Solver {
         self.state3.xacc = self.state2.xacc;
         self.state3.yacc = self.state2.yacc;
         self.state3.hcache = self.state2.hcache.clone();
-        self.state3.evaluate(qfactor, current, bfield, per)?;
+        self.state3
+            .evaluate(qfactor, currents, bfield, perturbation)?;
         self.k3 = [
             self.state3.theta_dot,
             self.state3.psip_dot,
@@ -175,8 +177,8 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A41 * self.k1[0] + A42 * self.k2[0] + A43 * self.k3[0],
@@ -194,7 +196,8 @@ impl Solver {
         self.state4.xacc = self.state3.xacc;
         self.state4.yacc = self.state3.yacc;
         self.state4.hcache = self.state3.hcache.clone();
-        self.state4.evaluate(qfactor, current, bfield, per)?;
+        self.state4
+            .evaluate(qfactor, currents, bfield, perturbation)?;
         self.k4 = [
             self.state4.theta_dot,
             self.state4.psip_dot,
@@ -209,8 +212,8 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         let coef = [
             A51 * self.k1[0] + A52 * self.k2[0] + A53 * self.k3[0] + A54 * self.k4[0],
@@ -228,7 +231,8 @@ impl Solver {
         self.state5.xacc = self.state4.xacc;
         self.state5.yacc = self.state4.yacc;
         self.state5.hcache = self.state4.hcache.clone();
-        self.state5.evaluate(qfactor, current, bfield, per)?;
+        self.state5
+            .evaluate(qfactor, currents, bfield, perturbation)?;
         self.k5 = [
             self.state5.theta_dot,
             self.state5.psip_dot,
@@ -243,8 +247,8 @@ impl Solver {
         h: f64,
         qfactor: &Qfactor,
         bfield: &Bfield,
-        current: &Current,
-        per: &Perturbation,
+        currents: &Currents,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         #[rustfmt::skip]
             let coef = [
@@ -263,7 +267,8 @@ impl Solver {
         self.state6.xacc = self.state5.xacc;
         self.state6.yacc = self.state5.yacc;
         self.state6.hcache = self.state5.hcache.clone();
-        self.state6.evaluate(qfactor, current, bfield, per)?;
+        self.state6
+            .evaluate(qfactor, currents, bfield, perturbation)?;
         self.k6 = [
             self.state6.theta_dot,
             self.state6.psip_dot,
@@ -295,12 +300,15 @@ impl Solver {
     }
 
     /// Adjust the error by calculating the relative difference in the energy at every step.
+    ///
+    /// Source:
+    /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
     #[cfg(not(feature = "error-adaptive-step"))]
     pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
         let initial_energy = self.state1.energy();
         let final_energy = self.state6.energy();
-        // // When the energy happens to be smaller than REL_TOL, the optimal step keeps getting
-        // // smaller due to the `REL_TOL/energy_diff` factor, so we need to bound it
+        // When the energy diff happens to be smaller than REL_TOL, the optimal step keeps getting
+        // smaller due to the `REL_TOL/energy_diff` factor, so we need to bound it
         let energy_diff = ((initial_energy - final_energy) / initial_energy)
             .abs()
             .max(ENERGY_REL_TOL / 2.0);
@@ -312,6 +320,8 @@ impl Solver {
         SAFETY_FACTOR * h * (ENERGY_REL_TOL / energy_diff).powf(exp)
     }
 
+    /// Adjust the error by calculating the relative difference
+    ///
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
     #[cfg(feature = "error-adaptive-step")]

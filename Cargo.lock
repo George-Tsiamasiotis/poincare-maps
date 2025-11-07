@@ -879,6 +879,7 @@ dependencies = [
  "equilibrium",
  "ndarray",
  "rsl-interpolation",
+ "safe_unwrap",
  "serde",
  "thiserror",
  "utils",

@@ -1,5 +1,4 @@
-use std::time::Duration;
-
+/// Custom error types
 #[derive(thiserror::Error, Debug)]
 pub enum ParticleError {
     /// Error from [`equilibrium`].
@@ -8,15 +7,9 @@ pub enum ParticleError {
 
     /// Particle timed out.
     #[error("Particle timed out after {0:?}")]
-    TimedOut(Duration),
+    TimedOut(std::time::Duration),
 
     /// Intersection accuracy check failed.
     #[error("Intersection accuracy check failed.")]
     IntersectionError,
-}
-
-impl From<ParticleError> for Box<str> {
-    fn from(value: ParticleError) -> Self {
-        value.to_string().into_boxed_str()
-    }
 }

@@ -228,6 +228,15 @@ impl Perturbation {
     }
 }
 
+impl std::fmt::Debug for Perturbation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for harmonic in self.get_harmonics() {
+            let _ = harmonic.fmt(f);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

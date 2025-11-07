@@ -2,21 +2,22 @@ use core::f64;
 use std::f64::consts::TAU;
 
 use equilibrium::HarmonicCache;
-use equilibrium::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
-use crate::Point;
 use crate::Result;
+use crate::{Distance, InitialConditions, MagneticMoment};
+use crate::{Flux, Radians, Time};
 
 /// State of the System at each step.
 ///
 /// Corresponds to a single specific point in configuration space, e.g. all values are calculated
-/// at the same `θ`, `ψ_p`, `ρ`, `ζ` point.
+/// at the same `θ`, `ψp`, `ρ`, `ζ` point.
 #[derive(Clone)]
 pub struct State {
-    /// The `ψ_p` coordinate [`Accelerator`].
+    /// The `ψp` coordinate [`Accelerator`].
     pub xacc: Accelerator,
-    /// The `θ_p` coordinate [`Accelerator`].
+    /// The `θ` coordinate [`Accelerator`].
     pub yacc: Accelerator,
     /// The 2d Interpolation's [`Cache`].
     pub spline2d_cache: Cache<f64>,
@@ -25,21 +26,21 @@ pub struct State {
     pub hcache: Vec<HarmonicCache>,
 
     /// The time of evaluation.
-    pub time: f64,
+    pub time: Time,
 
     /// The `θ` angle.
-    pub theta: f64,
-    /// The poloidal magnetic flux `ψ_p`.
-    pub psip: f64,
+    pub theta: Radians,
+    /// The poloidal magnetic flux `ψp`.
+    pub psip: Flux,
     /// The parallel gyro radius `ρ`.
-    pub rho: f64,
+    pub rho: Distance,
     /// The `ζ` angle.
-    pub zeta: f64,
+    pub zeta: Radians,
 
     /// The magnetic moment.
-    pub mu: f64,
+    pub mu: MagneticMoment,
     /// The toroidal magnetic flux `ψ`.
-    pub psi: f64,
+    pub psi: Flux,
     /// The canonical momentum `Pθ`,
     pub ptheta: f64,
     /// The canonical momentum `Pζ`,
@@ -114,20 +115,15 @@ pub struct State {
 }
 
 impl State {
-    /// All fields set to NaN and Accelerator creation.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Creates a [`State`] from the **independent** variables only.
-    pub fn from_point(point: &Point) -> Self {
+    /// Creates a non-evaluated [`State`] from an initial conditions set.
+    pub fn from_initial(initial: &InitialConditions) -> Self {
         Self {
-            time: point.time,
-            theta: point.theta,
-            psip: point.psip,
-            rho: point.rho,
-            zeta: point.zeta,
-            mu: point.mu,
+            time: initial.time0,
+            theta: initial.theta0,
+            psip: initial.psip0,
+            rho: initial.rho0,
+            zeta: initial.zeta0,
+            mu: initial.mu,
             ..Default::default()
         }
     }
@@ -136,28 +132,28 @@ impl State {
     pub fn into_evaluated(
         mut self,
         qfactor: &Qfactor,
-        current: &Current,
+        currents: &Currents,
         bfield: &Bfield,
-        per: &Perturbation,
+        perturbation: &Perturbation,
     ) -> Result<Self> {
-        self.evaluate(qfactor, current, bfield, per)?;
+        self.evaluate(qfactor, currents, bfield, perturbation)?;
         Ok(self)
     }
 
-    /// Evaluation all quantites derived by (θ, ψ_p, ρ, ζ, μ)
+    /// Evaluation all quantites derived by (θ, ψp, ρ, ζ, μ)
     pub fn evaluate(
         &mut self,
         qfactor: &Qfactor,
-        current: &Current,
+        currents: &Currents,
         bfield: &Bfield,
-        per: &Perturbation,
+        perturbation: &Perturbation,
     ) -> Result<()> {
         // First do all the interpolations.
         self.calculate_modulos();
         self.calculate_qfactor_quantities(qfactor)?;
-        self.calculate_current_quantities(current)?;
+        self.calculate_currents_quantities(currents)?;
         self.calculate_bfield_quantities(bfield)?;
-        self.calculate_perturbation(per)?;
+        self.calculate_perturbation(perturbation)?;
 
         // Then intermediate quantities that only depend on the already calculated interpolations.
         self.calculate_capitals();
@@ -179,23 +175,20 @@ impl State {
         self.mod_zeta = self.zeta % TAU;
     }
 
-    #[cfg(not(feature = "lar"))]
     fn calculate_qfactor_quantities(&mut self, qfactor: &Qfactor) -> Result<()> {
         self.psi = qfactor.psi(self.psip, &mut self.xacc)?;
         self.q = qfactor.q(self.psip, &mut self.xacc)?;
         Ok(())
     }
 
-    #[cfg(not(feature = "lar"))]
-    fn calculate_current_quantities(&mut self, current: &Current) -> Result<()> {
-        self.i = current.i(self.psip, &mut self.xacc)?;
-        self.g = current.g(self.psip, &mut self.xacc)?;
-        self.di_dpsip = current.di_dpsip(self.psip, &mut self.xacc)?;
-        self.dg_dpsip = current.dg_dpsip(self.psip, &mut self.xacc)?;
+    fn calculate_currents_quantities(&mut self, currents: &Currents) -> Result<()> {
+        self.i = currents.i(self.psip, &mut self.xacc)?;
+        self.g = currents.g(self.psip, &mut self.xacc)?;
+        self.di_dpsip = currents.di_dpsip(self.psip, &mut self.xacc)?;
+        self.dg_dpsip = currents.dg_dpsip(self.psip, &mut self.xacc)?;
         Ok(())
     }
 
-    #[cfg(not(feature = "lar"))]
     fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
         self.b = bfield.b(
             self.psip,
@@ -222,42 +215,42 @@ impl State {
         Ok(())
     }
 
-    fn calculate_perturbation(&mut self, per: &Perturbation) -> Result<()> {
+    fn calculate_perturbation(&mut self, perturbation: &Perturbation) -> Result<()> {
         // This is necessary, since we can't know the number of harmonics from the start. The
         // hcache vec should be cloned in each solver state.
         if self.hcache.is_empty() {
-            self.hcache = vec![HarmonicCache::default(); per.harmonics.len()];
+            self.hcache = vec![HarmonicCache::default(); perturbation.harmonics.len()];
         }
 
-        self.p = per.p(
+        self.p = perturbation.p(
             self.psip,
             self.mod_theta,
             self.mod_zeta,
             &mut self.hcache,
             &mut self.xacc,
         )?;
-        self.dp_dpsip = per.dp_dpsip(
+        self.dp_dpsip = perturbation.dp_dpsip(
             self.psip,
             self.mod_theta,
             self.mod_zeta,
             &mut self.hcache,
             &mut self.xacc,
         )?;
-        self.dp_dtheta = per.dp_dtheta(
+        self.dp_dtheta = perturbation.dp_dtheta(
             self.psip,
             self.mod_theta,
             self.mod_zeta,
             &mut self.hcache,
             &mut self.xacc,
         )?;
-        self.dp_dzeta = per.dp_dzeta(
+        self.dp_dzeta = perturbation.dp_dzeta(
             self.psip,
             self.mod_theta,
             self.mod_zeta,
             &mut self.hcache,
             &mut self.xacc,
         )?;
-        self.dp_dt = per.dp_dt(
+        self.dp_dt = perturbation.dp_dt(
             self.psip,
             self.mod_theta,
             self.mod_zeta,
@@ -332,42 +325,9 @@ impl State {
     }
 }
 
-/// Alternative Large Aspect Ratio configuration (much faster)
-impl State {
-    #[cfg(feature = "lar")]
-    #[allow(unused_variables)]
-    fn calculate_qfactor_quantities(&mut self, qfactor: &Qfactor) -> Result<()> {
-        self.psi = self.psip;
-        self.q = 1.0;
-        Ok(())
-    }
-
-    #[cfg(feature = "lar")]
-    #[allow(unused_variables)]
-    fn calculate_current_quantities(&mut self, current: &Current) -> Result<()> {
-        self.i = 0.0;
-        self.g = 1.0;
-        self.di_dpsip = 0.0;
-        self.dg_dpsip = 0.0;
-        Ok(())
-    }
-
-    #[cfg(feature = "lar")]
-    #[allow(unused_variables)]
-    fn calculate_bfield_quantities(&mut self, bfield: &Bfield) -> Result<()> {
-        let root = (2.0 * self.psi).sqrt();
-        let cos_theta = self.theta.cos();
-        self.b = 1.0 - root * cos_theta;
-        self.db_dtheta = root * self.theta.sin();
-        self.db_dpsip = -cos_theta / root;
-        self.db_dzeta = 0.0; // Axisymmetric configuration
-        Ok(())
-    }
-}
-
 /// Helper struct for printing [`State`]'s independent variables.
 pub struct Display {
-    pub t: f64,
+    pub time: f64,
     pub theta: f64,
     pub psip: f64,
     pub rho: f64,
@@ -378,7 +338,7 @@ pub struct Display {
 impl std::fmt::Debug for Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("")
-            .field("t", &format!("{:.5}", self.t))
+            .field("time", &format!("{:.5}", self.time))
             .field("theta", &format!("{:.5}", self.theta))
             .field("psip", &format!("{:.5}", self.psip))
             .field("rho", &format!("{:.5}", self.rho))
@@ -391,7 +351,7 @@ impl std::fmt::Debug for Display {
 impl Display {
     pub fn from_state(state: &State) -> Self {
         Self {
-            t: state.time,
+            time: state.time,
             theta: state.theta,
             psip: state.psip,
             rho: state.rho,
@@ -457,7 +417,7 @@ impl Default for State {
 impl std::fmt::Debug for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("State")
-            .field("t", &self.time)
+            .field("time", &self.time)
             .field("theta", &self.theta)
             .field("psip", &self.psip)
             .field("rho", &self.rho)

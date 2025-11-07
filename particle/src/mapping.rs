@@ -1,12 +1,11 @@
 use crate::Particle;
 use crate::ParticleError;
-use crate::Point;
 use crate::Result;
 use crate::Solver;
 use crate::State;
 use config::*;
 
-use equilibrium::{Bfield, Current, Perturbation, Qfactor};
+use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
 use std::f64::consts::TAU;
 use std::time::Duration;
 
@@ -20,7 +19,7 @@ pub enum PoincareSection {
 /// Defines all the necessary parameters of a Poincare Map.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
-pub struct Mapping {
+pub struct MappingParameters {
     /// The surface of section Σ, defined by an equation xᵢ= α, where xᵢ= θ or ζ.
     pub section: PoincareSection,
     /// The constant that defines the surface of section.
@@ -29,7 +28,7 @@ pub struct Mapping {
     pub intersections: usize,
 }
 
-impl Mapping {
+impl MappingParameters {
     pub fn new(section: PoincareSection, alpha: f64, intersections: usize) -> Self {
         // mod `alpha` to avoid modding it in every step
         Self {
@@ -45,9 +44,9 @@ pub fn map_integrate(
     particle: &mut Particle,
     qfactor: &Qfactor,
     bfield: &Bfield,
-    current: &Current,
-    per: &Perturbation,
-    mapping: &Mapping,
+    currents: &Currents,
+    perturbation: &Perturbation,
+    params: &MappingParameters,
 ) -> Result<()> {
     // Last two states of the particle.
     let mut state1 = particle.initial_state.clone(); // Already evaluated
@@ -55,14 +54,14 @@ pub fn map_integrate(
 
     let mut dt = RKF45_FIRST_STEP;
 
-    while particle.evolution.time.len() <= mapping.intersections {
+    while particle.evolution.steps_stored() <= params.intersections {
         // Perform a step on the normal system.
         let mut solver = Solver::default();
         solver.init(&state1);
-        solver.start(dt, qfactor, bfield, current, per)?;
+        solver.start(dt, qfactor, bfield, currents, perturbation)?;
         dt = solver.calculate_optimal_step(dt);
         state2 = solver.next_state(dt);
-        state2.evaluate(qfactor, current, bfield, per)?;
+        state2.evaluate(qfactor, currents, bfield, perturbation)?;
 
         if particle.evolution.steps_taken() >= MAX_STEPS {
             return Err(ParticleError::TimedOut(Duration::default()));
@@ -73,21 +72,26 @@ pub fn map_integrate(
         // `theta`. Checking its value in every function and every loop has negligible performance
         // impact and produces much more readable code, instead of rewritting the same function
         // twice.
-        let (old_angle, new_angle) = match mapping.section {
+        let (old_angle, new_angle) = match params.section {
             PoincareSection::ConstTheta => (state1.theta, state2.theta),
             PoincareSection::ConstZeta => (state1.zeta, state2.zeta),
         };
-        if intersected(old_angle, new_angle, mapping.alpha) {
-            let mod_state1 = calculate_mod_state1(&state1, &mapping.section);
-            let dtau = calculate_mod_step(&state1, &state2, mapping);
-            let mod_state2 = calculate_mod_state2(qfactor, bfield, current, per, mod_state1, dtau)?;
-            let intersection_state =
-                calculate_intersection_state(qfactor, bfield, current, per, mapping, mod_state2)?;
+        if intersected(old_angle, new_angle, params.alpha) {
+            let mod_state1 = calculate_mod_state1(&state1, &params.section);
+            let dtau = calculate_mod_step(&state1, &state2, params);
+            let mod_state2 =
+                calculate_mod_state2(qfactor, bfield, currents, perturbation, mod_state1, dtau)?;
+            let intersection_state = calculate_intersection_state(
+                qfactor,
+                bfield,
+                currents,
+                perturbation,
+                params,
+                mod_state2,
+            )?;
 
             // Store the intersection state.
-            particle
-                .evolution
-                .push_point(&Point::from_state(&intersection_state));
+            particle.evolution.push_state(&intersection_state);
 
             // NOTE: Even after landing on the intersection, we must continue the integration from
             // state2. If we continue from the intersection state, a wrong sign change detection
@@ -145,16 +149,16 @@ fn calculate_mod_state1(state1: &State, section: &PoincareSection) -> State {
 }
 
 /// Calculates the step size dτ that brings mod_state1 on the intersection surface.
-fn calculate_mod_step(state1: &State, state2: &State, mapping: &Mapping) -> f64 {
+fn calculate_mod_step(state1: &State, state2: &State, params: &MappingParameters) -> f64 {
     // TODO: find a way to move the pole when the intersection angle is 0.
-    match mapping.section {
+    match params.section {
         PoincareSection::ConstTheta => {
             let direction = (state2.theta - state1.theta).signum();
-            direction * (mapping.alpha - state1.theta % TAU)
+            direction * (params.alpha - state1.theta % TAU)
         }
         PoincareSection::ConstZeta => {
             let direction = (state2.zeta - state1.zeta).signum();
-            direction * (mapping.alpha - state1.zeta % TAU)
+            direction * (params.alpha - state1.zeta % TAU)
         }
     }
 }
@@ -164,14 +168,14 @@ fn calculate_mod_step(state1: &State, state2: &State, mapping: &Mapping) -> f64 
 fn calculate_mod_state2(
     qfactor: &Qfactor,
     bfield: &Bfield,
-    current: &Current,
-    per: &Perturbation,
+    currents: &Currents,
+    perturbation: &Perturbation,
     mod_state1: State,
     dtau: f64,
 ) -> Result<State> {
     let mut mod_solver = Solver::default();
     mod_solver.init(&mod_state1);
-    mod_solver.start(dtau, qfactor, bfield, current, per)?;
+    mod_solver.start(dtau, qfactor, bfield, currents, perturbation)?;
     let mod_state2 = mod_solver.next_state(dtau);
     Ok(mod_state2)
 }
@@ -181,12 +185,12 @@ fn calculate_mod_state2(
 fn calculate_intersection_state(
     qfactor: &Qfactor,
     bfield: &Bfield,
-    current: &Current,
-    per: &Perturbation,
-    mapping: &Mapping,
+    current: &Currents,
+    perturbation: &Perturbation,
+    params: &MappingParameters,
     mod_state2: State,
 ) -> Result<State> {
-    match mapping.section {
+    match params.section {
         PoincareSection::ConstTheta => {
             let kappa = 1.0;
             let dt_dt = kappa;
@@ -222,7 +226,7 @@ fn calculate_intersection_state(
             }
         }
     }
-    .into_evaluated(qfactor, current, bfield, per)
+    .into_evaluated(qfactor, current, bfield, perturbation)
 }
 
 // ====================================Common Functions===========================================
@@ -256,9 +260,7 @@ pub fn check_accuracy(array: &[f64], threshold: f64) -> Result<()> {
 mod test {
     use super::*;
 
-    /// as defined in std
-    const PI: f64 = 3.141592653589793;
-    const TAU: f64 = 6.283185307179586;
+    use std::f64::consts::{PI, TAU};
 
     #[test]
     fn test_intersected() {

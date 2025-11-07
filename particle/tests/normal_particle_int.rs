@@ -6,11 +6,11 @@ use crate::common::create_equilibrium;
 
 #[test]
 fn test_normal_particle_int() {
-    let (qfactor, current, bfield, per) = create_equilibrium();
-    let psip_wall = qfactor.psip_wall;
+    let (qfactor, currents, bfield, perturbation) = create_equilibrium();
+    let psip_wall = qfactor.psip_wall();
 
     let initial = InitialConditions {
-        t0: 0.0,
+        time0: 0.0,
         theta0: 1.0,
         psip0: 0.5 * psip_wall,
         rho0: 0.0001,
@@ -21,7 +21,7 @@ fn test_normal_particle_int() {
     let mut particle = Particle::new(&initial);
     assert!(matches!(particle.status, IntegrationStatus::Initialized));
     particle
-        .integrate(&qfactor, &bfield, &current, &per, (0.0, 500000.0))
+        .integrate(&qfactor, &bfield, &currents, &perturbation, (0.0, 500000.0))
         .unwrap();
 
     let hcache = particle.final_state.hcache.first().unwrap();

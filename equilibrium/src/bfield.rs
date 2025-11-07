@@ -423,7 +423,7 @@ impl Bfield {
 
     /// Returns the value of the poloidal angle ψp at the wall.
     pub fn psip_wall(&self) -> Flux {
-        safe_unwrap!("ya is non-empty", self.b_spline.ya.last().copied())
+        safe_unwrap!("ya is non-empty", self.b_spline.xa.last().copied())
     }
 }
 
