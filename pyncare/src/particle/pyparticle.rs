@@ -60,14 +60,14 @@ impl PyParticle {
         bfield: &PyBfield,
         currents: &PyCurrents,
         perturbation: &PyPerturbation,
-        mapping: &PyMappingParameters,
+        params: &PyMappingParameters,
     ) -> Result<(), PyParticleError> {
         Ok(self.0.map(
             &qfactor.0,
             &bfield.0,
             &currents.0,
             &perturbation.0,
-            &mapping.0,
+            &params.0,
         )?)
     }
 

@@ -363,8 +363,8 @@ impl Bfield {
     array1D_getter_impl!(psip_data, b_spline.xa, Flux);
     array1D_getter_impl!(theta_data, b_spline.ya, Flux);
     array2D_getter_impl!(b_data, b_spline);
-    array2D_getter_impl!(r_data, b_spline);
-    array2D_getter_impl!(z_data, b_spline);
+    array2D_getter_impl!(r_data, r_spline);
+    array2D_getter_impl!(z_data, z_spline);
 
     /// Returns the `𝜕B(ψp, θ) /𝜕ψp` data as a 2D array.
     ///

@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
-from pyncare import Current
+from pyncare import Currents
 
 plt.rcParams["text.usetex"] = True
 
 
-def g_plot(ax: Axes, current: Current):
+def g_plot(ax: Axes, current: Currents):
     psip_data = current.psip_data
     g_data = current.g_data
     # Smooth derivative curve
@@ -28,7 +28,7 @@ def g_plot(ax: Axes, current: Current):
     ax.legend()
 
 
-def i_plot(ax: Axes, current: Current):
+def i_plot(ax: Axes, current: Currents):
     psip_data = current.psip_data
     i_data = current.i_data
     psips = np.linspace(current.psip_data[0], current.psip_data[-1], 1000)

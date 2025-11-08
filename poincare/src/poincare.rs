@@ -19,7 +19,7 @@ pub struct Poincare {
     /// Initial conditions arrays.
     pub init: PoincareInit,
     /// Poincare map parameters.
-    pub mapping: MappingParameters,
+    pub params: MappingParameters,
     /// Tracked [`Particle`]s.
     pub particles: Vec<Particle>,
     /// Integration results
@@ -29,11 +29,11 @@ pub struct Poincare {
 impl Poincare {
     /// Creates a new Poincare object, initializing all particles from the initial condtions
     /// arrays.
-    pub fn new(init: PoincareInit, mapping: MappingParameters) -> Self {
+    pub fn new(init: PoincareInit, params: MappingParameters) -> Self {
         let particles = init.to_particles();
         Self {
             init,
-            mapping,
+            params,
             particles,
             results: PoincareResults::default(),
         }
@@ -55,11 +55,11 @@ impl Poincare {
         pbar.enable_steady_tick(Duration::from_millis(100));
 
         self.particles.par_iter_mut().try_for_each(|p| {
-            p.map(qfactor, bfield, currents, perturbation, &self.mapping)
+            p.map(qfactor, bfield, currents, perturbation, &self.params)
                 .inspect(|()| pbar.inc(1))
         })?;
 
-        self.results = PoincareResults::new(self, &self.mapping);
+        self.results = PoincareResults::new(self, &self.params);
         Ok(())
     }
 }

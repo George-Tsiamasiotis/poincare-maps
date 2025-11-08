@@ -8,18 +8,18 @@
 # ///
 import matplotlib
 import matplotlib.pyplot as plt
-from pyncare import Current, g_plot, i_plot
+from pyncare import Currents, g_plot, i_plot
 
 
 matplotlib.use("gtk3agg")
 
-current = Current("./data.nc", "steffen")
+currents = Currents("./data.nc", "steffen")
 
 fig = plt.figure(figsize=(15, 5), layout="constrained")
 fig.suptitle("Plasma Currents")
 
 ax = fig.subplots(1, 2)
-g_plot(ax[0], current)
-i_plot(ax[1], current)
+g_plot(ax[0], currents)
+i_plot(ax[1], currents)
 
 plt.show()

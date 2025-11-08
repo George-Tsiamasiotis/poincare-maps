@@ -1,4 +1,4 @@
-from pyncare import Qfactor, Current, Bfield, Perturbation, Poincare
+from pyncare import Qfactor, Currents, Bfield, Perturbation, Poincare
 import numpy as np
 
 
@@ -12,14 +12,14 @@ def test_poincare_fields(poincare: Poincare):
 
 def test_pypoincare_run(
     qfactor: Qfactor,
-    current: Current,
+    currents: Currents,
     bfield: Bfield,
     perturbation: Perturbation,
     poincare: Poincare,
 ):
     poincare.run(
         qfactor=qfactor,
-        current=current,
+        currents=currents,
         bfield=bfield,
-        per=perturbation,
+        perturbation=perturbation,
     )

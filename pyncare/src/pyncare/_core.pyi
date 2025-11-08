@@ -50,7 +50,7 @@ class Qfactor:
     def psi(self, psip: float) -> float:
         """The ψ value evaluated at ψp"""
 
-class Current:
+class Currents:
     """Plasma current reconstructed from a NetCDF file.
 
     Attributes
@@ -115,8 +115,6 @@ class Bfield:
         The major radius in [m].
     psip_wall: float
         The value of the poloidal flux ψp at the wall.
-    psi_wall: float
-        The value of the toroidal flux ψ at the wall.
     psip_data: np.ndarray
         The NetCDF ψp data used to construct the b(ψp, θ) spline.
     theta_data: np.ndarray
@@ -138,7 +136,6 @@ class Bfield:
     baxis: float
     raxis: float
     psip_wall: float
-    psi_wall: float
     psip_data: np.ndarray
     theta_data: np.ndarray
     b_data: np.ndarray
@@ -185,8 +182,6 @@ class Harmonic:
         The path to the NetCDF file.
     typ: str
         The type of Interpolation.
-    amax: float
-        The maximum value of the `α` values.
     psip_wall: float
         The value of the poloidal flux ψp at the wall.
     psip_data: float
@@ -200,7 +195,6 @@ class Harmonic:
     m: float
     n: float
     phase: float
-    amax: float
     psip_wall: float
     psip_data: np.ndarray
     a_data: np.ndarray
@@ -275,16 +269,17 @@ class Perturbation:
 class InitialConditions:
     """A set of initial conditions."""
 
-    t0: float
-    theta0: float
-    psip0: float
-    rho0: float
-    zeta0: float
-    mu: float
+    # TODO:
+    # t0: float
+    # theta0: float
+    # psip0: float
+    # rho0: float
+    # zeta0: float
+    # mu: float
 
     def __init__(
         self,
-        t0: float,
+        time0: float,
         theta0: float,
         psip0: float,
         rho0: float,
@@ -295,7 +290,7 @@ class InitialConditions:
 
         Parameters
         ----------
-        t0: float
+        time0: float
             The initial time.
         theta0: float
             The initial `θ` angle.
@@ -327,9 +322,9 @@ class Particle:
     def integrate(
         self,
         qfactor: Qfactor,
-        current: Current,
         bfield: Bfield,
-        per: Perturbation,
+        currents: Currents,
+        perturbation: Perturbation,
         t_eval: list[float],
     ):
         """Integrates the particle, storing its evolution.
@@ -338,7 +333,7 @@ class Particle:
         ----------
         qfactor: Qfactor
             The equilibrium's qfactor.
-        current: Current
+        currents: Currents
             The equilibrium's plasma current.
         bfield: Bfield
             The equilibrium's magnetic field.
@@ -351,25 +346,25 @@ class Particle:
     def map(
         self,
         qfactor: Qfactor,
-        current: Current,
+        currents: Currents,
         bfield: Bfield,
-        per: Perturbation,
-        mapping: Mapping,
+        perturbation: Perturbation,
+        params: MappingParameters,
     ):
         """Integrates the particle, storing its intersections with the Poincare
-        surface defined by `Mapping`.
+        surface defined by `MappingParameters`.
 
         Parameters
         ----------
         qfactor: Qfactor
             The equilibrium's qfactor.
-        current: Current
+        currents: Currents
             The equilibrium's plasma current.
         bfield: Bfield
             The equilibrium's magnetic field.
         per: Perturbation
             The equilibrium's perturbation.
-        mapping: Mapping
+        params: MappingParameters
             The parameters of the Poincare mapping.
         """
 
@@ -390,7 +385,7 @@ class Evolution:
     steps_taken: int
     steps_stored: int
 
-class Mapping:
+class MappingParameters:
     """Defines all the necessary parameters of a Poincare Map.
 
     Attributes
@@ -461,26 +456,27 @@ class Poincare:
     init: PoincareInit
     section: str
     alpha: int
+    intersection: int
     angles: np.ndarray
     fluxes: np.ndarray
 
-    def __init__(self, init: PoincareInit, mapping: Mapping):
+    def __init__(self, init: PoincareInit, params: MappingParameters):
         """Constructor
 
         Parameters
         ----------
         init: PoincareInit
             The initial conditions arrays.
-        mapping: Mapping
+        params: MappingParameters
             The integration parameters.
         """
 
     def run(
         self,
         qfactor: Qfactor,
-        current: Current,
+        currents: Currents,
         bfield: Bfield,
-        per: Perturbation,
+        perturbation: Perturbation,
     ):
         """Integrates the particle, storing its evolution.
 
@@ -488,7 +484,7 @@ class Poincare:
         ----------
         qfactor: Qfactor
             The equilibrium's qfactor.
-        current: Current
+        currents: Currents
             The equilibrium's plasma current.
         bfield: Bfield
             The equilibrium's magnetic field.

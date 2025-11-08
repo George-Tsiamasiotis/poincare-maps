@@ -1,9 +1,9 @@
-from pyncare import Qfactor, Current, Bfield, Perturbation, Particle, Mapping
+from pyncare import Qfactor, Currents, Bfield, Perturbation, Particle, MappingParameters
 
 
 def test_particle_integration(
     qfactor: Qfactor,
-    current: Current,
+    currents: Currents,
     bfield: Bfield,
     perturbation: Perturbation,
     particle: Particle,
@@ -11,9 +11,9 @@ def test_particle_integration(
     assert particle.status == "Initialized"
     particle.integrate(
         qfactor=qfactor,
-        current=current,
+        currents=currents,
         bfield=bfield,
-        per=perturbation,
+        perturbation=perturbation,
         t_eval=[0, 10],
     )
     assert particle.status == "Integrated"
@@ -21,18 +21,18 @@ def test_particle_integration(
 
 def test_particle_mapping(
     qfactor: Qfactor,
-    current: Current,
+    currents: Currents,
     bfield: Bfield,
     perturbation: Perturbation,
     particle: Particle,
-    mapping: Mapping,
+    params: MappingParameters,
 ):
     assert particle.status == "Initialized"
     particle.map(
         qfactor=qfactor,
-        current=current,
+        currents=currents,
         bfield=bfield,
-        per=perturbation,
-        mapping=mapping,
+        perturbation=perturbation,
+        params=params,
     )
     assert particle.status == "Integrated"

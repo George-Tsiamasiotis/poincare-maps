@@ -10,9 +10,9 @@ def qfactor():
 
 
 @pytest.fixture(scope="session")
-def current():
+def currents():
     """Creates a Current object from "./data.nc" netCDF file."""
-    return pc.Current("./data.nc", "akima")
+    return pc.Currents("./data.nc", "akima")
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +47,7 @@ def initial_conditions(qfactor):
     """Creates an InitialConditons object."""
     psip_wall = qfactor.psip_wall
     return pc.InitialConditions(
-        t0=0,
+        time0=0,
         theta0=3.14,
         psip0=0.5 * psip_wall,
         rho0=0.001,
@@ -63,11 +63,11 @@ def particle(initial_conditions):
 
 
 @pytest.fixture(scope="function")
-def integrated_particle(qfactor, current, bfield, perturbation, particle):
+def integrated_particle(qfactor, currents, bfield, perturbation, particle):
     """Creates a Particle object and integrates it."""
     particle.integrate(
         qfactor=qfactor,
-        current=current,
+        current=currents,
         bfield=bfield,
         per=perturbation,
         t_eval=[0, 10],
@@ -76,9 +76,9 @@ def integrated_particle(qfactor, current, bfield, perturbation, particle):
 
 
 @pytest.fixture(scope="session")
-def mapping():
-    """Creates a Mapping object."""
-    return pc.Mapping("theta", 3.14, 10)
+def params():
+    """Creates a MappingParameters object."""
+    return pc.MappingParameters("theta", 3.14, 10)
 
 
 # =========================================================================================
@@ -98,6 +98,6 @@ def poincare_init(qfactor: pc.Qfactor):
 
 
 @pytest.fixture(scope="session")
-def poincare(poincare_init: pc.PoincareInit, mapping: pc.Mapping):
+def poincare(poincare_init: pc.PoincareInit, params: pc.MappingParameters):
     """Creates a Poincare object."""
-    return pc.Poincare(init=poincare_init, mapping=mapping)
+    return pc.Poincare(init=poincare_init, params=params)

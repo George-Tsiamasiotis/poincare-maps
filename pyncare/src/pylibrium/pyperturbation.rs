@@ -16,8 +16,8 @@ pub struct PyPerturbation(pub Perturbation);
 impl PyPerturbation {
     /// Creates a new PyPerturbation wrapper object.
     #[new]
-    pub fn new_py<'py>(pyharmonics: Bound<'py, PyList>) -> Result<Self, PyEqError> {
-        let pyharmonics_vec: Vec<PyHarmonic> = pyharmonics
+    pub fn new_py<'py>(harmonics: Bound<'py, PyList>) -> Result<Self, PyEqError> {
+        let pyharmonics_vec: Vec<PyHarmonic> = harmonics
             .iter()
             .map(|ph| {
                 ph.extract()

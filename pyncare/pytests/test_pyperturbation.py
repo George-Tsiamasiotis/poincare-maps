@@ -1,9 +1,4 @@
-import pytest
 from pyncare import Harmonic, Perturbation
-
-
-def test_pyperturbation_derived_fields(perturbation: Perturbation):
-    assert isinstance(perturbation.harmonics, list)
 
 
 def test_pypertyrbation_eval(perturbation: Perturbation):
@@ -20,12 +15,6 @@ def test_pypertyrbation_eval(perturbation: Perturbation):
 def test_perturbation_getitem(perturbation: Perturbation):
     assert isinstance(perturbation[0], Harmonic)
     assert isinstance(perturbation[1], Harmonic)
-
-
-def test_immutability(perturbation: Perturbation):
-    """Tests that harmonic1 fields are immutable."""
-    with pytest.raises(AttributeError):
-        perturbation.harmonics = []
 
 
 def test_repr(perturbation: Perturbation):

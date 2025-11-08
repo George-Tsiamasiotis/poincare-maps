@@ -139,7 +139,7 @@ impl Particle {
     }
 
     /// Integrates the particle, storing its intersections with the Poincare surface defined by
-    /// [`Mapping`].
+    /// [`MappingParameters`].
     pub fn map(
         &mut self,
         qfactor: &Qfactor,

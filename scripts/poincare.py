@@ -11,9 +11,9 @@ import pyncare as pc
 import numpy as np
 
 qfactor = pc.Qfactor("./data.nc", "akima")
-current = pc.Current("./data.nc", "akima")
+currents = pc.Currents("./data.nc", "akima")
 bfield = pc.Bfield("./data.nc", "bicubic")
-per = pc.Perturbation(
+perturbation = pc.Perturbation(
     [
         pc.Harmonic("./data.nc", "akima", m=7, n=1, phase=0),
         pc.Harmonic("./data.nc", "akima", m=9, n=1, phase=0),
@@ -29,13 +29,13 @@ init = pc.PoincareInit(
     mus=np.zeros(num),
 )
 
-mapping = pc.Mapping(section="theta", alpha=3.14, intersections=200)
-poincare = pc.Poincare(init=init, mapping=mapping)
+params = pc.MappingParameters(section="theta", alpha=3.14, intersections=200)
+poincare = pc.Poincare(init=init, params=params)
 poincare.run(
     qfactor=qfactor,
-    current=current,
+    currents=currents,
     bfield=bfield,
-    per=per,
+    perturbation=perturbation,
 )
 
 pc.poincare_plot(poincare)

@@ -15,8 +15,8 @@ pub struct PyPoincare(pub Poincare);
 impl PyPoincare {
     /// Creates a new PyPoincare object.
     #[new]
-    pub fn new(init: PyPoincareInit, mapping: &PyMappingParameters) -> Self {
-        Self(Poincare::new(init.0, mapping.0))
+    pub fn new(init: PyPoincareInit, params: &PyMappingParameters) -> Self {
+        Self(Poincare::new(init.0, params.0))
     }
 
     pub fn run(
@@ -48,17 +48,17 @@ impl PyPoincare {
 
     #[getter]
     pub fn get_section(&self) -> String {
-        format!("{:?}", self.0.mapping.section)
+        format!("{:?}", self.0.params.section)
     }
 
     #[getter]
     pub fn get_alpha(&self) -> f64 {
-        self.0.mapping.alpha
+        self.0.params.alpha
     }
 
     #[getter]
     pub fn get_intersections(&self) -> usize {
-        self.0.mapping.intersections
+        self.0.params.intersections
     }
 }
 

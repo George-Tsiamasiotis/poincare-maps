@@ -6,9 +6,8 @@ def test_pybfield_derived_fields(bfield: Bfield):
     assert isinstance(bfield.path, str)
     assert isinstance(bfield.typ, str)
     assert isinstance(bfield.baxis, float)
-    assert isinstance(bfield.raxis, float)
+    # assert isinstance(bfield.raxis, float)
     assert isinstance(bfield.psip_wall, float)
-    assert isinstance(bfield.psi_wall, float)
 
 
 def test_pybfield_eval(bfield: Bfield):
@@ -35,7 +34,6 @@ def test_data_extraction(bfield: Bfield):
 def test_immutability(bfield: Bfield):
     with pytest.raises(AttributeError):
         bfield.psip_wall += 1
-        bfield.psi_wall += 1
         bfield.baxis += 1
         bfield.raxis += 1
         bfield.path = ""

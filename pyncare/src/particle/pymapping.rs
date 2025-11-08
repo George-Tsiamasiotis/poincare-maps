@@ -1,9 +1,9 @@
 use particle::MappingParameters;
-use utils::py_repr_impl;
+use utils::{py_debug_impl, py_repr_impl};
 
 use pyo3::prelude::*;
 
-#[pyclass(name = "Mapping")]
+#[pyclass(name = "MappingParameters")]
 pub struct PyMappingParameters(pub MappingParameters);
 
 #[pymethods]
@@ -34,4 +34,5 @@ impl PyMappingParameters {
     }
 }
 
+py_debug_impl!(PyMappingParameters);
 py_repr_impl!(PyMappingParameters);
