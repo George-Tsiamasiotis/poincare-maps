@@ -1,8 +1,8 @@
 use poincare::Poincare;
 use safe_unwrap::safe_unwrap;
-use utils::py_get_numpy2D;
+use utils::{py_debug_impl, py_get_numpy2D, py_repr_impl};
 
-use crate::{PyBfield, PyCurrents, PyMappingParameters, PyPerturbation, PyQfactor};
+use crate::{PyBfield, PyCurrents, PyMappingParameters, PyParticle, PyPerturbation, PyQfactor};
 use crate::{PyPoincareError, PyPoincareInit};
 
 use numpy::{IntoPyArray, PyArray2};
@@ -46,6 +46,16 @@ impl PyPoincare {
         )
     }
 
+    pub fn __getitem__(&self, n: usize) -> PyParticle {
+        PyParticle(
+            self.0
+                .particles
+                .get(n)
+                .expect("Particle index out of bounds")
+                .clone(),
+        )
+    }
+
     #[getter]
     pub fn get_section(&self) -> String {
         format!("{:?}", self.0.params.section)
@@ -62,8 +72,7 @@ impl PyPoincare {
     }
 }
 
-// TODO:
-// py_debug_impl!(PyPoincare);
-// py_repr_impl!(PyPoincare);
+py_debug_impl!(PyPoincare);
+py_repr_impl!(PyPoincare);
 py_get_numpy2D!(PyPoincare, angles);
 py_get_numpy2D!(PyPoincare, fluxes);

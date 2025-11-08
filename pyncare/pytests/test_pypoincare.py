@@ -1,6 +1,8 @@
 from pyncare import Qfactor, Currents, Bfield, Perturbation, Poincare
 import numpy as np
 
+from pyncare._core import Particle
+
 
 def test_poincare_fields(poincare: Poincare):
     assert isinstance(poincare.alpha, float)
@@ -8,6 +10,7 @@ def test_poincare_fields(poincare: Poincare):
     assert poincare.section in ["ConstTheta", "ConstZeta"]
     assert isinstance(poincare.angles, np.ndarray)
     assert isinstance(poincare.fluxes, np.ndarray)
+    assert isinstance(poincare[1], Particle)
 
 
 def test_pypoincare_run(
@@ -23,3 +26,7 @@ def test_pypoincare_run(
         bfield=bfield,
         perturbation=perturbation,
     )
+
+
+def test_repr(poincare: Poincare):
+    str(poincare)

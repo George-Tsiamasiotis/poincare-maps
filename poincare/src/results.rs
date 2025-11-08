@@ -15,43 +15,56 @@ pub struct PoincareResults {
     /// The calculated fluxes, corresponding to either `psip` or `psi`, depending on the
     /// [`PoincareSection`]
     pub fluxes: Array2<Flux>,
-    // TODO: statistics
+    total: usize,
+    integrated: usize,
+    escaped: usize,
+    timed_out: usize,
+    invalid_intersections: usize,
+    failed: usize,
 }
 
 impl PoincareResults {
     /// Creates a [`PoincareResults`] from an already calculated Poincare map.
     pub fn new(poincare: &Poincare, params: &MappingParameters) -> Result<Self> {
-        // We dont now how many particle's got completely integrated, so we push a new row for
-        // every successful one.
-        // We also include the initial point for now and drop it later, otherwise the code gets
-        // ugly.
-        let shape = (0, params.intersections + 1);
-        let mut angles: Array2<Radians> = Array2::from_elem(shape, Radians::NAN);
-        let mut fluxes: Array2<Flux> = Array2::from_elem(shape, Flux::NAN);
+        let (angles, fluxes) = calculate_arrays(poincare, params)?;
+        use particle::IntegrationStatus::*;
+        let total = poincare.particles.len();
+        let integrated = poincare
+            .particles
+            .iter()
+            .filter(|p| p.status == Integrated)
+            .count();
+        let escaped = poincare
+            .particles
+            .iter()
+            .filter(|p| p.status == Escaped)
+            .count();
+        let timed_out = poincare
+            .particles
+            .iter()
+            .filter(|p| matches!(p.status, TimedOut(..)))
+            .count();
+        let invalid_intersections = poincare
+            .particles
+            .iter()
+            .filter(|p| p.status == InvalidIntersections)
+            .count();
+        let failed = poincare
+            .particles
+            .iter()
+            .filter(|p| matches!(p.status, Failed { .. }))
+            .count();
 
-        for p in poincare.particles.iter() {
-            use particle::PoincareSection::*;
-            if matches!(p.status, IntegrationStatus::Integrated) {
-                match params.section {
-                    ConstTheta => {
-                        angles.push_row(p.evolution.zeta().view())?;
-                        fluxes.push_row(p.evolution.psip().view())?;
-                    }
-                    ConstZeta => {
-                        angles.push_row(p.evolution.theta().view())?;
-                        fluxes.push_row(p.evolution.psi().view())?;
-                    }
-                }
-            }
-        }
-        // Remove intial points
-        angles.remove_index(Axis(1), 0);
-        fluxes.remove_index(Axis(1), 0);
-
-        assert!(!angles.is_any_nan(), "Poincare calculation returned NaN");
-        assert!(!fluxes.is_any_nan(), "Poincare calculation returned NaN");
-
-        Ok(Self { angles, fluxes })
+        Ok(Self {
+            angles,
+            fluxes,
+            total,
+            integrated,
+            escaped,
+            timed_out,
+            invalid_intersections,
+            failed,
+        })
     }
 }
 
@@ -59,4 +72,55 @@ impl PoincareResults {
     // Make them availiable to [`Poincare`]
     array2D_getter_impl!(angles, angles, Radians);
     array2D_getter_impl!(fluxes, fluxes, Flux);
+}
+
+/// Extracts angle and flux data from a [`Poincare`] object and returns the 2 2D arrays.
+pub fn calculate_arrays(
+    poincare: &Poincare,
+    params: &MappingParameters,
+) -> Result<(Array2<f64>, Array2<f64>)> {
+    // We dont now how many particle's got completely integrated, so we push a new row for
+    // every successful one.
+    // We also include the initial point for now and drop it later, otherwise the code gets
+    // ugly.
+    let shape = (0, params.intersections + 1);
+    let mut angles: Array2<Radians> = Array2::from_elem(shape, Radians::NAN);
+    let mut fluxes: Array2<Flux> = Array2::from_elem(shape, Flux::NAN);
+
+    for p in poincare.particles.iter() {
+        use particle::PoincareSection::*;
+        if matches!(p.status, IntegrationStatus::Integrated) {
+            match params.section {
+                ConstTheta => {
+                    angles.push_row(p.evolution.zeta().view())?;
+                    fluxes.push_row(p.evolution.psip().view())?;
+                }
+                ConstZeta => {
+                    angles.push_row(p.evolution.theta().view())?;
+                    fluxes.push_row(p.evolution.psi().view())?;
+                }
+            }
+        }
+    }
+    // Remove intial points
+    angles.remove_index(Axis(1), 0);
+    fluxes.remove_index(Axis(1), 0);
+
+    assert!(!angles.is_any_nan(), "Poincare calculation returned NaN");
+    assert!(!fluxes.is_any_nan(), "Poincare calculation returned NaN");
+
+    Ok((angles, fluxes))
+}
+
+impl std::fmt::Debug for PoincareResults {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PoincareResults")
+            .field("total particles", &self.total)
+            .field("integrated", &self.integrated)
+            .field("escaped", &self.escaped)
+            .field("timed_out", &self.timed_out)
+            .field("invalid_intersections", &self.invalid_intersections)
+            .field("failed", &self.failed)
+            .finish()
+    }
 }

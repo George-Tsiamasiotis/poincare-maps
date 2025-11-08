@@ -491,3 +491,6 @@ class Poincare:
         per: Perturbation
             The equilibrium's perturbation.
         """
+
+    def __getitem__(self, n: int) -> Harmonic:
+        """Returns the n-th particle, by the order they were added."""

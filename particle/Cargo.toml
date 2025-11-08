@@ -15,8 +15,7 @@ config = {path = "../config"}
 equilibrium = {path = "../equilibrium"}
 
 [features]
-default = []
-lar = []
+default = ["error-adaptive-step"]
 error-adaptive-step = []
 
 [[bin]]

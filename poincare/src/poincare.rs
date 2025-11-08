@@ -78,3 +78,12 @@ impl Poincare {
     array2D_getter_impl!(angles, results.angles, Radians);
     array2D_getter_impl!(fluxes, results.fluxes, Flux);
 }
+
+impl std::fmt::Debug for Poincare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Poincare")
+            .field("params", &self.params)
+            .field("results", &self.results)
+            .finish()
+    }
+}

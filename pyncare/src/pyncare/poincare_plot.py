@@ -43,6 +43,8 @@ def poincare_plot(p: pc.Poincare, wall: float = np.nan):
     if not np.isnan(wall):
         ax.axhline(y=wall, c="r")
 
+    ax.set_ylim(np.clip(ax.get_ylim(), a_min=0, a_max=None).tolist())
+
     plt.show()
     plt.close()
 

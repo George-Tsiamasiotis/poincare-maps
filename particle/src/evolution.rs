@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::time::Duration;
 
+use config::EVOLUTION_INIT_CAPACITY;
 use utils::array1D_getter_impl;
 
 use crate::State;
@@ -94,5 +95,11 @@ impl Debug for Evolution {
             .field("steps taken", &self.steps_taken())
             .field("steps stored", &self.steps_stored())
             .finish()
+    }
+}
+
+impl Default for Evolution {
+    fn default() -> Self {
+        Self::with_capacity(EVOLUTION_INIT_CAPACITY)
     }
 }

@@ -28,7 +28,7 @@ pub struct InitialConditions {
     pub mu: MagneticMoment,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum IntegrationStatus {
     #[default]
     Initialized,
@@ -78,6 +78,7 @@ impl Particle {
         perturbation: &Perturbation,
         t_eval: (Time, Time),
     ) -> Result<()> {
+        self.evolution = Evolution::default(); // Reset it
         self.initial_state
             .evaluate(qfactor, currents, bfield, perturbation)?;
 
@@ -146,6 +147,7 @@ impl Particle {
         perturbation: &Perturbation,
         params: &MappingParameters,
     ) -> Result<()> {
+        self.evolution = Evolution::default(); // Reset it
         self.initial_state
             .evaluate(qfactor, currents, bfield, perturbation)?;
         self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
