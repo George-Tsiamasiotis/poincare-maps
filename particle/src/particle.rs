@@ -180,10 +180,10 @@ impl Particle {
         self.evolution.finish();
         self.final_state = State {
             mu: self.initial_state.mu,
-            time: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
-            theta: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
-            psip: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
-            rho: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
+            time: safe_unwrap!("vec is non-empty", self.evolution.time.last().copied()),
+            theta: safe_unwrap!("vec is non-empty", self.evolution.theta.last().copied()),
+            psip: safe_unwrap!("vec is non-empty", self.evolution.psip.last().copied()),
+            rho: safe_unwrap!("vec is non-empty", self.evolution.rho.last().copied()),
             zeta: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
             ..Default::default()
         }
