@@ -30,7 +30,4 @@ fn test_normal_particle_int() {
 
     let mut p = Poincare::new(init, params);
     p.run(&qfactor, &bfield, &current, &per).unwrap();
-
-    assert_eq!(p.angles().shape(), &[num, intersections]);
-    assert_eq!(p.fluxes().shape(), &[num, intersections]);
 }

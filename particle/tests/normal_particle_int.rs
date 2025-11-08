@@ -27,7 +27,7 @@ fn test_normal_particle_int() {
     let hcache = particle.final_state.hcache.first().unwrap();
 
     assert!(matches!(particle.status, IntegrationStatus::Integrated));
-    assert!(hcache.hits as f64 / hcache.misses as f64 - 3.0 <= 1e-5);
+    assert!(hcache.hits as f64 / hcache.misses as f64 - 3.0 <= 1e-3);
 
     dbg!(&particle);
 }

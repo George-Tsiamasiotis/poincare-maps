@@ -2,6 +2,8 @@ import pyncare as pc
 import pytest
 import numpy as np
 
+from pyncare._core import Particle
+
 
 @pytest.fixture(scope="session")
 def qfactor():
@@ -63,13 +65,13 @@ def particle(initial_conditions):
 
 
 @pytest.fixture(scope="function")
-def integrated_particle(qfactor, currents, bfield, perturbation, particle):
+def integrated_particle(qfactor, currents, bfield, perturbation, particle: Particle):
     """Creates a Particle object and integrates it."""
     particle.integrate(
         qfactor=qfactor,
-        current=currents,
+        currents=currents,
         bfield=bfield,
-        per=perturbation,
+        perturbation=perturbation,
         t_eval=[0, 10],
     )
     return particle

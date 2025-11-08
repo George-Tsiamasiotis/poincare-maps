@@ -9,11 +9,11 @@ matplotlib.use("gtk3agg")
 
 s = 0.05
 c = "blue"
-dpi = 150
-figsize = (10, 7)
+dpi = 120
+figsize = (10, 5)
 
 
-def poincare_plot(p: pc.Poincare):
+def poincare_plot(p: pc.Poincare, wall: float = np.nan):
     # TODO: add walls
 
     angles = p.angles
@@ -39,6 +39,9 @@ def poincare_plot(p: pc.Poincare):
         np.linspace(-np.pi, np.pi, 5),
         [r"$-\pi$", r"$-\pi/2$", r"$0$", r"$\pi/2$", r"$\pi$"],
     )
+
+    if not np.isnan(wall):
+        ax.axhline(y=wall, c="r")
 
     plt.show()
     plt.close()

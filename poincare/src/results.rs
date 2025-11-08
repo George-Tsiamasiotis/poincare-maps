@@ -3,6 +3,7 @@ use particle::{IntegrationStatus, MappingParameters};
 use utils::array2D_getter_impl;
 
 use crate::Poincare;
+use crate::Result;
 use crate::{Flux, Radians};
 
 /// Stores the results of the Poincare map calculation
@@ -19,35 +20,38 @@ pub struct PoincareResults {
 
 impl PoincareResults {
     /// Creates a [`PoincareResults`] from an already calculated Poincare map.
-    pub fn new(poincare: &Poincare, params: &MappingParameters) -> Self {
-        // Include initial point
-        let shape = (poincare.particles.len(), params.intersections + 1);
+    pub fn new(poincare: &Poincare, params: &MappingParameters) -> Result<Self> {
+        // We dont now how many particle's got completely integrated, so we push a new row for
+        // every successful one.
+        // We also include the initial point for now and drop it later, otherwise the code gets
+        // ugly.
+        let shape = (0, params.intersections + 1);
         let mut angles: Array2<Radians> = Array2::from_elem(shape, Radians::NAN);
         let mut fluxes: Array2<Flux> = Array2::from_elem(shape, Flux::NAN);
 
-        poincare.particles.iter().enumerate().for_each(|(row, p)| {
+        for p in poincare.particles.iter() {
             use particle::PoincareSection::*;
             if matches!(p.status, IntegrationStatus::Integrated) {
                 match params.section {
                     ConstTheta => {
-                        angles.row_mut(row).assign(&p.evolution.zeta());
-                        fluxes.row_mut(row).assign(&p.evolution.psip());
+                        angles.push_row(p.evolution.zeta().view())?;
+                        fluxes.push_row(p.evolution.psip().view())?;
                     }
                     ConstZeta => {
-                        angles.row_mut(row).assign(&p.evolution.theta());
-                        fluxes.row_mut(row).assign(&p.evolution.psi());
+                        angles.push_row(p.evolution.theta().view())?;
+                        fluxes.push_row(p.evolution.psi().view())?;
                     }
                 }
             }
-        });
+        }
         // Remove intial points
         angles.remove_index(Axis(1), 0);
         fluxes.remove_index(Axis(1), 0);
 
-        debug_assert!(!angles.is_any_nan(), "Poincare calculation returned NaN");
-        debug_assert!(!fluxes.is_any_nan(), "Poincare calculation returned NaN");
+        assert!(!angles.is_any_nan(), "Poincare calculation returned NaN");
+        assert!(!fluxes.is_any_nan(), "Poincare calculation returned NaN");
 
-        Self { angles, fluxes }
+        Ok(Self { angles, fluxes })
     }
 }
 

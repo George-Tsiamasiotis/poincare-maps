@@ -11,7 +11,7 @@ pub const RKF45_FIRST_STEP: f64 = 1e-3;
 pub const SAFETY_FACTOR: f64 = 0.9;
 
 /// The relative tolerance of the energy error in every step.
-pub const ENERGY_REL_TOL: f64 = 1e-11;
+pub const ENERGY_REL_TOL: f64 = 1e-10;
 
 /// The relative tolerance of the stepping error in every step.
 pub const STEP_REL_TOL: f64 = 1e-11;
@@ -29,5 +29,15 @@ pub const EVOLUTION_INIT_CAPACITY: usize = 2000;
 // ==================== Display
 
 /// The Poincare map calculation progress bar style.
-pub const PBAR_STYLE: &str =
-    "[{elapsed_precise}] {wide_bar:.cyan/blue} {spinner} {pos:>4}/{len:4} {msg}";
+pub const POINCARE_PBAR_STYLE: &str = concat!(
+    "{elapsed_precise} ",
+    "{prefix} ",
+    "[{wide_bar:.cyan/blue}] ",
+    "{spinner:.bold} ",
+    "{pos:>2}/{len:2} ",
+    "{msg}",
+    "({eta}) ",
+);
+
+/// The Poincare map progress bar chars (filled, current, to do).
+pub const POINCARE_PROGRESS_CHARS: &str = "#>-";
