@@ -103,6 +103,7 @@ pub fn map_integrate(
         state1 = state2;
         particle.evolution.steps += 1;
     }
+    particle.final_state = state1.into_evaluated(qfactor, currents, bfield, perturbation)?;
     Ok(())
 }
 

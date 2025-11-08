@@ -11,8 +11,6 @@ use crate::{check_accuracy, map_integrate};
 use crate::MagneticMoment;
 use crate::{Distance, Flux, ParticleError, Radians, Result, Time};
 
-use safe_unwrap::safe_unwrap;
-
 /// A set of a Particle's intial conditions.
 #[derive(Clone, Debug)]
 pub struct InitialConditions {
@@ -178,17 +176,7 @@ impl Particle {
 
         self.evolution.duration = start.elapsed();
         self.evolution.finish();
-        self.final_state = State {
-            mu: self.initial_state.mu,
-            time: safe_unwrap!("vec is non-empty", self.evolution.time.last().copied()),
-            theta: safe_unwrap!("vec is non-empty", self.evolution.theta.last().copied()),
-            psip: safe_unwrap!("vec is non-empty", self.evolution.psip.last().copied()),
-            rho: safe_unwrap!("vec is non-empty", self.evolution.rho.last().copied()),
-            zeta: safe_unwrap!("vec is non-empty", self.evolution.zeta.last().copied()),
-            ..Default::default()
-        }
-        .into_evaluated(qfactor, currents, bfield, perturbation)?;
-
+        // Final state is set up in map_integrate, to keep the Accelerators and Cache
         Ok(())
     }
 }

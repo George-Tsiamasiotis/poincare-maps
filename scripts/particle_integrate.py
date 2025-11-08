@@ -16,16 +16,16 @@ currents = pc.Currents("./data.nc", "akima")
 bfield = pc.Bfield("./data.nc", "bicubic")
 perturbation = pc.Perturbation(
     [
-        pc.Harmonic("./data.nc", "akima", m=1, n=2, phase=0),
-        pc.Harmonic("./data.nc", "akima", m=3, n=2, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=1, n=10, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=1, n=8, phase=0),
     ]
 )
 
 initial = pc.InitialConditions(
     time0=0,
     theta0=3.14,
-    psip0=0.5 * qfactor.psip_wall,
-    rho0=0.001,
+    psip0=0.4 * qfactor.psip_wall,
+    rho0=0.01,
     zeta0=0.0,
     mu=0,
 )
@@ -37,7 +37,7 @@ particle.integrate(
     currents=currents,
     bfield=bfield,
     perturbation=perturbation,
-    t_eval=[0, 20000],
+    t_eval=[0, 30000],
 )
 print(particle)
 
