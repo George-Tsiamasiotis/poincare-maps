@@ -267,48 +267,50 @@ mod test {
     fn test_intersected() {
         // No need to check for negative numbers, since the signs would negate each other.
 
-        assert!(intersected(1.0 - 1e-12, 1.0 + 1e-12, 1.0));
+        let eps = 1e-12;
+
+        assert!(intersected(1.0 - eps, 1.0 + eps, 1.0));
         assert!(intersected(1.0f64.next_down(), 1.0f64.next_up(), 1.0));
-        assert!(!intersected(1.0 - 1e-12, 1.0 - 2e-12, 1.0));
-        assert!(!intersected(1.0 + 1e-12, 1.0 + 2e-12, 1.0));
-        assert!(!intersected(1.0 - 1e-12, 1.0 - 1e-12, 1.0));
-        assert!(!intersected(1.0 + 1e-12, 1.0 + 1e-12, 1.0));
+        assert!(!intersected(1.0 - eps, 1.0 - 2.0 * eps, 1.0));
+        assert!(!intersected(1.0 + eps, 1.0 + 2.0 * eps, 1.0));
+        assert!(!intersected(1.0 - eps, 1.0 - eps, 1.0));
+        assert!(!intersected(1.0 + eps, 1.0 + eps, 1.0));
         assert!(!intersected(1.0f64.next_down(), 1.0f64.next_down(), 1.0));
         assert!(!intersected(1.0f64.next_up(), 1.0f64.next_up(), 1.0));
 
-        assert!(intersected(10.0 - 1e-12, 10.0 + 1e-12, 10.0));
+        assert!(intersected(10.0 - eps, 10.0 + eps, 10.0));
         assert!(intersected(10.0f64.next_down(), 10.0f64.next_up(), 10.0));
-        assert!(!intersected(10.0 - 1e-12, 10.0 - 2e-12, 10.0));
-        assert!(!intersected(10.0 + 1e-12, 10.0 + 2e-12, 10.0));
-        assert!(!intersected(10.0 - 1e-12, 10.0 - 1e-12, 10.0));
-        assert!(!intersected(10.0 + 1e-12, 10.0 + 1e-12, 10.0));
+        assert!(!intersected(10.0 - eps, 10.0 - 2.0 * eps, 10.0));
+        assert!(!intersected(10.0 + eps, 10.0 + 2.0 * eps, 10.0));
+        assert!(!intersected(10.0 - eps, 10.0 - eps, 10.0));
+        assert!(!intersected(10.0 + eps, 10.0 + eps, 10.0));
         assert!(!intersected(10.0f64.next_down(), 10.0f64.next_down(), 10.0));
         assert!(!intersected(10.0f64.next_up(), 10.0f64.next_up(), 10.0));
 
-        assert!(intersected(PI - 1e-12, PI + 1e-12, PI));
+        assert!(intersected(PI - eps, PI + eps, PI));
         assert!(intersected(PI.next_down(), PI.next_up(), PI));
-        assert!(!intersected(PI - 1e-12, PI - 2e-12, PI));
-        assert!(!intersected(PI + 1e-12, PI + 2e-12, PI));
-        assert!(!intersected(PI - 1e-12, PI - 1e-12, PI));
-        assert!(!intersected(PI + 1e-12, PI + 1e-12, PI));
+        assert!(!intersected(PI - eps, PI - 2.0 * eps, PI));
+        assert!(!intersected(PI + eps, PI + 2.0 * eps, PI));
+        assert!(!intersected(PI - eps, PI - eps, PI));
+        assert!(!intersected(PI + eps, PI + eps, PI));
         assert!(!intersected(PI.next_down(), PI.next_down(), PI));
         assert!(!intersected(PI.next_up(), PI.next_up(), PI));
 
-        assert!(intersected(TAU - 1e-12, TAU + 1e-12, TAU));
+        assert!(intersected(TAU - eps, TAU + eps, TAU));
         assert!(intersected(TAU.next_down(), TAU.next_up(), TAU));
-        assert!(!intersected(TAU - 1e-12, TAU - 2e-12, TAU));
-        assert!(!intersected(TAU + 1e-12, TAU + 2e-12, TAU));
-        assert!(!intersected(TAU - 1e-12, TAU - 1e-12, TAU));
-        assert!(!intersected(TAU + 1e-12, TAU + 1e-12, TAU));
+        assert!(!intersected(TAU - eps, TAU - 2.0 * eps, TAU));
+        assert!(!intersected(TAU + eps, TAU + 2.0 * eps, TAU));
+        assert!(!intersected(TAU - eps, TAU - eps, TAU));
+        assert!(!intersected(TAU + eps, TAU + eps, TAU));
         assert!(!intersected(TAU.next_down(), TAU.next_down(), TAU));
         assert!(!intersected(TAU.next_up(), TAU.next_up(), TAU));
 
-        assert!(intersected(0.0 - 1e-12, 0.0 + 1e-12, 0.0));
+        assert!(intersected(0.0 - eps, 0.0 + eps, 0.0));
         assert!(intersected(0.0f64.next_down(), 0.0f64.next_up(), 0.0));
-        assert!(!intersected(0.0 - 1e-12, 0.0 - 2e-12, 0.0));
-        assert!(!intersected(0.0 + 1e-12, 0.0 + 2e-12, 0.0));
-        assert!(!intersected(0.0 - 1e-12, 0.0 - 1e-12, 0.0));
-        assert!(!intersected(0.0 + 1e-12, 0.0 + 1e-12, 0.0));
+        assert!(!intersected(0.0 - eps, 0.0 - 2.0 * eps, 0.0));
+        assert!(!intersected(0.0 + eps, 0.0 + 2.0 * eps, 0.0));
+        assert!(!intersected(0.0 - eps, 0.0 - eps, 0.0));
+        assert!(!intersected(0.0 + eps, 0.0 + eps, 0.0));
         // VERY corner case since all arguements have a sine of 0.0. Not worth working around. If
         // a particle is unlucky enough to reach this point, it would just be rejected from the
         // accuracy test.
@@ -327,6 +329,11 @@ mod test {
             (2.0 * PI + TAU).next_up(),
             TAU
         ));
+
+        assert!(!intersected(TAU - eps, TAU + eps, PI));
+        assert!(!intersected(PI - eps, PI + eps, TAU));
+        assert!(!intersected(PI - eps, PI + eps, PI / 2.0));
+        assert!(!intersected(PI / 2.0 - eps, PI / 2.0 + eps, TAU));
     }
 
     #[test]

@@ -17,6 +17,3 @@ equilibrium = {path = "../equilibrium"}
 [features]
 default = ["error-adaptive-step"]
 error-adaptive-step = []
-
-[[bin]]
-name = "integrate-particle"
