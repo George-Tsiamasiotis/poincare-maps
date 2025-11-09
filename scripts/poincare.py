@@ -7,6 +7,7 @@
 #   "pyncare"
 # ]
 # ///
+import matplotlib.pyplot as plt
 import pyncare as pc
 import numpy as np
 
@@ -40,4 +41,6 @@ poincare.run(
 )
 print(poincare)
 
-pc.poincare_plot(poincare, wall=qfactor.psip_wall)
+fig = plt.figure(figsize=(10, 5), layout="constrained", dpi=120)
+ax = fig.add_subplot()
+pc.poincare_plot(ax, poincare, wall=qfactor.psip_wall)

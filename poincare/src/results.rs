@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use ndarray::Array1;
 use ndarray::{Array2, Axis};
 use particle::{MappingParameters, Particle, PoincareSection};
+use safe_unwrap::safe_unwrap;
 use utils::array2D_getter_impl;
 
 use crate::Poincare;
@@ -22,6 +25,10 @@ pub struct PoincareResults {
     timed_out: usize,
     invalid_intersections: usize,
     failed: usize,
+    /// Duration of the slowest particle.
+    slowest: MapDuration,
+    /// Duration of the fastest particle.
+    fastest: MapDuration,
 }
 
 impl PoincareResults {
@@ -34,6 +41,7 @@ impl PoincareResults {
             ..Default::default()
         };
         results.calculate_particle_nums(poincare);
+        results.calculate_durations(poincare);
         Ok(results)
     }
 
@@ -55,6 +63,26 @@ impl PoincareResults {
         self.invalid_intersections = count_variants!(is_invalid_intersections);
         self.failed = count_variants!(is_failed);
         self.total = poincare.particles.len();
+    }
+
+    fn calculate_durations(&mut self, poincare: &Poincare) {
+        let slowest = safe_unwrap!(
+            "poincare.particles is non-empty",
+            poincare
+                .particles
+                .iter()
+                .max_by_key(|p| p.evolution.duration)
+        );
+        let fastest = safe_unwrap!(
+            "poincare.particles is non-empty",
+            poincare
+                .particles
+                .iter()
+                .filter(|p| p.evolution.steps_stored() > 0) // Drop invalid
+                .min_by_key(|p| p.evolution.duration)
+        );
+        self.slowest = MapDuration::from(slowest);
+        self.fastest = MapDuration::from(fastest);
     }
 }
 
@@ -136,6 +164,28 @@ fn should_be_plotted(particle: &Particle) -> bool {
     status_ok && length_ok
 }
 
+/// Helper struct to display fastest and slowest particles
+#[derive(Default, Clone)]
+struct MapDuration {
+    pub steps: usize,
+    pub duration: Duration,
+}
+
+impl From<&Particle> for MapDuration {
+    fn from(p: &Particle) -> Self {
+        Self {
+            steps: p.evolution.steps_taken(),
+            duration: p.evolution.duration,
+        }
+    }
+}
+
+impl std::fmt::Debug for MapDuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "duration: {:?} ({} steps)", self.duration, self.steps)
+    }
+}
+
 impl std::fmt::Debug for PoincareResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PoincareResults")
@@ -145,6 +195,8 @@ impl std::fmt::Debug for PoincareResults {
             .field("timed_out", &self.timed_out)
             .field("invalid_intersections", &self.invalid_intersections)
             .field("failed", &self.failed)
+            .field("slowest", &self.slowest)
+            .field("fastest", &self.fastest)
             .finish()
     }
 }

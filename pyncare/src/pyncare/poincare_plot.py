@@ -1,3 +1,4 @@
+from matplotlib.axes import Axes
 import pyncare as pc
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,23 +8,19 @@ plt.rcParams["text.usetex"] = True
 matplotlib.use("gtk3agg")
 
 
-s = 0.05
+s = 0.3
 c = "blue"
-dpi = 120
-figsize = (10, 5)
+marker = "o"
 
 
-def poincare_plot(p: pc.Poincare, wall: float = np.nan):
+def poincare_plot(ax: Axes, p: pc.Poincare, wall: float = np.nan):
     # TODO: add walls
 
     angles = p.angles
     fluxes = p.fluxes
 
-    fig = plt.figure(figsize=figsize, layout="constrained", dpi=dpi)
-    ax = fig.subplots()
-
     for i in range(len(angles)):
-        ax.scatter(pi_mod(angles[i]), fluxes[i], s, c)
+        ax.scatter(pi_mod(angles[i]), fluxes[i], s, c, marker=marker)
 
     if p.section == "ConstTheta":
         ax.set_xlabel(r"$\zeta$")
