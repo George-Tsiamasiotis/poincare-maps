@@ -55,12 +55,7 @@ impl Poincare {
                 .progress_chars(POINCARE_PROGRESS_CHARS),
         );
         pbar.enable_steady_tick(Duration::from_millis(100));
-        pbar.println(format!(
-            "🗿 Integrating {} particles for {} intersections",
-            self.particles.len(),
-            self.params.intersections
-        ));
-        pbar.println(format!("🚀 Using {} threads", rayon::current_num_threads()));
+        self.pbar_prelude(&pbar);
 
         self.particles.par_iter_mut().try_for_each(|p| {
             p.map(qfactor, bfield, currents, perturbation, &self.params)
@@ -71,6 +66,20 @@ impl Poincare {
 
         self.results = PoincareResults::new(self, &self.params)?;
         Ok(())
+    }
+
+    fn pbar_prelude(&mut self, pbar: &ProgressBar) {
+        pbar.println(format!(
+            "🚀 Using {} threads for {} particles",
+            rayon::current_num_threads(),
+            self.particles.len(),
+        ));
+        pbar.println(format!(
+            "🗿 Integrating with {}={} for {} intersections",
+            format!("{:?}", self.params.section),
+            format!("{:.4}", self.params.alpha),
+            self.params.intersections,
+        ));
     }
 }
 

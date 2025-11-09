@@ -2,6 +2,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use config::*;
+use derive_is_enum_variant::is_enum_variant;
 use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
 
 use crate::state::Display;
@@ -28,7 +29,7 @@ pub struct InitialConditions {
     pub mu: MagneticMoment,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, is_enum_variant)]
 pub enum IntegrationStatus {
     #[default]
     Initialized,
@@ -36,9 +37,7 @@ pub enum IntegrationStatus {
     Escaped,
     TimedOut(Duration),
     InvalidIntersections,
-    Failed {
-        reason: String,
-    },
+    Failed(Box<str>),
 }
 
 /// Representation of a particle.
@@ -105,9 +104,7 @@ impl Particle {
                     break;
                 }
                 Err(err) => {
-                    self.status = IntegrationStatus::Failed {
-                        reason: format!("{:?}", err),
-                    };
+                    self.status = IntegrationStatus::Failed(format!("{:?}", err).into());
                     break;
                 }
                 Ok(_) => (),
@@ -161,9 +158,7 @@ impl Particle {
                 self.status = IntegrationStatus::TimedOut(start.elapsed());
             }
             Err(err) => {
-                self.status = IntegrationStatus::Failed {
-                    reason: format!("{:?}", err),
-                };
+                self.status = IntegrationStatus::Failed(format!("{:?}", err).into());
             }
             Ok(_) => (),
         }

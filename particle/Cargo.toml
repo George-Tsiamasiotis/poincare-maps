@@ -13,6 +13,7 @@ rsl-interpolation = {workspace = true}
 utils= {path = "../utils"}
 config = {path = "../config"}
 equilibrium = {path = "../equilibrium"}
+derive_is_enum_variant = "0.1.1"
 
 [features]
 default = ["error-adaptive-step"]

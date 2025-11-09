@@ -1,5 +1,6 @@
+use ndarray::Array1;
 use ndarray::{Array2, Axis};
-use particle::{IntegrationStatus, MappingParameters};
+use particle::{MappingParameters, Particle, PoincareSection};
 use utils::array2D_getter_impl;
 
 use crate::Poincare;
@@ -27,44 +28,33 @@ impl PoincareResults {
     /// Creates a [`PoincareResults`] from an already calculated Poincare map.
     pub fn new(poincare: &Poincare, params: &MappingParameters) -> Result<Self> {
         let (angles, fluxes) = calculate_arrays(poincare, params)?;
-        use particle::IntegrationStatus::*;
-        let total = poincare.particles.len();
-        let integrated = poincare
-            .particles
-            .iter()
-            .filter(|p| p.status == Integrated)
-            .count();
-        let escaped = poincare
-            .particles
-            .iter()
-            .filter(|p| p.status == Escaped)
-            .count();
-        let timed_out = poincare
-            .particles
-            .iter()
-            .filter(|p| matches!(p.status, TimedOut(..)))
-            .count();
-        let invalid_intersections = poincare
-            .particles
-            .iter()
-            .filter(|p| p.status == InvalidIntersections)
-            .count();
-        let failed = poincare
-            .particles
-            .iter()
-            .filter(|p| matches!(p.status, Failed { .. }))
-            .count();
-
-        Ok(Self {
+        let mut results = Self {
             angles,
             fluxes,
-            total,
-            integrated,
-            escaped,
-            timed_out,
-            invalid_intersections,
-            failed,
-        })
+            ..Default::default()
+        };
+        results.calculate_particle_nums(poincare);
+        Ok(results)
+    }
+
+    /// Counts the occurences of each [`IntegrationStatus`]'s variants.
+    fn calculate_particle_nums(&mut self, poincare: &Poincare) {
+        macro_rules! count_variants {
+            ($is_enum:ident) => {
+                poincare
+                    .particles
+                    .iter()
+                    .filter(|p| p.status.$is_enum())
+                    .count()
+            };
+        }
+        self.integrated = count_variants!(is_integrated);
+        self.escaped = count_variants!(is_escaped);
+        self.timed_out = count_variants!(is_timed_out);
+        self.escaped = count_variants!(is_escaped);
+        self.invalid_intersections = count_variants!(is_invalid_intersections);
+        self.failed = count_variants!(is_failed);
+        self.total = poincare.particles.len();
     }
 }
 
@@ -83,21 +73,44 @@ pub fn calculate_arrays(
     // every successful one.
     // We also include the initial point for now and drop it later, otherwise the code gets
     // ugly.
-    let shape = (0, params.intersections + 1);
+    let columns = params.intersections + 1;
+    let shape = (0, columns);
     let mut angles: Array2<Radians> = Array2::from_elem(shape, Radians::NAN);
     let mut fluxes: Array2<Flux> = Array2::from_elem(shape, Flux::NAN);
 
+    /// Copies the array of the calculated evolution `source` data into a new 1D array with length
+    /// `columns` and pushes it to the 2D array `array`. If `len(source) < columns`, which will
+    /// happen with escaped or timed out particles, the rest of the array is filled with NaN. This
+    /// allows us to plot those particle's as well, while keeping all the data in the same 2D
+    /// array.
+    macro_rules! copy_and_fill_with_nan_and_push_row {
+        ($particle:ident, $results_array:ident, $source:ident) => {
+            assert!($particle.evolution.steps_stored() <= columns);
+            $results_array.push_row(
+                Array1::from_shape_fn(columns, |i| {
+                    $particle
+                        .evolution
+                        .$source()
+                        .get(i)
+                        .copied()
+                        .unwrap_or(f64::NAN)
+                        .clone()
+                })
+                .view(),
+            )?;
+        };
+    }
+
     for p in poincare.particles.iter() {
-        use particle::PoincareSection::*;
-        if matches!(p.status, IntegrationStatus::Integrated) {
+        if should_be_plotted(p) {
             match params.section {
-                ConstTheta => {
-                    angles.push_row(p.evolution.zeta().view())?;
-                    fluxes.push_row(p.evolution.psip().view())?;
+                PoincareSection::ConstTheta => {
+                    copy_and_fill_with_nan_and_push_row!(p, angles, zeta);
+                    copy_and_fill_with_nan_and_push_row!(p, fluxes, psip);
                 }
-                ConstZeta => {
-                    angles.push_row(p.evolution.theta().view())?;
-                    fluxes.push_row(p.evolution.psi().view())?;
+                PoincareSection::ConstZeta => {
+                    copy_and_fill_with_nan_and_push_row!(p, angles, theta);
+                    copy_and_fill_with_nan_and_push_row!(p, fluxes, psi);
                 }
             }
         }
@@ -106,10 +119,21 @@ pub fn calculate_arrays(
     angles.remove_index(Axis(1), 0);
     fluxes.remove_index(Axis(1), 0);
 
-    assert!(!angles.is_any_nan(), "Poincare calculation returned NaN");
-    assert!(!fluxes.is_any_nan(), "Poincare calculation returned NaN");
+    assert_eq!(angles.ncols(), params.intersections);
+    assert_eq!(angles.shape(), fluxes.shape());
 
     Ok((angles, fluxes))
+}
+
+/// Returns true if the particle should be plotted in the final Poincare map.
+fn should_be_plotted(particle: &Particle) -> bool {
+    let status_ok = particle.status.is_integrated()
+        | particle.status.is_timed_out()
+        | particle.status.is_escaped();
+    // Drop particles that were initialized outside the wall
+    let length_ok = particle.evolution.steps_stored() > 1;
+
+    status_ok && length_ok
 }
 
 impl std::fmt::Debug for PoincareResults {
