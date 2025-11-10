@@ -382,6 +382,7 @@ class Evolution:
     psi: np.ndarray
     ptheta: np.ndarray
     pzeta: np.ndarray
+    energy: np.ndarray
     steps_taken: int
     steps_stored: int
 

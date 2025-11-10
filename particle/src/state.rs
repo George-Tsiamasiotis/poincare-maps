@@ -316,8 +316,10 @@ impl State {
         parallel + perpendicular
     }
 
+    /// Use the ρ expression here, since the g^2 in the denominator causes numerical instability on
+    /// configurations with g=0.
     pub fn parallel_energy(&self) -> f64 {
-        (self.pzeta + self.psip).powi(2) * self.b.powi(2) / (2.0 * self.g.powi(2))
+        (self.rho * self.b).powi(2) / 2.0
     }
 
     pub fn perpendicular_energy(&self) -> f64 {

@@ -34,22 +34,28 @@ def orbit_plot(particle: Particle, percentage: float = 100, downsample: bool = T
     zeta = particle.evolution.zeta[:points][::step]
     pzeta = particle.evolution.pzeta[:points][::step]
     ptheta = particle.evolution.ptheta[:points][::step]
+    energy = particle.evolution.energy[:points][::step]
 
     if downsample and len(time) > target_points * 10:
         warn("Downsampling did not work..")
 
     fig = plt.figure(figsize=figsize, layout="constrained", dpi=dpi)
-    ax = fig.subplots(6, 1, sharex=True)
+    ax = fig.subplots(7, 1, sharex=True)
     ax[0].scatter(time, theta, s, c)
     ax[1].scatter(time, psip, s, c)
     ax[2].scatter(time, rho, s, c)
     ax[3].scatter(time, zeta, s, c)
     ax[4].scatter(time, ptheta, s, c)
     ax[5].scatter(time, pzeta, s, c)
+    ax[6].scatter(time, energy, s, c)
     # Zoom out Pzeta plot
-    if abs(np.nanmax(np.diff(pzeta))) < 1e-6:
+    if abs(np.std(pzeta)) < 1e-6:
         current_ylim = np.array(ax[5].get_ylim())
         ax[5].set_ylim(np.sort([current_ylim[0] / 3, current_ylim[1] * 3]))
+    # Zoom out Energy plot
+    if abs(np.std(energy)) < 1e-6:
+        current_ylim = np.array(ax[6].get_ylim())
+        ax[6].set_ylim(np.sort([current_ylim[0] / 2, current_ylim[1] * 2]))
 
     ax[0].set_xlabel(r"$\theta$")
     ax[1].set_xlabel(r"$\psi_p$")
@@ -57,6 +63,7 @@ def orbit_plot(particle: Particle, percentage: float = 100, downsample: bool = T
     ax[3].set_xlabel(r"$\zeta$")
     ax[4].set_xlabel(r"$P_\theta$")
     ax[5].set_xlabel(r"$P_\zeta$")
+    ax[6].set_xlabel(r"Energy")
 
     plt.show()
     plt.close()

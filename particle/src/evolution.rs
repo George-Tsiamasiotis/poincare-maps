@@ -20,8 +20,11 @@ pub struct Evolution {
     pub psi: Vec<Flux>,
     pub ptheta: Vec<f64>,
     pub pzeta: Vec<f64>,
+    pub energy: Vec<f64>,
     pub duration: Duration,
     pub steps: usize,
+    /// Relative standard deviation of the energy time series.
+    pub energy_std: f64,
 }
 
 impl Evolution {
@@ -35,6 +38,8 @@ impl Evolution {
             psi: Vec::with_capacity(capacity),
             ptheta: Vec::with_capacity(capacity),
             pzeta: Vec::with_capacity(capacity),
+            energy: Vec::with_capacity(capacity),
+            energy_std: f64::NAN,
             duration: Duration::default(),
             steps: 0,
         }
@@ -57,6 +62,7 @@ impl Evolution {
         self.psi.push(state.psi);
         self.ptheta.push(state.ptheta);
         self.pzeta.push(state.pzeta);
+        self.energy.push(state.energy());
     }
 
     pub fn finish(&mut self) {
@@ -68,6 +74,10 @@ impl Evolution {
         self.psi.shrink_to_fit();
         self.ptheta.shrink_to_fit();
         self.pzeta.shrink_to_fit();
+        self.energy.shrink_to_fit();
+
+        let energy_array = Array1::from_vec(self.energy.clone());
+        self.energy_std = energy_array.std(0.0) / energy_array.mean().unwrap_or(f64::NAN);
     }
 
     array1D_getter_impl!(time, time, Time);
@@ -78,6 +88,7 @@ impl Evolution {
     array1D_getter_impl!(psi, psi, Flux);
     array1D_getter_impl!(ptheta, ptheta, f64);
     array1D_getter_impl!(pzeta, pzeta, f64);
+    array1D_getter_impl!(energy, energy, f64);
 }
 
 impl Debug for Evolution {
@@ -92,6 +103,7 @@ impl Debug for Evolution {
                 ),
             )
             .field("duration", &self.duration)
+            .field("energy_std", &format!("{:.5}", self.energy_std))
             .field("steps taken", &self.steps_taken())
             .field("steps stored", &self.steps_stored())
             .finish()

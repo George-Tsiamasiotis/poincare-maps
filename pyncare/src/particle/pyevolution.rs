@@ -44,3 +44,4 @@ py_get_numpy1D!(PyEvolution, zeta);
 py_get_numpy1D!(PyEvolution, psi);
 py_get_numpy1D!(PyEvolution, ptheta);
 py_get_numpy1D!(PyEvolution, pzeta);
+py_get_numpy1D!(PyEvolution, energy);
