@@ -9,8 +9,8 @@ fn main() {
     let currents = Currents::from_dataset(&path, "akima").unwrap();
     let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
     let harmonics = vec![
-        Harmonic::from_dataset(&path, "akima", 1.0, 7.0, 0.0).unwrap(),
-        Harmonic::from_dataset(&path, "akima", 1.0, 9.0, 0.0).unwrap(),
+        Harmonic::from_dataset(&path, "akima", 1, 7).unwrap(),
+        Harmonic::from_dataset(&path, "akima", 1, 9).unwrap(),
     ];
     let perturbation = Perturbation::from_harmonics(&harmonics);
 
@@ -19,7 +19,7 @@ fn main() {
     let initial = InitialConditions {
         time0: 0.0,
         theta0: 1.0,
-        psip0: 0.5 * psip_wall,
+        psip0: 0.1 * psip_wall,
         rho0: 0.005,
         zeta0: 0.0,
         mu: 0.0,

@@ -1,9 +1,13 @@
 /// Custom error types
 #[derive(thiserror::Error, Debug)]
 pub enum ParticleError {
-    /// Error from [`equilibrium`].
+    /// From [`equilibrium::EqError`].
     #[error("{0}")]
     EqError(#[from] equilibrium::EqError),
+
+    /// From [`equilibrium::NcError`].
+    #[error("{0}")]
+    NcError(#[from] equilibrium::NcError),
 
     /// Particle timed out.
     #[error("Particle timed out after {0:?}")]

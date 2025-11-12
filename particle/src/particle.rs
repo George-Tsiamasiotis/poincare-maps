@@ -10,7 +10,7 @@ use crate::{Evolution, MappingParameters, PoincareSection, Solver, State};
 use crate::{check_accuracy, map_integrate};
 
 use crate::MagneticMoment;
-use crate::{Distance, Flux, ParticleError, Radians, Result, Time};
+use crate::{Flux, Length, ParticleError, Radians, Result, Time};
 
 /// A set of a Particle's intial conditions.
 #[derive(Clone, Debug)]
@@ -22,21 +22,31 @@ pub struct InitialConditions {
     /// The intial poloidal magnetic flux `ψp`.
     pub psip0: Flux,
     /// The initial parallel gyro radius `ρ`.
-    pub rho0: Distance,
-    /// The `ζ` angle.
+    pub rho0: Length,
+    /// The initial `ζ` angle.
     pub zeta0: Flux,
     /// The magnetic moment `μ`.
     pub mu: MagneticMoment,
 }
 
+/// The [`Particle`]'s integration status.
 #[derive(Debug, Clone, Default, PartialEq, is_enum_variant)]
 pub enum IntegrationStatus {
+    /// Initialized from [`InitialConditions`], not integrated.
     #[default]
     Initialized,
+    /// Reached the end of the integration successfully.
     Integrated,
+    /// Reached the end of the mapping successfully.
+    Mapped,
+    /// Escaped / Hit the wall.
     Escaped,
+    /// Timed out after [`config::MAX_STEPS`]
     TimedOut(Duration),
+    /// Intersections calculated from the mapping are invalid (The spacing between each
+    /// intersection and its neighbors must be *exactly* 2π).
     InvalidIntersections,
+    /// Integration/Mapping failed for unknown reasons.
     Failed(Box<str>),
 }
 

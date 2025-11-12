@@ -1,5 +1,6 @@
 use crate::Particle;
 use crate::ParticleError;
+use crate::Radians;
 use crate::Result;
 use crate::Solver;
 use crate::State;
@@ -12,7 +13,9 @@ use std::time::Duration;
 /// Defines the surface of the Poincare section.
 #[derive(Debug, Clone, Copy)]
 pub enum PoincareSection {
+    /// Defines a surface of xᵢ= θ.
     ConstTheta,
+    /// Defines a surface of xᵢ= ζ.
     ConstZeta,
 }
 
@@ -23,13 +26,14 @@ pub struct MappingParameters {
     /// The surface of section Σ, defined by an equation xᵢ= α, where xᵢ= θ or ζ.
     pub section: PoincareSection,
     /// The constant that defines the surface of section.
-    pub alpha: f64,
+    pub alpha: Radians,
     /// The number of interections to calculate.
     pub intersections: usize,
 }
 
 impl MappingParameters {
-    pub fn new(section: PoincareSection, alpha: f64, intersections: usize) -> Self {
+    /// Creates a new [`MappingParameters`].
+    pub fn new(section: PoincareSection, alpha: Radians, intersections: usize) -> Self {
         // mod `alpha` to avoid modding it in every step
         Self {
             section,
@@ -40,7 +44,7 @@ impl MappingParameters {
 }
 
 /// Calculates the PoincareSection=const intersections.
-pub fn map_integrate(
+pub(crate) fn map_integrate(
     particle: &mut Particle,
     qfactor: &Qfactor,
     bfield: &Bfield,
@@ -234,7 +238,7 @@ fn calculate_intersection_state(
 
 /// Checks when an angle has intersected with the surface at `angle`.
 /// (source: seems to work)
-fn intersected(old_angle: f64, new_angle: f64, surface_angle: f64) -> bool {
+fn intersected(old_angle: Radians, new_angle: Radians, surface_angle: Radians) -> bool {
     let diff1 = new_angle - surface_angle;
     let diff2 = old_angle - surface_angle;
     // NOTE: Use `<=` here for the case `surface_angle == 0`, since the sine of angles very close
@@ -243,7 +247,7 @@ fn intersected(old_angle: f64, new_angle: f64, surface_angle: f64) -> bool {
 }
 
 /// Checks if all the value diffs in the array are within the threshold.
-pub fn check_accuracy(array: &[f64], threshold: f64) -> Result<()> {
+pub(crate) fn check_accuracy(array: &[Radians], threshold: Radians) -> Result<()> {
     // array.iter().skip(1).for_each(|v| {
     //     dbg!(v % TAU);
     // });

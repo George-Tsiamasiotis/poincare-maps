@@ -5,14 +5,18 @@ use equilibrium::HarmonicCache;
 use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
 use rsl_interpolation::{Accelerator, Cache};
 
-use crate::Result;
-use crate::{Distance, InitialConditions, MagneticMoment};
+use crate::{CanonicalMomentum, Energy, Result};
 use crate::{Flux, Radians, Time};
+use crate::{InitialConditions, Length, MagneticMoment};
 
-/// State of the System at each step.
+/// State of a [`Particle`] at each step.
+///
+/// Stores all the intermediate values needed for the calculation of the final time derivatives.
 ///
 /// Corresponds to a single specific point in configuration space, e.g. all values are calculated
-/// at the same `θ`, `ψp`, `ρ`, `ζ` point.
+/// at the same `t`, `θ`, `ψp`, `ρ`, `ζ`, `μ` point.
+///
+/// [`Particle`]: crate::Particle
 #[derive(Clone)]
 pub struct State {
     /// The `ψp` coordinate [`Accelerator`].
@@ -27,24 +31,23 @@ pub struct State {
 
     /// The time of evaluation.
     pub time: Time,
-
     /// The `θ` angle.
     pub theta: Radians,
     /// The poloidal magnetic flux `ψp`.
     pub psip: Flux,
     /// The parallel gyro radius `ρ`.
-    pub rho: Distance,
+    pub rho: Length,
     /// The `ζ` angle.
     pub zeta: Radians,
-
     /// The magnetic moment.
     pub mu: MagneticMoment,
+
     /// The toroidal magnetic flux `ψ`.
     pub psi: Flux,
     /// The canonical momentum `Pθ`,
-    pub ptheta: f64,
+    pub ptheta: CanonicalMomentum,
     /// The canonical momentum `Pζ`,
-    pub pzeta: f64,
+    pub pzeta: CanonicalMomentum,
 
     /// The `θ` angle time derivative.
     pub theta_dot: f64,
@@ -110,13 +113,15 @@ pub struct State {
     /// The intermediate value i/D.
     pub i_over_d: f64,
 
+    /// Cache of θ%(2π).
     pub mod_theta: f64,
+    /// Cache of ζ%(2π).
     pub mod_zeta: f64,
 }
 
 impl State {
     /// Creates a non-evaluated [`State`] from an initial conditions set.
-    pub fn from_initial(initial: &InitialConditions) -> Self {
+    pub(crate) fn from_initial(initial: &InitialConditions) -> Self {
         Self {
             time: initial.time0,
             theta: initial.theta0,
@@ -129,7 +134,7 @@ impl State {
     }
 
     /// Returns the state evaluated, consuming self.
-    pub fn into_evaluated(
+    pub(crate) fn into_evaluated(
         mut self,
         qfactor: &Qfactor,
         currents: &Currents,
@@ -140,8 +145,8 @@ impl State {
         Ok(self)
     }
 
-    /// Evaluation all quantites derived by (θ, ψp, ρ, ζ, μ)
-    pub fn evaluate(
+    /// Evaluation all quantites derived by (t, θ, ψp, ρ, ζ, μ)
+    pub(crate) fn evaluate(
         &mut self,
         qfactor: &Qfactor,
         currents: &Currents,
@@ -274,16 +279,22 @@ impl State {
         self.dterm = self.g * self.fterm - self.i * self.cterm;
     }
 
+    /// Calculates (μ + ρ^2B)
     fn calculate_mu_par(&mut self) {
         self.mu_par = self.mu + self.rho.powi(2) * self.b;
     }
 
+    /// Calculates the brackets:
+    ///     - [mu_par*dB_dpsip + dΦ_dpsip]
+    ///     - [mu_par*dB_dtheta + dΦ_dtheta]
+    /// where Φ = 0
     fn calculate_braces(&mut self) {
         self.psip_brace = self.mu_par * self.db_dpsip;
         self.theta_brace = self.mu_par * self.db_dtheta;
         self.zeta_brace = self.mu_par * self.db_dzeta;
     }
 
+    /// Calculates intermediate values that appear many times in the time derivatives.
     fn calculate_extras(&mut self) {
         self.rho_bsquared_d = self.rho * self.b.powi(2) / self.dterm;
         self.g_over_d = self.g / self.dterm;
@@ -310,31 +321,34 @@ impl State {
         self.zeta_dot = self.fterm * self.rho_bsquared_d - self.i_over_d * self.psip_brace
     }
 
-    pub fn energy(&self) -> f64 {
+    /// Returns the Energy of the State.
+    pub fn energy(&self) -> Energy {
         let parallel = self.parallel_energy();
         let perpendicular = self.perpendicular_energy();
         parallel + perpendicular
     }
 
-    /// Use the ρ expression here, since the g^2 in the denominator causes numerical instability on
-    /// configurations with g=0.
-    pub fn parallel_energy(&self) -> f64 {
+    /// Returns the parallel energy of the State.
+    pub fn parallel_energy(&self) -> Energy {
+        // Use the ρ expression here, since the g^2 in the denominator causes numerical instability
+        // on configurations with g=0.
         (self.rho * self.b).powi(2) / 2.0
     }
 
-    pub fn perpendicular_energy(&self) -> f64 {
+    /// Returns the perpendicular energy of the State.
+    pub fn perpendicular_energy(&self) -> Energy {
         self.mu * self.b
     }
 }
 
 /// Helper struct for printing [`State`]'s independent variables.
-pub struct Display {
-    pub time: f64,
-    pub theta: f64,
-    pub psip: f64,
-    pub rho: f64,
-    pub zeta: f64,
-    pub mu: f64,
+pub(crate) struct Display {
+    pub time: Time,
+    pub theta: Radians,
+    pub psip: Flux,
+    pub rho: Length,
+    pub zeta: Radians,
+    pub mu: MagneticMoment,
 }
 
 impl std::fmt::Debug for Display {

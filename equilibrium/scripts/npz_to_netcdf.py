@@ -275,4 +275,4 @@ for item in dataset.coords | dataset.data_vars:
 
 dataset.to_netcdf(OUTPUT)
 
-print(f"Stored dataset at '{OUTPUT}'")
+print(f"Stored dataset at '{OUTPUT.absolute()}'")

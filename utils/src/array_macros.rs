@@ -1,6 +1,4 @@
 /// Generates getters that return `[T]` fields to `Array1<T>`.
-///
-/// This is needed for implementing python getter wrappers.
 #[macro_export]
 macro_rules! array1D_getter_impl {
     ($fun_name:ident, $($field:ident).+, $return_type:ty) => {
@@ -16,8 +14,6 @@ macro_rules! array1D_getter_impl {
 }
 
 /// Generates getters that return 2D arrays.
-///
-/// This is needed for implementing python getter wrappers.
 #[macro_export]
 macro_rules! array2D_getter_impl {
     ($fun_name:ident, $($field:ident).+, $return_type:ty) => {

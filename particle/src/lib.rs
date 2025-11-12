@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 mod error;
 mod evolution;
 mod mapping;
@@ -20,7 +22,7 @@ pub use equilibrium::Radians;
 
 /// Distance, in Normalized Units (normalized to the major radius R).
 #[doc(alias = "f64")]
-pub type Distance = f64;
+pub type Length = f64;
 
 /// Time, in Normalized Units (inversed gyrofrequency on magnetic axis).
 #[doc(alias = "f64")]
@@ -29,3 +31,11 @@ pub type Time = f64;
 /// Magnetic Moment, in Normalized Units.
 #[doc(alias = "f64")]
 pub type MagneticMoment = f64;
+
+/// Canonical Momentum, in Normalized Units.
+#[doc(alias = "f64")]
+pub type CanonicalMomentum = f64;
+
+/// Energy, in Normalized Units.
+#[doc(alias = "f64")]
+pub type Energy = f64;
