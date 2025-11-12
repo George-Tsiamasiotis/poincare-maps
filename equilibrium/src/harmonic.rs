@@ -12,21 +12,27 @@ use safe_unwrap::safe_unwrap;
 
 /// Single perturbation harmonic reconstructed from a netCDF file.
 ///
-/// The harmonic has the form of `α(ψp) * cos(mθ-nζ+φ0)`, where `α(ψp)` is calculated by
-/// interpolation over some numerical data.
+/// The harmonic has the form of `α(ψp) * cos(mθ-nζ+φ(ψp))`, where `α(ψp)` and `φ(ψp)` are calculated by
+/// interpolation over numerical data.
 pub struct Harmonic {
     /// Path to the netCDF file.
     pub path: PathBuf,
-    /// Interpolation type.
+    /// 1D [`Interpolation type`], in case-insensitive string format.
+    ///
+    /// [`Interpolation type`]: ../rsl_interpolation/trait.InterpType.html#implementors
     pub typ: String,
     /// Spline over the perturbation amplitude `α` data, as a function of ψp.
     pub a_spline: DynSpline<f64>,
+    /// Spline over the perturbation amplitude `φ` data, as a function of ψp.
+    pub phase_spline: DynSpline<f64>,
     /// The `θ` frequency number.
-    pub m: f64,
+    pub m: i64,
     /// The `ζ` frequency number.
-    pub n: f64,
-    /// The phase offset of the harmonic.
-    pub phase: Radians,
+    pub n: i64,
+
+    // Used in the actual calculations
+    _m: f64,
+    _n: f64,
 }
 
 /// Holds the Harmonic's values evalutated at a specific point.
@@ -46,6 +52,7 @@ pub struct HarmonicCache {
     pub theta: Radians,
     pub zeta: Radians,
     pub alpha: f64,
+    pub phase: f64,
     pub dalpha: f64,
     pub sin: f64,
     pub cos: f64,
@@ -83,8 +90,9 @@ impl HarmonicCache {
         self.theta = theta;
         self.zeta = zeta;
         self.alpha = h.a_spline.eval(psip, acc)?;
+        self.phase = h.phase_spline.eval(psip, acc)?;
         self.dalpha = h.a_spline.eval_deriv(psip, acc)?;
-        let mod_arg = (h.m * theta - h.n * zeta + h.phase) % TAU;
+        let mod_arg = (h._m * self.theta - h._n * self.zeta + self.phase) % TAU;
         (self.sin, self.cos) = mod_arg.sin_cos();
         Ok(())
     }
@@ -95,7 +103,7 @@ impl Harmonic {
     /// Constructs a [`Harmonic`] from a netCDF file at `path`, with spline of `typ`
     /// interpolation type.
     ///
-    /// The spline is only over the amplitude `α`, of the perturbation, and the rest of the
+    /// The spline is only over the amplitude `α` and phase `φ`, of the perturbation. The rest of the
     /// exrpession is analytic.
     ///
     /// # Example
@@ -104,51 +112,49 @@ impl Harmonic {
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_dataset(path: &PathBuf, typ: &str, m: f64, n: f64, phase: Radians) -> Result<Self> {
-        use rsl_interpolation::*;
-        use tokamak_netcdf::variable_names::*;
-        use tokamak_netcdf::*;
+    pub fn from_dataset(path: &PathBuf, typ: &str, m: i64, n: i64) -> Result<Self> {
+        use crate::extract::*;
+        use config::netcdf_fields::*;
 
         // Make path absolute for display purposes.
         let path = std::path::absolute(path)?;
+        let f = open(&path)?;
 
-        let eq = Equilibrium::from_file(&path)?;
-
-        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
-            .as_standard_layout()
-            .to_owned();
-
-        // TODO: update
-        let mut a_data = Array1::zeros(psip_data.len());
-        for i in 0..psip_data.len() {
-            a_data[i] = gaussian(psip_data[i], psip_data.last().copied().unwrap())
-        }
+        let psip_data = extract_1d_array(&f, PSIP)?.as_standard_layout().to_owned();
+        let (a_data, phase_data) = extract_harmonic_arrays(&f, m, n)?;
 
         let a_spline = make_spline(
             typ,
             safe_unwrap!("array is non-empty", psip_data.as_slice()),
             safe_unwrap!("array is non-empty", a_data.as_slice()),
         )?;
+        let phase_spline = make_spline(
+            typ,
+            safe_unwrap!("array is non-empty", psip_data.as_slice()),
+            safe_unwrap!("array is non-empty", phase_data.as_slice()),
+        )?;
 
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             a_spline,
+            phase_spline,
             m,
             n,
-            phase: phase % TAU,
+            _m: m as f64,
+            _n: n as f64,
         })
     }
 }
 
 // Interpolation
 impl Harmonic {
-    /// Calculates the harmonic `a(ψp) * <analytical term>`.
+    /// Calculates the harmonic `α(ψp) * cos(mθ-nζ+φ(ψp))`.
     ///
     /// # Example
     ///
@@ -159,8 +165,8 @@ impl Harmonic {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     ///
     /// let mut acc = Accelerator::new();
     /// let mut hcache = HarmonicCache::new();
@@ -193,8 +199,8 @@ impl Harmonic {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     ///
     /// let mut acc = Accelerator::new();
     /// let mut hcache = HarmonicCache::new();
@@ -227,8 +233,8 @@ impl Harmonic {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     ///
     /// let mut acc = Accelerator::new();
     /// let mut hcache = HarmonicCache::new();
@@ -247,7 +253,7 @@ impl Harmonic {
         if !cache.is_updated(psip, theta, zeta) {
             cache.update(self, psip, theta, zeta, acc)?
         };
-        Ok(cache.alpha * (-self.m) * cache.sin)
+        Ok(cache.alpha * (-self._m) * cache.sin)
     }
 
     /// Calculates the perturbation derivative `𝜕h/𝜕ζ`.
@@ -261,8 +267,8 @@ impl Harmonic {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     ///
     /// let mut acc = Accelerator::new();
     /// let mut hcache = HarmonicCache::new();
@@ -281,7 +287,7 @@ impl Harmonic {
         if !cache.is_updated(psip, theta, zeta) {
             cache.update(self, psip, theta, zeta, acc)?
         };
-        Ok(cache.alpha * self.n * cache.sin)
+        Ok(cache.alpha * self._n * cache.sin)
     }
 
     /// Calculates the perturbation derivative `𝜕h/𝜕t`.
@@ -295,8 +301,8 @@ impl Harmonic {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
-    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?;
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
+    /// let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2)?;
     ///
     /// let mut acc = Accelerator::new();
     /// let mut hcache = HarmonicCache::new();
@@ -329,31 +335,14 @@ impl Harmonic {
     }
 
     /// Returns the value of the `m` mode number.
-    pub fn m(&self) -> f64 {
+    pub fn m(&self) -> i64 {
         self.m
     }
 
     /// Returns the value of the `n` mode number.
-    pub fn n(&self) -> f64 {
+    pub fn n(&self) -> i64 {
         self.n
     }
-
-    /// Returns the value of the harmonic's phase offset.
-    pub fn phase(&self) -> f64 {
-        self.phase
-    }
-}
-
-/// A simple gaussian distribution to emulate reconstructed perturbations.
-/// TODO: remove
-fn gaussian(psip: f64, psip_wall: f64) -> f64 {
-    use std::f64::consts::TAU;
-
-    let scale = 2e-2;
-    let mu = psip_wall / 2.0;
-    let sigma = psip_wall / 4.0;
-
-    scale * (1.0 / (TAU * sigma).sqrt()) * (-(psip - mu).powi(2) / (2.0 * sigma.powi(2))).exp()
 }
 
 impl Clone for Harmonic {
@@ -363,9 +352,12 @@ impl Clone for Harmonic {
             typ: self.typ.clone(),
             a_spline: make_spline(&self.typ, &self.a_spline.xa, &self.a_spline.ya)
                 .expect("Could not clone spline."),
+            phase_spline: make_spline(&self.typ, &self.phase_spline.xa, &self.phase_spline.ya)
+                .expect("Could not clone spline."),
             m: self.m,
             n: self.n,
-            phase: self.phase,
+            _m: self._m,
+            _n: self._n,
         }
     }
 }
@@ -378,7 +370,6 @@ impl std::fmt::Debug for Harmonic {
             .field("ψp_wall", &format!("{:.7}", self.psip_wall()))
             .field("m", &self.m)
             .field("n", &self.n)
-            .field("φ", &self.phase)
             .finish()
     }
 }
@@ -394,14 +385,18 @@ impl std::fmt::Debug for HarmonicCache {
 #[cfg(test)]
 mod test {
     use super::*;
+    use config::STUB_NETCDF_PATH;
+
+    fn get_test_dataset_path() -> PathBuf {
+        PathBuf::from(STUB_NETCDF_PATH)
+    }
 
     #[test]
     fn test_data_extraction() {
-        let path = PathBuf::from("../data.nc");
-        let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
-        let _: f64 = harmonic.m();
-        let _: f64 = harmonic.n();
-        let _: f64 = harmonic.phase();
+        let path = get_test_dataset_path();
+        let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2).unwrap();
+        let _: i64 = harmonic.m();
+        let _: i64 = harmonic.n();
 
         assert_eq!(harmonic.psip_data().ndim(), 1);
         assert_eq!(harmonic.a_data().ndim(), 1);
@@ -409,11 +404,12 @@ mod test {
 
     #[test]
     fn test_cache_update() {
-        let path = PathBuf::from("../data.nc");
-        let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
+        let path = get_test_dataset_path();
+        let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2).unwrap();
         let mut acc = Accelerator::new();
         let mut cache = HarmonicCache::new();
 
+        // dh_dt does not update the cache
         let (psip, theta, zeta) = (0.015, 0.0, 3.14);
         harmonic.h(psip, theta, zeta, &mut cache, &mut acc).unwrap();
         harmonic
@@ -428,6 +424,8 @@ mod test {
         harmonic
             .dh_dt(psip, theta, zeta, &mut cache, &mut acc)
             .unwrap();
+        assert_eq!(cache.misses, 1);
+        assert_eq!(cache.hits, 3);
         let (psip, theta, zeta) = (0.01, 0.01, 3.15);
         harmonic.h(psip, theta, zeta, &mut cache, &mut acc).unwrap();
         harmonic
@@ -442,12 +440,14 @@ mod test {
         harmonic
             .dh_dt(psip, theta, zeta, &mut cache, &mut acc)
             .unwrap();
+        assert_eq!(cache.misses, 2);
+        assert_eq!(cache.hits, 6);
     }
 
     #[test]
     fn test_harmonic_misc() {
-        let path = PathBuf::from("../data.nc");
-        let harmonic = Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0).unwrap();
+        let path = get_test_dataset_path();
+        let harmonic = Harmonic::from_dataset(&path, "akima", 3, 2).unwrap();
         let _ = harmonic.clone();
         let _ = format!("{harmonic:?}");
     }

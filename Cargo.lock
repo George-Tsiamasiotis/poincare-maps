@@ -183,9 +183,9 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "curl-sys"
-version = "0.4.83+curl-8.15.0"
+version = "0.4.84+curl-8.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5830daf304027db10c82632a464879d46a3f7c4ba17a31592657ad16c719b483"
+checksum = "abc4294dc41b882eaff37973c2ec3ae203d0091341ee68fbadd1d06e0c18a73b"
 dependencies = [
  "cc",
  "libc",
@@ -254,11 +254,12 @@ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 name = "equilibrium"
 version = "0.1.0"
 dependencies = [
+ "config",
  "ndarray",
+ "netcdf",
  "rsl-interpolation",
  "safe_unwrap",
  "thiserror",
- "tokamak-netcdf",
  "utils",
 ]
 
@@ -1411,16 +1412,6 @@ dependencies = [
  "proc-macro2",
  "quote 1.0.41",
  "syn 2.0.108",
-]
-
-[[package]]
-name = "tokamak-netcdf"
-version = "0.1.3"
-source = "git+https://github.com/George-Tsiamasiotis/tokamak-netcdf#53443c59a24ab8609ef716f53abfb892d4211623"
-dependencies = [
- "ndarray",
- "netcdf",
- "thiserror",
 ]
 
 [[package]]

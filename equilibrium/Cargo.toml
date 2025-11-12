@@ -10,11 +10,12 @@ ndarray = {workspace = true}
 thiserror = {workspace = true}
 safe_unwrap = {workspace = true}
 rsl-interpolation = {workspace = true}
+config = {path = "../config"}
 utils = {path = "../utils"}
-tokamak-netcdf = { git = "https://github.com/George-Tsiamasiotis/tokamak-netcdf", version = "0.1.3" }
+netcdf = { version = "0.11.1", features = ["ndarray"] }
 
 [features]
-default = []
+default = ["openblas-system"]
 openblas-static = ["rsl-interpolation/openblas-static"]
 openblas-system = ["rsl-interpolation/openblas-system"]
-netcdf-static = ["tokamak-netcdf/static"]
+netcdf-static = ["netcdf/static"]

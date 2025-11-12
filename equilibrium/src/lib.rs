@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 mod bfield;
 mod currents;
 mod error;
@@ -5,12 +7,17 @@ mod harmonic;
 mod perturbation;
 mod qfactor;
 
+pub mod extract;
+
 pub use bfield::Bfield;
 pub use currents::Currents;
-pub use error::EqError;
+pub use error::{EqError, NcError};
 pub use harmonic::{Harmonic, HarmonicCache};
 pub use perturbation::Perturbation;
 pub use qfactor::Qfactor;
+
+pub use config::STUB_NETCDF_PATH;
+pub use config::netcdf_fields;
 
 pub type Result<T> = std::result::Result<T, EqError>;
 

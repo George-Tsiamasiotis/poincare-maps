@@ -16,5 +16,5 @@ equilibrium = {path = "../equilibrium"}
 derive_is_enum_variant = "0.1.1"
 
 [features]
-default = []
+default = ["error-adaptive-step"]
 error-adaptive-step = []

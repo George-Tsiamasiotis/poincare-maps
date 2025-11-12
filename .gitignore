@@ -1,49 +1,24 @@
+/data
 /target
-data.nc
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-.pytest_cache/
-*.py[cod]
-
-# C extensions
+*.npz
+*.nc
 *.so
 
-# Distribution / packaging
-.Python
+# Python
 .venv/
-env/
-build/
-develop-eggs/
-dist/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-include/
-man/
-venv/
-*.egg-info/
-.installed.cfg
-*.egg
+*.py[cod]
+.python-version
+.Python
+uv.lock
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-pip-selfcheck.json
+# Cache
+__pycache__/
+.cache/
 
 # Unit test / coverage reports
 htmlcov/
-.tox/
 .coverage
-.cache
-nosetests.xml
-coverage.xml
 
-# Sphinx documentation
-docs/_build/
+# ignore python scripts and symlinks at the project root
+/*.py
 
-# Pyenv
-.python-version

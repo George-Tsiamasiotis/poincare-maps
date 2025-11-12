@@ -38,10 +38,10 @@ impl Perturbation {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let harmonics = vec![
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 1)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 2)?,
     /// ];
     /// let per = Perturbation::from_harmonics(&harmonics);
     ///
@@ -78,10 +78,10 @@ impl Perturbation {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let harmonics = vec![
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 1)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 2)?,
     /// ];
     /// let per = Perturbation::from_harmonics(&harmonics);
     ///
@@ -118,10 +118,10 @@ impl Perturbation {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let harmonics = vec![
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 1)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 2)?,
     /// ];
     /// let per = Perturbation::from_harmonics(&harmonics);
     ///
@@ -158,10 +158,10 @@ impl Perturbation {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let harmonics = vec![
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 1)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 2)?,
     /// ];
     /// let per = Perturbation::from_harmonics(&harmonics);
     ///
@@ -198,10 +198,10 @@ impl Perturbation {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let harmonics = vec![
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 1.0, 0.0)?,
-    ///     Harmonic::from_dataset(&path, "akima", 3.0, 2.0, 0.0)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 1)?,
+    ///     Harmonic::from_dataset(&path, "akima", 3, 2)?,
     /// ];
     /// let per = Perturbation::from_harmonics(&harmonics);
     ///
@@ -239,19 +239,21 @@ impl std::fmt::Debug for Perturbation {
 
 #[cfg(test)]
 mod test {
+    use config::STUB_NETCDF_PATH;
+
     use super::*;
     use std::path::PathBuf;
 
     #[test]
     fn test_summation() {
-        let path = PathBuf::from("../data.nc");
+        let path = PathBuf::from(STUB_NETCDF_PATH);
         let per1 = Perturbation::from_harmonics(&vec![
-            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2, 1).unwrap(),
         ]);
         let per2 = Perturbation::from_harmonics(&vec![
-            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
-            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
-            Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2, 1).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2, 1).unwrap(),
+            Harmonic::from_dataset(&path, "akima", 2, 1).unwrap(),
         ]);
 
         let mut acc = Accelerator::new();
@@ -298,8 +300,8 @@ mod test {
 
     #[test]
     fn test_perturbation_misc() {
-        let path = PathBuf::from("../data.nc");
-        let harmonics = vec![Harmonic::from_dataset(&path, "akima", 2.0, 1.0, 0.0).unwrap()];
+        let path = PathBuf::from(STUB_NETCDF_PATH);
+        let harmonics = vec![Harmonic::from_dataset(&path, "akima", 2, 1).unwrap()];
         let per = Perturbation::from_harmonics(&harmonics);
 
         let _ = per.get_harmonics();

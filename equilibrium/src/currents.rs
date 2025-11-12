@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rsl_interpolation::{Accelerator, DynSpline};
+use rsl_interpolation::{Accelerator, DynSpline, make_spline};
 use utils::array1D_getter_impl;
 
 use crate::Flux;
@@ -13,7 +13,9 @@ use safe_unwrap::safe_unwrap;
 pub struct Currents {
     /// Path to the netCDF file.
     pub path: PathBuf,
-    /// Interpolation type.
+    /// 1D [`Interpolation type`], in case-insensitive string format.
+    ///
+    /// [`Interpolation type`]: ../rsl_interpolation/trait.InterpType.html#implementors
     pub typ: String,
     /// Spline over the g-current data, as a function of ψp.
     pub g_spline: DynSpline<f64>,
@@ -31,30 +33,22 @@ impl Currents {
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let currents = Currents::from_dataset(&path, "cubic")?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn from_dataset(path: &PathBuf, typ: &str) -> Result<Self> {
-        use rsl_interpolation::*;
-        use tokamak_netcdf::variable_names::*;
-        use tokamak_netcdf::*;
+        use crate::extract::*;
+        use config::netcdf_fields::*;
 
         // Make path absolute for display purposes.
         let path = std::path::absolute(path)?;
+        let f = open(&path)?;
 
-        let eq = Equilibrium::from_file(&path)?;
-
-        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
-            .as_standard_layout()
-            .to_owned();
-        let g_data = extract_1d_var(&eq.file, CURRENT_G)?
-            .as_standard_layout()
-            .to_owned();
-        let i_data = extract_1d_var(&eq.file, CURRENT_I)?
-            .as_standard_layout()
-            .to_owned();
+        let psip_data = extract_1d_array(&f, PSIP)?.as_standard_layout().to_owned();
+        let g_data = extract_1d_array(&f, G)?.as_standard_layout().to_owned();
+        let i_data = extract_1d_array(&f, I)?.as_standard_layout().to_owned();
 
         let g_spline = make_spline(
             typ,
@@ -87,7 +81,7 @@ impl Currents {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let currents = Currents::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -108,7 +102,7 @@ impl Currents {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let currents = Currents::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -129,7 +123,7 @@ impl Currents {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let currents = Currents::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -150,7 +144,7 @@ impl Currents {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let currents = Currents::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -189,9 +183,10 @@ impl std::fmt::Debug for Currents {
 #[cfg(test)]
 mod test {
     use super::*;
+    use config::STUB_NETCDF_PATH;
 
     fn create_current() -> Currents {
-        let path = PathBuf::from("../data.nc");
+        let path = PathBuf::from(STUB_NETCDF_PATH);
         Currents::from_dataset(&path, "akima").unwrap()
     }
 

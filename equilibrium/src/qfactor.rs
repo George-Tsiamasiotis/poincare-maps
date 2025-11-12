@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rsl_interpolation::{Accelerator, DynSpline};
+use rsl_interpolation::{Accelerator, DynSpline, make_spline};
 use utils::array1D_getter_impl;
 
 use crate::Flux;
@@ -13,7 +13,9 @@ use safe_unwrap::safe_unwrap;
 pub struct Qfactor {
     /// Path to the netCDF file.
     pub path: PathBuf,
-    /// Interpolation type.
+    /// 1D [`Interpolation type`], in case-insensitive string format.
+    ///
+    /// [`Interpolation type`]: ../rsl_interpolation/trait.InterpType.html#implementors
     pub typ: String,
     /// Spline over the q-factor data, as a function of ψp.
     pub q_spline: DynSpline<f64>,
@@ -31,30 +33,22 @@ impl Qfactor {
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let qfactor = Qfactor::from_dataset(&path, "cubic")?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn from_dataset(path: &PathBuf, typ: &str) -> Result<Self> {
-        use rsl_interpolation::*;
-        use tokamak_netcdf::variable_names::*;
-        use tokamak_netcdf::*;
+        use crate::extract::*;
+        use config::netcdf_fields::*;
 
         // Make path absolute for display purposes.
         let path = std::path::absolute(path)?;
+        let f = open(&path)?;
 
-        let eq = Equilibrium::from_file(&path)?;
-
-        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
-            .as_standard_layout()
-            .to_owned();
-        let psi_data = extract_1d_var(&eq.file, PSI_COORD)?
-            .as_standard_layout()
-            .to_owned();
-        let q_data = extract_1d_var(&eq.file, Q_FACTOR)?
-            .as_standard_layout()
-            .to_owned();
+        let psip_data = extract_1d_array(&f, PSIP)?.as_standard_layout().to_owned();
+        let psi_data = extract_1d_array(&f, PSI)?.as_standard_layout().to_owned();
+        let q_data = extract_1d_array(&f, Q)?.as_standard_layout().to_owned();
 
         let q_spline = make_spline(
             typ,
@@ -88,7 +82,7 @@ impl Qfactor {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let qfactor = Qfactor::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -110,7 +104,7 @@ impl Qfactor {
     /// # use rsl_interpolation::*;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let qfactor = Qfactor::from_dataset(&path, "cubic")?;
     ///
     /// let mut acc = Accelerator::new();
@@ -167,9 +161,10 @@ impl std::fmt::Debug for Qfactor {
 #[cfg(test)]
 mod test {
     use super::*;
+    use config::STUB_NETCDF_PATH;
 
     fn create_qfactor() -> Qfactor {
-        let path = PathBuf::from("../data.nc");
+        let path = PathBuf::from(STUB_NETCDF_PATH);
         Qfactor::from_dataset(&path, "akima").unwrap()
     }
 

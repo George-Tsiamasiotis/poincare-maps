@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rsl_interpolation::{Accelerator, Cache, DynSpline2d};
+use rsl_interpolation::{Accelerator, Cache, DynSpline2d, make_spline2d};
 use utils::array1D_getter_impl;
 
 use crate::Result;
@@ -13,7 +13,9 @@ use safe_unwrap::safe_unwrap;
 pub struct Bfield {
     /// Path to the netCDF file.
     pub path: PathBuf,
-    /// Interpolation type.
+    /// 2D [`Interpolation type`], in case-insensitive string format.
+    ///
+    /// [`Interpolation type`]: ../rsl_interpolation/trait.Interp2dType.html#implementors
     pub typ: String,
     /// Spline over the magnetic field strength data, as a function of ψp, θ.
     pub b_spline: DynSpline2d<f64>,
@@ -37,34 +39,27 @@ impl Bfield {
     /// # use std::path::PathBuf;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     /// # Ok(())
     /// # }
     /// ```
     pub fn from_dataset(path: &PathBuf, typ: &str) -> Result<Self> {
-        use rsl_interpolation::*;
-        use tokamak_netcdf::variable_names::*;
-        use tokamak_netcdf::*;
+        use crate::extract::*;
+        use config::netcdf_fields::*;
 
         // Make path absolute for display purposes.
         let path = std::path::absolute(path)?;
+        let f = open(&path)?;
 
-        let eq = Equilibrium::from_file(&path)?;
+        let psip_data = extract_1d_array(&f, PSIP)?.as_standard_layout().to_owned();
+        let theta_data = extract_1d_array(&f, THETA)?.as_standard_layout().to_owned();
 
-        let psip_data = extract_1d_var(&eq.file, PSIP_COORD)?
-            .as_standard_layout()
-            .to_owned();
-        let theta_data = extract_1d_var(&eq.file, THETA_COORD)?
-            .as_standard_layout()
-            .to_owned();
-
-        let b_data = eq.get_2d(B_FIELD)?;
-        let r_data = eq.get_2d(R)?;
-        let z_data = eq.get_2d(Z)?;
-        let baxis = eq.get_scalar(B_AXIS)?;
-        let raxis = eq.get_scalar(R_AXIS)?;
-        // let zaxis_val = eq.get_scalar(Z_AXIS)?;
+        let b_data = extract_2d_array(&f, B)?;
+        let r_data = extract_2d_array(&f, R)?;
+        let z_data = extract_2d_array(&f, Z)?;
+        let baxis = extract_scalar(&f, BAXIS)?;
+        let raxis = extract_scalar(&f, RAXIS)?;
 
         // `Spline.za` is in Fortran order.
         let order = ndarray::Order::ColumnMajor;
@@ -116,7 +111,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -154,7 +149,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -194,7 +189,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -234,7 +229,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -274,7 +269,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -314,7 +309,7 @@ impl Bfield {
     /// # use std::f64::consts::PI;
     /// #
     /// # fn main() -> Result<()> {
-    /// let path = PathBuf::from("../data.nc");
+    /// let path = PathBuf::from("../data/stub_netcdf.nc");
     /// let bfield = Bfield::from_dataset(&path, "bicubic")?;
     ///
     /// let mut psi_acc = Accelerator::new();
@@ -426,14 +421,14 @@ impl Bfield {
         safe_unwrap!("ya is non-empty", self.b_spline.xa.last().copied())
     }
 
-    /// Returns the value of the magnetic field strength B0 at the axis in NU.
-    pub fn baxis(&self) -> Flux {
+    /// Returns the value of the magnetic field strength B0 at the axis **in \[T\]**.
+    pub fn baxis(&self) -> f64 {
         safe_unwrap!("ya is non-empty", self.b_spline.ya.last().copied())
     }
 
-    /// Returns the value of the major radius R in meters.
-    pub fn raxis(&self) -> Flux {
-        todo!()
+    /// Returns the value of the major radius R **in \[m\]**.
+    pub fn raxis(&self) -> f64 {
+        self.raxis
     }
 }
 
@@ -459,9 +454,10 @@ impl std::fmt::Debug for Bfield {
 #[cfg(test)]
 mod test {
     use super::*;
+    use config::STUB_NETCDF_PATH;
 
     fn create_bfield() -> Bfield {
-        let path = PathBuf::from("../data.nc");
+        let path = PathBuf::from(STUB_NETCDF_PATH);
         Bfield::from_dataset(&path, "bicubic").unwrap()
     }
 
@@ -475,7 +471,7 @@ mod test {
         let b = create_bfield();
         let _ = format!("{b:?}");
         let _: f64 = b.baxis();
-        // let _: f64 = b.raxis();
+        let _: f64 = b.raxis();
 
         assert_eq!(b.psip_data().ndim(), 1);
         assert_eq!(b.theta_data().ndim(), 1);
