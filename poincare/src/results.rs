@@ -20,7 +20,7 @@ pub struct PoincareResults {
     /// [`PoincareSection`]
     pub fluxes: Array2<Flux>,
     total: usize,
-    integrated: usize,
+    mapped: usize,
     escaped: usize,
     timed_out: usize,
     invalid_intersections: usize,
@@ -56,7 +56,7 @@ impl PoincareResults {
                     .count()
             };
         }
-        self.integrated = count_variants!(is_integrated);
+        self.mapped = count_variants!(is_mapped);
         self.escaped = count_variants!(is_escaped);
         self.timed_out = count_variants!(is_timed_out);
         self.escaped = count_variants!(is_escaped);
@@ -155,9 +155,8 @@ pub fn calculate_arrays(
 
 /// Returns true if the particle should be plotted in the final Poincare map.
 fn should_be_plotted(particle: &Particle) -> bool {
-    let status_ok = particle.status.is_integrated()
-        | particle.status.is_timed_out()
-        | particle.status.is_escaped();
+    let status_ok =
+        particle.status.is_mapped() | particle.status.is_timed_out() | particle.status.is_escaped();
     // Drop particles that were initialized outside the wall
     let length_ok = particle.evolution.steps_stored() > 1;
 
@@ -190,7 +189,7 @@ impl std::fmt::Debug for PoincareResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PoincareResults")
             .field("total particles", &self.total)
-            .field("integrated", &self.integrated)
+            .field("integrated", &self.mapped)
             .field("escaped", &self.escaped)
             .field("timed_out", &self.timed_out)
             .field("invalid_intersections", &self.invalid_intersections)

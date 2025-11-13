@@ -303,7 +303,7 @@ impl Solver {
     ///
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
-    #[cfg(not(feature = "error-adaptive-step"))]
+    #[cfg(feature = "energy-adaptive-step")]
     pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
         let initial_energy = self.state1.energy();
         let final_energy = self.state6.energy();
@@ -324,10 +324,11 @@ impl Solver {
     ///
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
-    #[cfg(feature = "error-adaptive-step")]
+    #[cfg(not(feature = "energy-adaptive-step"))]
     pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
         // Using the max error vs each variable's error is equivalent.
 
+        // FIXME: Decide how to handle possible NaNs here.
         let mut max_error = (*self
             .errors
             .iter()

@@ -3,7 +3,7 @@ use ndarray::Array1;
 use particle::{InitialConditions, Particle};
 use utils::array1D_getter_impl;
 
-use crate::{Distance, Flux, MagneticMoment, Radians};
+use crate::{Flux, Length, MagneticMoment, Radians};
 use crate::{PoincareError, Result};
 
 /// Stores the initial conditions arrays.
@@ -12,7 +12,7 @@ use crate::{PoincareError, Result};
 pub struct PoincareInit {
     pub thetas: Array1<Radians>,
     pub psips: Array1<Flux>,
-    pub rhos: Array1<Distance>,
+    pub rhos: Array1<Length>,
     pub zetas: Array1<Radians>,
     pub mus: Array1<MagneticMoment>,
 }
@@ -42,7 +42,7 @@ impl PoincareInit {
     pub fn build(
         thetas: &[Radians],
         psips: &[Flux],
-        rhos: &[Distance],
+        rhos: &[Length],
         zetas: &[Radians],
         mus: &[MagneticMoment],
     ) -> Result<Self> {
@@ -123,7 +123,7 @@ impl PoincareInit {
 impl PoincareInit {
     array1D_getter_impl!(thetas, thetas, Radians);
     array1D_getter_impl!(psips, psips, Flux);
-    array1D_getter_impl!(rhos, rhos, Distance);
+    array1D_getter_impl!(rhos, rhos, Length);
     array1D_getter_impl!(zetas, zetas, Radians);
     array1D_getter_impl!(mus, mus, MagneticMoment);
 }

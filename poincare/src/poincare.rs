@@ -1,8 +1,11 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use config::{POINCARE_PBAR_STYLE, POINCARE_PROGRESS_CHARS};
 use equilibrium::{Bfield, Currents, Perturbation, Qfactor};
-use particle::{MappingParameters, Particle};
+use particle::{IntegrationStatus, MappingParameters, Particle};
 use utils::array2D_getter_impl;
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -57,9 +60,15 @@ impl Poincare {
         pbar.enable_steady_tick(Duration::from_millis(100));
         self.pbar_prelude(&pbar);
 
+        let stats = Stats::default();
+        pbar_print_stats(&pbar, &stats);
         self.particles.par_iter_mut().try_for_each(|p| {
             p.map(qfactor, bfield, currents, perturbation, &self.params)
-                .inspect(|()| pbar.inc(1))
+                .inspect(|()| {
+                    stats.inc(&p.status);
+                    pbar_print_stats(&pbar, &stats);
+                    pbar.inc(1)
+                })
         })?;
         pbar.println("✅️ Integration Done");
         pbar.finish();
@@ -75,10 +84,8 @@ impl Poincare {
             self.particles.len(),
         ));
         pbar.println(format!(
-            "🗿 Integrating with {}={} for {} intersections",
-            format!("{:?}", self.params.section),
-            format!("{:.4}", self.params.alpha),
-            self.params.intersections,
+            "🗿 Integrating with {:?}={:.4} for {} intersections",
+            self.params.section, self.params.alpha, self.params.intersections,
         ));
     }
 }
@@ -86,6 +93,41 @@ impl Poincare {
 impl Poincare {
     array2D_getter_impl!(angles, results.angles, Radians);
     array2D_getter_impl!(fluxes, results.fluxes, Flux);
+}
+
+fn pbar_print_stats(pbar: &ProgressBar, stats: &Stats) {
+    pbar.set_message(format!(
+        // TODO: find a way to store this as a const config
+        concat!(
+            // "📊 Stats:\n",
+            "📍 Mapped = {}\n",
+            "🏃 Escaped = {}\n",
+            "⌛ Timed-out = {}",
+        ),
+        stats.mapped.load(Ordering::SeqCst),
+        stats.escaped.load(Ordering::SeqCst),
+        stats.timedout.load(Ordering::SeqCst),
+    ));
+}
+
+/// Helper struct to print ProgressBar particle statistics.
+#[derive(Clone, Default)]
+struct Stats {
+    mapped: Arc<AtomicUsize>,
+    escaped: Arc<AtomicUsize>,
+    timedout: Arc<AtomicUsize>,
+}
+
+impl Stats {
+    pub(crate) fn inc(&self, status: &IntegrationStatus) {
+        use particle::IntegrationStatus::*;
+        match status {
+            Mapped => self.mapped.fetch_add(1, Ordering::SeqCst),
+            Escaped => self.escaped.fetch_add(1, Ordering::SeqCst),
+            TimedOut(..) => self.timedout.fetch_add(1, Ordering::SeqCst),
+            _ => 0, // ignored
+        };
+    }
 }
 
 impl std::fmt::Debug for Poincare {

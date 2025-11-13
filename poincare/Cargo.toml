@@ -1,6 +1,6 @@
 [package]
 name = "poincare"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = {workspace = true}
 
@@ -14,3 +14,8 @@ equilibrium = {path = "../equilibrium"}
 particle = {path = "../particle"}
 indicatif = { version = "0.18.2", features = ["rayon"] }
 rayon = "1.11.0"
+
+[features]
+default = []
+energy-adaptive-step = ["particle/energy-adaptive-step"]
+phase-interpolation = ["equilibrium/phase-interpolation"]

@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 mod error;
 mod initials;
 mod poincare;
@@ -11,4 +13,4 @@ pub use results::PoincareResults;
 pub type Result<T> = std::result::Result<T, PoincareError>;
 
 pub use equilibrium::{Flux, Radians};
-pub use particle::{Distance, MagneticMoment, Time};
+pub use particle::{Length, MagneticMoment, Time};

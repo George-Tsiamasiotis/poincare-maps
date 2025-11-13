@@ -252,7 +252,7 @@ checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "equilibrium"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "config",
  "ndarray",
@@ -894,7 +894,7 @@ dependencies = [
 
 [[package]]
 name = "particle"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "config",
  "derive_is_enum_variant",
@@ -930,7 +930,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "poincare"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "config",
  "equilibrium",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "pyncare"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "config",
  "equilibrium",

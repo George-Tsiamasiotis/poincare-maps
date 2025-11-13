@@ -5,9 +5,9 @@ from pyncare import Harmonic
 def test_pyharmonic1_derived_fields(harmonic1: Harmonic):
     assert isinstance(harmonic1.path, str)
     assert isinstance(harmonic1.typ, str)
-    assert isinstance(harmonic1.m, float)
-    assert isinstance(harmonic1.n, float)
-    assert isinstance(harmonic1.phase, float)
+    assert isinstance(harmonic1.m, int)
+    assert isinstance(harmonic1.n, int)
+    assert isinstance(harmonic1.phase_average, float)
     assert isinstance(harmonic1.psip_wall, float)
 
 
@@ -32,7 +32,7 @@ def test_immutability(harmonic1: Harmonic):
         harmonic1.psip_wall += 1
         harmonic1.m += 1
         harmonic1.n += 1
-        harmonic1.phase += 1
+        harmonic1.phase_average += 1
         harmonic1.path = ""
         harmonic1.typ = ""
 

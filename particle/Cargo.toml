@@ -1,6 +1,6 @@
 [package]
 name = "particle"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors.workspace = true
 
@@ -16,5 +16,6 @@ equilibrium = {path = "../equilibrium"}
 derive_is_enum_variant = "0.1.1"
 
 [features]
-default = ["error-adaptive-step"]
-error-adaptive-step = []
+default = []
+energy-adaptive-step = []
+phase-interpolation = ["equilibrium/phase-interpolation"]

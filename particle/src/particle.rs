@@ -100,15 +100,20 @@ impl Particle {
         while state.time <= t_eval.1 {
             // We still want to keep the particle, and also store its final state and final point,
             // even if the integration isn't properly completed.
-            let res = {
-                // Store the most recent state's point, including the intial and final points, even
-                // if they are invalid.
-                let result = state.evaluate(qfactor, currents, bfield, perturbation);
-                self.evolution.push_state(&state);
-                self.evolution.steps += 1;
-                result
-            };
-            match res {
+
+            // Store the most recent state's point, including the intial and final points, even
+            // if they are invalid.
+            state
+                .evaluate(qfactor, currents, bfield, perturbation)
+                .inspect(|()| {
+                    self.evolution.push_state(&state);
+                    self.evolution.steps += 1;
+                })?;
+
+            // Perform a step
+            let mut solver = Solver::default();
+            solver.init(&state);
+            match solver.start(dt, qfactor, bfield, currents, perturbation) {
                 Err(ParticleError::EqError(..)) => {
                     self.status = IntegrationStatus::Escaped;
                     break;
@@ -125,15 +130,6 @@ impl Particle {
                 break;
             }
 
-            // Perform a step
-            let mut solver = Solver::default();
-            solver.init(&state);
-            if let Err(err) = solver.start(dt, qfactor, bfield, currents, perturbation) {
-                // This could only fail due to the solver's internal states' evaluate() calls.
-                // However, this will be already caught at the start of the loop, even if the
-                // initial state was invalid.
-                unreachable!("{err}");
-            };
             dt = solver.calculate_optimal_step(dt);
             state = solver.next_state(dt);
         }
@@ -157,7 +153,7 @@ impl Particle {
         self.evolution = Evolution::default(); // Reset it
         self.initial_state
             .evaluate(qfactor, currents, bfield, perturbation)?;
-        self.status = IntegrationStatus::Integrated; // Will be overwritten in case of failure.
+        self.status = IntegrationStatus::Mapped; // Will be overwritten in case of failure.
         let start = Instant::now();
 
         match map_integrate(self, qfactor, bfield, currents, perturbation, params) {

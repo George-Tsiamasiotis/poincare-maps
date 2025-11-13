@@ -1,6 +1,6 @@
 [package]
 name = "equilibrium"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = {workspace = true}
 description = "Representation of Tokamak Equilibria from experimental data."
@@ -15,7 +15,7 @@ utils = {path = "../utils"}
 netcdf = { version = "0.11.1", features = ["ndarray"] }
 
 [features]
-default = ["openblas-system"]
+default = []
+phase-interpolation = []
 openblas-static = ["rsl-interpolation/openblas-static"]
-openblas-system = ["rsl-interpolation/openblas-system"]
 netcdf-static = ["netcdf/static"]

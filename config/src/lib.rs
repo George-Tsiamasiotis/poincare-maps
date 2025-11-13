@@ -40,12 +40,12 @@ pub const EVOLUTION_INIT_CAPACITY: usize = 2000;
 
 /// The Poincare map calculation progress bar style.
 pub const POINCARE_PBAR_STYLE: &str = concat!(
-    "{elapsed_precise} ",
+    "{msg}\n", // for Stats
+    "🕜 {elapsed_precise} ",
     "{prefix} ",
     "[{wide_bar:.cyan/blue}] ",
     "{spinner:.bold} ",
     "{pos:>2}/{len:2} ",
-    "{msg}",
     "({eta}) ",
 );
 

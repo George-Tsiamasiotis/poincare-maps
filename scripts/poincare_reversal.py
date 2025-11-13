@@ -7,6 +7,9 @@
 #   "pyncare"
 # ]
 # ///
+
+"""30840_103_axi_rev_m48_n0_nub257_nvb1_allmodes"""
+
 import matplotlib.pyplot as plt
 import pyncare as pc
 import numpy as np
@@ -17,21 +20,23 @@ bfield = pc.Bfield("./data.nc", "bicubic")
 perturbation = pc.Perturbation(
     [
         pc.Harmonic("./data.nc", "akima", m=0, n=1),
-        pc.Harmonic("./data.nc", "akima", m=1, n=7),
-        pc.Harmonic("./data.nc", "akima", m=1, n=9),
     ]
 )
 
-num = 100
+num = 50
+psip_lo = 0.93 * qfactor.psip_wall
+psip_hi = qfactor.psip_wall
+
+"Phase Average"
 init = pc.PoincareInit(
     thetas=np.zeros(num),
-    psips=np.linspace(0.0, qfactor.psip_wall, num),
-    rhos=0.01 * np.ones(num),
-    zetas=np.pi / 4 * np.ones(num),
+    psips=np.linspace(psip_lo, psip_hi, num),
+    rhos=0.001 * np.ones(num),
+    zetas=-1.3 * np.ones(num),
     mus=np.zeros(num),
 )
+params = pc.MappingParameters(section="theta", alpha=np.pi, intersections=3000)
 
-params = pc.MappingParameters(section="theta", alpha=np.pi, intersections=1000)
 poincare = pc.Poincare(init=init, params=params)
 poincare.run(
     qfactor=qfactor,

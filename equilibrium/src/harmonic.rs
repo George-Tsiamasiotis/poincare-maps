@@ -5,7 +5,7 @@ use rsl_interpolation::{Accelerator, DynSpline, make_spline};
 use utils::array1D_getter_impl;
 
 use crate::Result;
-use crate::{Flux, Radians};
+use crate::{Flux, Length, Radians};
 
 use ndarray::Array1;
 use safe_unwrap::safe_unwrap;
@@ -25,6 +25,12 @@ pub struct Harmonic {
     pub a_spline: DynSpline<f64>,
     /// Spline over the perturbation amplitude `φ` data, as a function of ψp.
     pub phase_spline: DynSpline<f64>,
+    /// The mean value of the phase data array.
+    ///
+    /// This value is used when the [`phase-interpolation`] feature is enabled.
+    ///
+    /// [`phase-interpolation`]: index.html#features
+    pub phase_average: Radians,
     /// The `θ` frequency number.
     pub m: i64,
     /// The `ζ` frequency number.
@@ -90,12 +96,27 @@ impl HarmonicCache {
         self.theta = theta;
         self.zeta = zeta;
         self.alpha = h.a_spline.eval(psip, acc)?;
-        self.phase = h.phase_spline.eval(psip, acc)?;
+        self.phase = calculate_phase(h, psip, acc)?;
         self.dalpha = h.a_spline.eval_deriv(psip, acc)?;
         let mod_arg = (h._m * self.theta - h._n * self.zeta + self.phase) % TAU;
         (self.sin, self.cos) = mod_arg.sin_cos();
         Ok(())
     }
+}
+
+/// Returns the phase by interpolating over the extracted phase data.
+#[cfg(feature = "phase-interpolation")]
+#[inline(always)]
+fn calculate_phase(h: &Harmonic, psip: f64, acc: &mut Accelerator) -> Result<Radians> {
+    Ok(h.phase_spline.eval(psip, acc)?)
+}
+
+/// Simply returns the harmonic's average phase.
+#[cfg(not(feature = "phase-interpolation"))]
+#[allow(unused_variables)]
+#[inline(always)]
+fn calculate_phase(h: &Harmonic, psip: f64, acc: &mut Accelerator) -> Result<Radians> {
+    Ok(h.phase_average)
 }
 
 // Creation
@@ -133,17 +154,21 @@ impl Harmonic {
             safe_unwrap!("array is non-empty", psip_data.as_slice()),
             safe_unwrap!("array is non-empty", a_data.as_slice()),
         )?;
+        // We still want the phase spline for plotting, even with the 'phase-average' feature
+        // enabled.
         let phase_spline = make_spline(
             typ,
             safe_unwrap!("array is non-empty", psip_data.as_slice()),
             safe_unwrap!("array is non-empty", phase_data.as_slice()),
         )?;
+        let phase_average = safe_unwrap!("array is non-empty", phase_data.mean());
 
         Ok(Self {
             path: path.to_owned(),
             typ: typ.into(),
             a_spline,
             phase_spline,
+            phase_average,
             m,
             n,
             _m: m as f64,
@@ -327,7 +352,8 @@ impl Harmonic {
 // Data extraction
 impl Harmonic {
     array1D_getter_impl!(psip_data, a_spline.xa, Flux);
-    array1D_getter_impl!(a_data, a_spline.ya, Flux);
+    array1D_getter_impl!(a_data, a_spline.ya, Length);
+    array1D_getter_impl!(phase_data, phase_spline.ya, Radians);
 
     /// Returns the value of the poloidal angle ψp at the wall.
     pub fn psip_wall(&self) -> Flux {
@@ -343,6 +369,11 @@ impl Harmonic {
     pub fn n(&self) -> i64 {
         self.n
     }
+
+    /// Returns the value of the phase average.
+    pub fn phase_average(&self) -> f64 {
+        self.phase_average
+    }
 }
 
 impl Clone for Harmonic {
@@ -354,6 +385,7 @@ impl Clone for Harmonic {
                 .expect("Could not clone spline."),
             phase_spline: make_spline(&self.typ, &self.phase_spline.xa, &self.phase_spline.ya)
                 .expect("Could not clone spline."),
+            phase_average: self.phase_average,
             m: self.m,
             n: self.n,
             _m: self._m,
@@ -370,6 +402,7 @@ impl std::fmt::Debug for Harmonic {
             .field("ψp_wall", &format!("{:.7}", self.psip_wall()))
             .field("m", &self.m)
             .field("n", &self.n)
+            .field("phase_average", &format!("{:.7}", self.phase_average()))
             .finish()
     }
 }

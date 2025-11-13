@@ -44,6 +44,22 @@ macro_rules! py_get_float {
     };
 }
 
+/// Generates a getter method for an integer.
+///
+/// The integer should be returned by the wrapped type as `py_object.0.<field_name>()`.
+#[macro_export]
+macro_rules! py_get_int {
+    ($py_object:ident, $getter:ident) => {
+        #[pymethods]
+        impl $py_object {
+            #[getter]
+            pub fn $getter(&self) -> i64 {
+                self.0.$getter()
+            }
+        }
+    };
+}
+
 /// Generates a getter method for the NetCDF's path field.
 #[macro_export]
 macro_rules! py_get_path {

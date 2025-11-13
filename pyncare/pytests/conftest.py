@@ -26,13 +26,13 @@ def bfield():
 @pytest.fixture(scope="session")
 def harmonic1():
     """Creates a Harmonic object from "./data.nc" netCDF file."""
-    return pc.Harmonic("./data.nc", "akima", m=1, n=2, phase=0)
+    return pc.Harmonic("./data.nc", "akima", m=1, n=2)
 
 
 @pytest.fixture(scope="session")
 def harmonic2():
     """Creates a Harmonic object from "./data.nc" netCDF file."""
-    return pc.Harmonic("./data.nc", "akima", m=3, n=2, phase=0)
+    return pc.Harmonic("./data.nc", "akima", m=1, n=3)
 
 
 @pytest.fixture(scope="session")

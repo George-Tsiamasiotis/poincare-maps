@@ -16,8 +16,8 @@ currents = pc.Currents("./data.nc", "akima")
 bfield = pc.Bfield("./data.nc", "bicubic")
 perturbation = pc.Perturbation(
     [
-        pc.Harmonic("./data.nc", "akima", m=1, n=2, phase=0),
-        pc.Harmonic("./data.nc", "akima", m=3, n=2, phase=0),
+        pc.Harmonic("./data.nc", "akima", m=1, n=7),
+        pc.Harmonic("./data.nc", "akima", m=1, n=9),
     ]
 )
 

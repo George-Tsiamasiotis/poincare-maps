@@ -26,7 +26,7 @@ fn test_normal_particle_map_zeta() {
         .unwrap();
     dbg!(&particle);
 
-    assert!(matches!(particle.status, IntegrationStatus::Integrated));
+    assert!(matches!(particle.status, IntegrationStatus::Mapped));
     assert_eq!(particle.evolution.zeta.len(), params.intersections + 1) // exclude initial point
 }
 
@@ -52,6 +52,6 @@ fn test_normal_particle_map_theta() {
         .unwrap();
     dbg!(&particle);
 
-    assert!(matches!(particle.status, IntegrationStatus::Integrated));
+    assert!(matches!(particle.status, IntegrationStatus::Mapped));
     assert_eq!(particle.evolution.theta.len(), params.intersections + 1) // exclude initial point
 }

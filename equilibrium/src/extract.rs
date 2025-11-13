@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use config::netcdf_fields::{ALPHAS, M, N, PHASES};
+use config::netcdf_fields::{ALPHAS_NORM, M, N, PHASES};
 use ndarray::{Array, Array1, Array2, Array3};
 use netcdf::{Extents, File, NcTypeDescriptor, Variable};
 
@@ -242,7 +242,7 @@ pub fn extract_harmonic_arrays<T: NcType>(
     m: i64,
     n: i64,
 ) -> Result<(Array1<T>, Array1<T>)> {
-    let alpha_3d = extract_3d_array::<T>(f, ALPHAS)?;
+    let alpha_3d = extract_3d_array::<T>(f, ALPHAS_NORM)?;
     let phase_3d = extract_3d_array::<T>(f, PHASES)?;
 
     let m_index = get_logical_index(f, m, M)?;

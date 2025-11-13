@@ -184,22 +184,30 @@ class Harmonic:
         The type of Interpolation.
     psip_wall: float
         The value of the poloidal flux ψp at the wall.
+    m: int
+        The `θ` frequency number.
+    n: int
+        The `ζ` frequency number.
+    phase_average: float
+        The average_value of the phase data array.
     psip_data: float
         The NetCDF ψp data used to construct the a(ψp) spline.
     a_data: float
-        The NetCDF a data used to construct the a(ψp) spline.
+        The NetCDF a data used to construct the α(ψp) spline.
+    phase_data: np.ndarray
+        The NetCDF a data used to construct the φ(ψp) spline.
     """
 
     path: str
     typ: str
-    m: float
-    n: float
-    phase: float
+    m: int
+    n: int
     psip_wall: float
+    phase_average: float
     psip_data: np.ndarray
     a_data: np.ndarray
 
-    def __init__(self, path: str, typ: str, m: float, n: float, phase: float):
+    def __init__(self, path: str, typ: str, m: int, n: int):
         """Creates a single perturbation harmonic.
 
         Parameters
@@ -209,12 +217,10 @@ class Harmonic:
         typ: str
             The type of Interpolation. Available types: "Linear", "Cubic", "Akima", "AkimaPeriodic",
             "Steffen".
-        m: float
+        m: int
             The `θ` frequency number.
-        n: float
+        n: int
             The `ζ` frequency number.
-        phase: float
-            The initial phase of the harmonic.
         """
 
     def h(self, psip: float, theta: float, zeta: float) -> float:

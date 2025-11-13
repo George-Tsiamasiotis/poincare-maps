@@ -12,8 +12,8 @@ fn main() {
     let currents = Currents::from_dataset(&path, "akima").unwrap();
     let bfield = Bfield::from_dataset(&path, "bicubic").unwrap();
     let harmonics = vec![
-        Harmonic::from_dataset(&path, "akima", 7.0, 1.0, 0.0).unwrap(),
-        Harmonic::from_dataset(&path, "akima", 8.0, 1.0, 0.0).unwrap(),
+        Harmonic::from_dataset(&path, "akima", 1, 7).unwrap(),
+        Harmonic::from_dataset(&path, "akima", 1, 9).unwrap(),
     ];
     let perturbation = Perturbation::from_harmonics(&harmonics);
     let psip_wall = qfactor.psip_wall();
@@ -32,7 +32,7 @@ fn main() {
 
     let mut p = Poincare::new(init, params);
     match p.run(&qfactor, &bfield, &currents, &perturbation) {
-        Ok(_) => dbg!(&p),
+        Ok(_) => println!("{:#?}", p),
         Err(err) => {
             eprintln!("{}", err);
             exit(2);

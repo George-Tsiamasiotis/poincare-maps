@@ -28,3 +28,7 @@ pub type Flux = f64;
 /// Angle in radians.
 #[doc(alias = "f64")]
 pub type Radians = f64;
+
+/// Distance, in Normalized Units (normalized to the major radius R).
+#[doc(alias = "f64")]
+pub type Length = f64;

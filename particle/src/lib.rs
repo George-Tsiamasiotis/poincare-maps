@@ -18,11 +18,8 @@ pub(crate) use rkf45::Solver;
 pub type Result<T> = std::result::Result<T, ParticleError>;
 
 pub use equilibrium::Flux;
+pub use equilibrium::Length;
 pub use equilibrium::Radians;
-
-/// Distance, in Normalized Units (normalized to the major radius R).
-#[doc(alias = "f64")]
-pub type Length = f64;
 
 /// Time, in Normalized Units (inversed gyrofrequency on magnetic axis).
 #[doc(alias = "f64")]

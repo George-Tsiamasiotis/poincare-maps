@@ -1,6 +1,6 @@
 [package]
 name = "pyncare"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [lib]
@@ -18,3 +18,10 @@ particle = {path = "../particle"}
 poincare = {path = "../poincare"}
 pyo3 = { version = "0.27.1", features = ["extension-module", "abi3-py314", "multiple-pymethods"] }
 numpy = "0.27.0"
+
+[features]
+default = []
+phase-interpolation = ["equilibrium/phase-interpolation"]
+energy-adaptive-step = ["particle/energy-adaptive-step"]
+openblas-static = ["equilibrium/openblas-static"]
+netcdf-static = ["equilibrium/netcdf-static"]

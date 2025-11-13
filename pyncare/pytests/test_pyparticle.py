@@ -35,4 +35,4 @@ def test_particle_mapping(
         perturbation=perturbation,
         params=params,
     )
-    assert particle.status == "Integrated"
+    assert particle.status == "Mapped"

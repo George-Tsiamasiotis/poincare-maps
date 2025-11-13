@@ -2,7 +2,7 @@ use equilibrium::{Harmonic, HarmonicCache};
 use rsl_interpolation::Accelerator;
 use safe_unwrap::safe_unwrap;
 use utils::{py_debug_impl, py_eval_harmonic, py_get_numpy1D, py_repr_impl};
-use utils::{py_get_float, py_get_path, py_get_typ};
+use utils::{py_get_float, py_get_int, py_get_path, py_get_typ};
 
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
@@ -17,9 +17,9 @@ pub struct PyHarmonic(pub Harmonic);
 impl PyHarmonic {
     /// Creates a new PyHarmonic wrapper object.
     #[new]
-    pub fn new(path: &str, typ: &str, m: f64, n: f64, phase: f64) -> Result<Self, PyEqError> {
+    pub fn new(path: &str, typ: &str, m: i64, n: i64) -> Result<Self, PyEqError> {
         let path = std::path::PathBuf::from(path);
-        Ok(Self(Harmonic::from_dataset(&path, typ, m, n, phase)?))
+        Ok(Self(Harmonic::from_dataset(&path, typ, m, n)?))
     }
 }
 
@@ -32,7 +32,6 @@ impl From<&Harmonic> for PyHarmonic {
                 harmonic.typ.as_str(),
                 harmonic.m,
                 harmonic.n,
-                harmonic.phase,
             )
         )
     }
@@ -43,9 +42,9 @@ py_repr_impl!(PyHarmonic);
 py_get_typ!(PyHarmonic);
 py_get_path!(PyHarmonic);
 py_get_float!(PyHarmonic, psip_wall);
-py_get_float!(PyHarmonic, m);
-py_get_float!(PyHarmonic, n);
-py_get_float!(PyHarmonic, phase);
+py_get_float!(PyHarmonic, phase_average);
+py_get_int!(PyHarmonic, m);
+py_get_int!(PyHarmonic, n);
 py_get_numpy1D!(PyHarmonic, psip_data);
 py_get_numpy1D!(PyHarmonic, a_data);
 py_eval_harmonic!(PyHarmonic, h);
