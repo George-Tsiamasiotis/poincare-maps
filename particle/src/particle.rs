@@ -130,7 +130,7 @@ impl Particle {
                 break;
             }
 
-            dt = solver.calculate_optimal_step(dt);
+            dt = solver.calculate_optimal_step(dt)?;
             state = solver.next_state(dt);
         }
 
@@ -156,11 +156,12 @@ impl Particle {
         self.status = IntegrationStatus::Mapped; // Will be overwritten in case of failure.
         let start = Instant::now();
 
+        use ParticleError::*;
         match map_integrate(self, qfactor, bfield, currents, perturbation, params) {
-            Err(ParticleError::EqError(..)) => {
+            Err(EqError(..) | SolverNan) => {
                 self.status = IntegrationStatus::Escaped;
             }
-            Err(ParticleError::TimedOut(..)) => {
+            Err(TimedOut(..)) => {
                 self.status = IntegrationStatus::TimedOut(start.elapsed());
             }
             Err(err) => {

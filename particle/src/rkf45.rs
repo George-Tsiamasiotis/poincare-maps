@@ -304,7 +304,7 @@ impl Solver {
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
     #[cfg(feature = "energy-adaptive-step")]
-    pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
+    pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> Result<f64> {
         let initial_energy = self.state1.energy();
         let final_energy = self.state6.energy();
         // When the energy diff happens to be smaller than REL_TOL, the optimal step keeps getting
@@ -317,7 +317,7 @@ impl Solver {
         } else {
             0.25
         };
-        SAFETY_FACTOR * h * (ENERGY_REL_TOL / energy_diff).powf(exp)
+        Ok(SAFETY_FACTOR * h * (ENERGY_REL_TOL / energy_diff).powf(exp))
     }
 
     /// Adjust the error by calculating the relative difference
@@ -325,23 +325,25 @@ impl Solver {
     /// Source:
     /// https://www.uni-muenster.de/imperia/md/content/physik_tp/lectures/ss2017/numerische_Methoden_fuer_komplexe_Systeme_II/rkm-1.pdf
     #[cfg(not(feature = "energy-adaptive-step"))]
-    pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> f64 {
+    pub(crate) fn calculate_optimal_step(&mut self, h: f64) -> Result<f64> {
         // Using the max error vs each variable's error is equivalent.
 
-        // FIXME: Decide how to handle possible NaNs here.
-        let mut max_error = (*self
+        // In the case that NaNs are produced inside the solver
+        let mut max_error = self
             .errors
             .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap())
-        .abs();
+            .max_by(|a, b| a.abs().total_cmp(&b.abs()))
+            .copied()
+            .take_if(|max_error| max_error.is_finite())
+            .ok_or(ParticleError::SolverNan)?;
+
         // When all errors happen to be smaller than REL_TOL, the optimal step keeps getting
         // smaller due to the `REL_TOL/max_error` factor, so we need to bound it
         max_error = max_error.max(STEP_REL_TOL / 2.0);
 
         // 0.2 = 1/*(p+1), where p the order
         let exp = if max_error >= STEP_REL_TOL { 0.2 } else { 0.25 };
-        SAFETY_FACTOR * h * (STEP_REL_TOL / max_error).powf(exp)
+        Ok(SAFETY_FACTOR * h * (STEP_REL_TOL / max_error).powf(exp))
     }
 
     pub(crate) fn next_state(&mut self, h: f64) -> State {

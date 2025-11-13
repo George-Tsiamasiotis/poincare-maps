@@ -22,3 +22,5 @@ htmlcov/
 # ignore python scripts and symlinks at the project root
 /*.py
 
+
+benchmarking/

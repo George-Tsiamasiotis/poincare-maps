@@ -63,7 +63,7 @@ pub(crate) fn map_integrate(
         let mut solver = Solver::default();
         solver.init(&state1);
         solver.start(dt, qfactor, bfield, currents, perturbation)?;
-        dt = solver.calculate_optimal_step(dt);
+        dt = solver.calculate_optimal_step(dt)?;
         state2 = solver.next_state(dt);
         state2.evaluate(qfactor, currents, bfield, perturbation)?;
 

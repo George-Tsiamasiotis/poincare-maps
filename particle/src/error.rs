@@ -16,4 +16,8 @@ pub enum ParticleError {
     /// Intersection accuracy check failed.
     #[error("Intersection accuracy check failed.")]
     IntersectionError,
+
+    /// NaN encountered inside solver.
+    #[error("NaN encountered inside solver.")]
+    SolverNan,
 }
