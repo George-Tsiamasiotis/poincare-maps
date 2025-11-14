@@ -458,7 +458,25 @@ class PoincareInit:
         """
 
 class Poincare:
-    """Calculates Poincare maps."""
+    """Calculates Poincare maps.
+
+    Attributes
+    ----------
+    zetas: np.ndarray
+        The calculated ζ angle, ignoring PoincareSection.
+    psips: np.ndarray
+        The calculated ψp flux, ignoring PoincareSection.
+    thetas: np.ndarray
+        The calculated θ angle, ignoring PoincareSection.
+    psis: np.ndarray
+        The calculated ψ flux, ignoring PoincareSection.
+    angles: np.ndarray
+        The calculated map's angles, corresponding to either `ζ` or `θ`, depending
+        on the PoincareSection.
+    fluxes: np.ndarray
+        Returns rhe calculated map's fluxes, corresponding to either `ψp` or `ψ`,
+        depending on the PoincareSection
+    """
 
     init: PoincareInit
     section: str
@@ -466,6 +484,10 @@ class Poincare:
     intersection: int
     angles: np.ndarray
     fluxes: np.ndarray
+    zetas: np.ndarray
+    psips: np.ndarray
+    thetas: np.ndarray
+    psis: np.ndarray
 
     def __init__(self, init: PoincareInit, params: MappingParameters):
         """Constructor

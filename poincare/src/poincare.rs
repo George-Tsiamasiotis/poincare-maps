@@ -91,8 +91,12 @@ impl Poincare {
 }
 
 impl Poincare {
-    array2D_getter_impl!(angles, results.angles, Radians);
-    array2D_getter_impl!(fluxes, results.fluxes, Flux);
+    array2D_getter_impl!(angles, results.angles, (), Radians);
+    array2D_getter_impl!(fluxes, results.fluxes, (), Flux);
+    array2D_getter_impl!(zetas, results.zetas, Radians);
+    array2D_getter_impl!(psips, results.psips, Flux);
+    array2D_getter_impl!(thetas, results.thetas, Radians);
+    array2D_getter_impl!(psis, results.psis, Flux);
 }
 
 fn pbar_print_stats(pbar: &ProgressBar, stats: &Stats) {

@@ -10,6 +10,10 @@ def test_poincare_fields(poincare: Poincare):
     assert poincare.section in ["ConstTheta", "ConstZeta"]
     assert isinstance(poincare.angles, np.ndarray)
     assert isinstance(poincare.fluxes, np.ndarray)
+    assert isinstance(poincare.zetas, np.ndarray)
+    assert isinstance(poincare.psips, np.ndarray)
+    assert isinstance(poincare.thetas, np.ndarray)
+    assert isinstance(poincare.psis, np.ndarray)
     assert isinstance(poincare[1], Particle)
 
 

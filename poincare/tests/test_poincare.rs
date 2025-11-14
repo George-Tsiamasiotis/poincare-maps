@@ -9,7 +9,7 @@ use poincare::*;
 use crate::common::create_equilibrium;
 
 #[test]
-fn test_normal_particle_int() {
+fn test_normal_poincare() {
     let (qfactor, current, bfield, per) = create_equilibrium();
     let psip_wall = qfactor.psip_wall();
 
@@ -30,4 +30,11 @@ fn test_normal_particle_int() {
 
     let mut p = Poincare::new(init, params);
     p.run(&qfactor, &bfield, &current, &per).unwrap();
+
+    p.angles();
+    p.fluxes();
+    p.zetas();
+    p.psips();
+    p.thetas();
+    p.psis();
 }

@@ -76,3 +76,7 @@ py_debug_impl!(PyPoincare);
 py_repr_impl!(PyPoincare);
 py_get_numpy2D!(PyPoincare, angles);
 py_get_numpy2D!(PyPoincare, fluxes);
+py_get_numpy2D!(PyPoincare, zetas);
+py_get_numpy2D!(PyPoincare, psips);
+py_get_numpy2D!(PyPoincare, thetas);
+py_get_numpy2D!(PyPoincare, psis);
