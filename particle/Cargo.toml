@@ -8,6 +8,7 @@ authors.workspace = true
 serde = { workspace = true }
 ndarray= {workspace = true}
 thiserror = {workspace = true}
+criterion = {workspace = true}
 safe_unwrap = {workspace = true}
 rsl-interpolation = {workspace = true}
 utils= {path = "../utils"}
@@ -19,3 +20,11 @@ derive_is_enum_variant = "0.1.1"
 default = []
 energy-adaptive-step = []
 phase-interpolation = ["equilibrium/phase-interpolation"]
+
+[[bench]]
+name = "bench-state"
+harness = false
+
+[[bench]]
+name = "bench-map"
+harness = false

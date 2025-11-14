@@ -15,7 +15,12 @@ dependencies = [
 [tool.maturin]
 module-name = "pyncare._core"
 python-packages = ["pyncare"]
-python-source = "src"
+python-source = "./pyncare/src"
+manifest-path="./pyncare/Cargo.toml"
+# This also seems to solver maturin's and rust-analyzer's cache invalidation problem which forces 
+# pyo3 and rust-numpy to recompile every time
+profile = "release" 
+editable-profile = "release" 
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]

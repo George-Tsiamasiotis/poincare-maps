@@ -5,6 +5,7 @@ members = [ "config","equilibrium", "particle", "poincare", "pyncare", "utils"]
 [workspace.dependencies]
 ndarray = "0.16.1"
 thiserror = "2.0.17"
+criterion = "0.7.0"
 safe_unwrap = "0.4.1"
 serde = {version = "1.0.228", features = ["serde_derive"]}
 rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "cache-dev" }
@@ -15,8 +16,17 @@ authors = ["George Tsiamasiotis"]
 [profile.test]
 opt-level = 1
 
-[profile.release]
-debug = true
+[profile.release-lto]
+inherits = "release"
+opt-level = 3
+debug = "none"
+strip = "symbols"
+debug-assertions = false
+overflow-checks = false
+lto = "fat"
+panic = "abort"
+incremental = false
+codegen-units = 1
 
 # Bevy tip
 

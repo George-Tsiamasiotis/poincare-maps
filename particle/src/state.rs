@@ -121,7 +121,7 @@ pub struct State {
 
 impl State {
     /// Creates a non-evaluated [`State`] from an initial conditions set.
-    pub(crate) fn from_initial(initial: &InitialConditions) -> Self {
+    pub fn from_initial(initial: &InitialConditions) -> Self {
         Self {
             time: initial.time0,
             theta: initial.theta0,
@@ -146,7 +146,7 @@ impl State {
     }
 
     /// Evaluation all quantites derived by (t, θ, ψp, ρ, ζ, μ)
-    pub(crate) fn evaluate(
+    pub fn evaluate(
         &mut self,
         qfactor: &Qfactor,
         currents: &Currents,
