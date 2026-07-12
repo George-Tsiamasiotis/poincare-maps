@@ -11,9 +11,9 @@ use dexter_equilibrium::*;
 #[rustfmt::skip]
 fn empty_perturbation() {
     let p = Perturbation::zero();
-    assert!(p.harmonics().is_empty());
+    assert!(p.modes().is_empty());
 
-    let mut caches: Vec<CosHarmonicCache> = p.generate_caches();
+    let mut caches: DynModeCaches = p.generate_caches();
 
     let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
     assert_eq!(p.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
@@ -33,16 +33,17 @@ fn empty_perturbation() {
 fn cos_toroidal_lcfs_perturbation() {
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     let per = Perturbation::new(&[
-        CosHarmonic::new(1e-3, lcfs, 1, 1, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 3, 0.0),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     ]);
-    let h0: CosHarmonic = per[0].clone();
-    let h1: CosHarmonic = per[1].clone();
-    let harmonics = per.harmonics();
+    let m0: DynMode = per[0].clone();
+    let m1: DynMode= per[1].clone();
+    let modes = per.modes();
+    assert_eq!(modes.len(), 3);
     assert_eq!(per.count(), 3);
 
-    let mut c: Vec<CosHarmonicCache> = per.generate_caches();
+    let mut c: DynModeCaches = per.generate_caches();
 
 
     let (p, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
@@ -65,16 +66,17 @@ fn cos_toroidal_lcfs_perturbation() {
 fn cos_poloidal_lcfs_perturbation() {
     let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     let per = Perturbation::new(&[
-        CosHarmonic::new(1e-3, lcfs, 1, 1, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 3, 0.0),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     ]);
-    let h0: CosHarmonic = per[0].clone();
-    let h1: CosHarmonic = per[1].clone();
-    let harmonics = per.harmonics();
+    let m0: DynMode = per[0].clone();
+    let m1: DynMode = per[1].clone();
+    let modes = per.modes();
+    assert_eq!(modes.len(), 3);
     assert_eq!(per.count(), 3);
 
-    let mut c: Vec<CosHarmonicCache> = per.generate_caches();
+    let mut c: DynModeCaches = per.generate_caches();
 
 
     let (p, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
@@ -96,33 +98,61 @@ fn cos_poloidal_lcfs_perturbation() {
 #[rustfmt::skip]
 fn nc_perturbation() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let h1 = NcHarmonicBuilder::new(&path, "steffen", 2, 1)
+    let m1 = NcFluteModeBuilder::new(&path, "steffen", 2, 1)
         .build()
         .unwrap();
-    let h2 = NcHarmonicBuilder::new(&path, "steffen", 2, 2)
+    let m2 = NcFluteModeBuilder::new(&path, "steffen", 2, 2)
         .build()
         .unwrap();
-    let h3 = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+    let m3 = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
         .build()
         .unwrap();
 
-    let p = dbg!(Perturbation::new(&[h1, h2, h3]));
-    let h0: NcHarmonic = p[0].clone();
-    let h1: NcHarmonic = p[1].clone();
-    let harmonics = p.harmonics();
-    assert_eq!(harmonics.len(), 3);
+    let per = dbg!(Perturbation::new(&[Box::new(m1), Box::new(m2), Box::new(m3)]));
+    let m0: DynMode = per[0].clone();
+    let m1: DynMode = per[1].clone();
+    let modes = per.modes();
+    assert_eq!(modes.len(), 3);
+    assert_eq!(per.count(), 3);
 
-    let mut caches: Vec<NcHarmonicCache> = p.generate_caches();
+    let mut caches: DynModeCaches = per.generate_caches();
 
     let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
-    let _: f64 = p.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.p_of_psip(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_dpsip(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psip_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psip_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = p.dp_of_psip_dt(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.p_of_psip(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_dpsip(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psip_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psip_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psip_dt(psi, theta, zeta, t, &mut caches).unwrap();
+}
+
+#[test]
+#[rustfmt::skip]
+fn mixed_perturbation() {
+    let path = PathBuf::from(TEST_NETCDF_PATH);
+    let lcfs = LastClosedFluxSurface::Toroidal(0.45);
+    let nc_mode = NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+        .build()
+        .unwrap();
+    let mode = FluteMode::new(1e-3, lcfs, 1, 3, 0.0);
+
+    let per = dbg!(Perturbation::new(&[Box::new(nc_mode), Box::new(mode)]));
+    let m0: DynMode = per[0].clone();
+    let m1: DynMode = per[1].clone();
+    let modes = per.modes();
+    assert_eq!(modes.len(), 2);
+    assert_eq!(per.count(), 2);
+
+    let mut caches: DynModeCaches = per.generate_caches();
+
+    let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
+    let _: f64 = per.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap();
 }

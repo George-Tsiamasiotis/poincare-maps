@@ -19,13 +19,13 @@
 //!     - [`LarBfield`]: Large Aspect Ratio magnetic field with B(ψ, θ) = 1 - sqrt(2ψ)cos(θ).
 //!     - [`NcBfield`]: Magnetic reconstructed from a netCDF file.
 //!
-//! + Representations of single perturbation harmonics:
-//!     - [`CosHarmonic`]: Simple analytical harmonic of the form `α*cos(mθ-nζ+φ)`.
-//!     - [`NcHarmonic`]: Single perturbation harmonic from a netCDF file of the form
+//! + Representations of single perturbation modes:
+//!     - [`FluteMode`]: Single analytical flute mode of the form `α*cos(mθ-nζ+φ)`.
+//!     - [`NcFluteMode`]: Single numerical flute mode from a netCDF file of the form
 //!     `α(ψ/ψp) * cos(mθ-nζ+φ(ψ/ψp))`
 //!
 //! + Representations of Perturbations.
-//!     - [`Perturbation`]: A sum of an arbitrary number of [`Harmonics`](Harmonic).
+//!     - [`Perturbation`]: A sum of an arbitrary number of [`Modes`](Mode).
 //!
 //! ## Evaluations:
 //!
@@ -34,11 +34,11 @@
 //! + [`Qfactor`]: Evaluation of q-factor related quantities.
 //! + [`Current`]: Evaluation of plasma current related quantities.
 //! + [`Bfield`]: Evaluation of magnetic field related quantities.
-//! + [`Harmonic`]: Single perturbation harmonic related quantities computation.
+//! + [`Mode`]: Single perturbation mode related quantities computation.
 //!
 //! ## Caching
 //!
-//! The trait [`Harmonic`] requires a [`HarmonicCache`] object to be passed as a parameter. Such an
+//! The trait [`Mode`]'s methods requires a [`ModeCache`] object to be passed as a parameter. Such an
 //! object caches values such as angles' modulos and their sines/cosines, or amplitudes/phases
 //! calculated with interpolation. It may also store the necessary
 //! [`Accelerators`](rsl_interpolation::Accelerator). Since many evaluation methods are called with
@@ -46,8 +46,8 @@
 //! makes sense to cache values that appear many times in these methods and can be expensive in
 //! tight loops.
 //!
-//! + [`CosHarmonicCache`]: Cache for [`CosHarmonic`]
-//! + [`NcHarmonicCache`]: Cache for [`NcHarmonic`]
+//! + [`FluteModeCache`]: Cache for [`FluteMode`]
+//! + [`NcFluteModeCache`]: Cache for [`NcFluteMode`]
 //!
 //! ## Data extraction
 //!
@@ -59,7 +59,7 @@
 //! + [`extract::array_1d`]: 1D array extraction.
 //! + [`extract::array_2d`]: 2D array extraction.
 //! + [`extract::array_3d`]: 3D array extraction.
-//! + [`extract::harmonic_arrays`]: Extraction of the α and φ arrays of the {m,n} mode. Modes are indexed
+//! + [`extract::mode_arrays`]: Extraction of the α and φ arrays of the {m,n} mode. Modes are indexed
 //! by their mode numbers, rather than the logical index they appear on the data
 //! arrays.
 //! + [`extract::variable`]: Extraction of a variable as a [`Variable`](netcdf::Variable).
@@ -80,8 +80,9 @@ pub use objects::{EquilibriumType, LastClosedFluxSurface};
 
 pub use objects::nc_flux::FluxCoordinateState;
 
-pub use eval::HarmonicCache;
-pub use eval::{Bfield, Current, FluxCommute, Geometry, Harmonic, Qfactor};
+pub use eval::ModeCache;
+pub use eval::{Bfield, Current, FluxCommute, Geometry, Mode, Qfactor};
+pub use eval::{DynMode, DynModeCache};
 
 pub use objects::geometries::LarGeometry;
 pub use objects::geometries::NcGeometry;
@@ -100,10 +101,10 @@ pub use objects::bfield::LarBfield;
 pub use objects::bfield::NcBfield;
 pub use objects::bfield::NcBfieldBuilder;
 
-pub use objects::harmonics::{CosHarmonic, CosHarmonicCache};
-pub use objects::nc_harmonic::{NcHarmonic, NcHarmonicBuilder, NcHarmonicCache, PhaseMethod};
+pub use objects::flute_mode::{FluteMode, FluteModeCache};
+pub use objects::nc_flute_mode::{NcFluteMode, NcFluteModeBuilder, NcFluteModeCache, PhaseMethod};
 
-pub use objects::perturbation::Perturbation;
+pub use objects::perturbation::{DynModeCaches, DynModes, Perturbation};
 
 // ============== Configuration constants
 
@@ -113,6 +114,6 @@ pub mod constants {
     pub const DEFAULT_THETA_PADDING_WIDTH: usize = 15;
 
     /// The index of the flux array, under which to switch to the analytical formula for the
-    /// [`crate::NcHarmonic`] in order to ensure the correct `~sqrt(ψ)` behaviour near the axis.
+    /// [`crate::NcFluteMode`] in order to ensure the correct `~sqrt(ψ)` behaviour near the axis.
     pub const NC_ANALYTICAL_THRESHOLD_INDEX: usize = 3;
 }

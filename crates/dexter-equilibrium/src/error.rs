@@ -21,7 +21,7 @@ pub enum EqError {
 
     /// Analytical threshold index cannot be greater that the number of data points.
     #[error("Analytical threshold index cannot be greater that the number of data points")]
-    InvalidHarmonicAnalyticalThresholdIndex,
+    InvalidFluteModeAnalyticalThresholdIndex,
 }
 
 /// Evaluation related errors.
@@ -92,9 +92,9 @@ pub enum NcError {
     #[error("'{0}' variable not found in NetCDF file")]
     VariableNotFound(Box<str>),
 
-    /// Harmonic with passed mode number does not exist.
+    /// Mode with passed mode number does not exist.
     #[error("Mode '{which}={mode}' not found in the NetCDF file.")]
-    HarmonicModeNotFound {
+    FluteModeNotFound {
         /// The name of the mode ('m' or 'n').
         which: String,
         /// The mode number.

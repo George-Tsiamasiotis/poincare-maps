@@ -3,12 +3,16 @@
 //! For analytical equilibria, this is achieved by evaluation of analytical formulas, while for
 //! numerical equilibria by interpolation over the reconstructed data arrays.
 
-use core::fmt::Debug;
-
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, Cache};
 
 use crate::{EvalError, FluxCoordinateState};
+
+/// Reference to a dynamically dispatched [`Mode`] object.
+pub type DynMode = Box<dyn Mode>;
+
+/// Reference to a dynamically dispatched [`ModeCache`] object.
+pub type DynModeCache = Box<dyn ModeCache>;
 
 /// Equilibrium geometry related quantities computation.
 pub trait Geometry {
@@ -933,24 +937,35 @@ pub trait Bfield {
     ) -> Result<f64, EvalError>;
 }
 
-/// Defines the behavior of objects that support caching of a [`Harmonic`]'s values.
+/// Defines the behavior of objects that support caching of a [`Mode`]'s values.
 ///
-/// # Use inside evaluation methods
-///
-/// All non-trivial [`Harmonic`] evaluation methods must be guarded by a:
+/// All non-trivial [`Mode`] evaluation methods must be guarded by a:
 /// ```notest
 /// if !cache.is_updated() {
 ///     cache.update()
 /// }
 /// ```
 /// statement before using the cache.
-pub trait HarmonicCache: Default + Clone + Debug {
+#[expect(
+    private_bounds,
+    reason = "only used internally for creating Perturbation"
+)]
+pub trait ModeCache: DynModeCacheClone {
     /// Checks if the cache's stored independent coordinates are up-to-date, i.e. are equal to the
     /// passed arguments.
     fn is_updated(&mut self, flux: f64, theta: f64, zeta: f64, t: f64) -> bool;
 
     /// Updates the cache's coordinates and intermediate values.
     fn update(&mut self, flux: f64, theta: f64, zeta: f64, t: f64);
+
+    /// Returns a mutable reference to the cache's `cache` array.
+    fn cache(&mut self) -> &mut [f64];
+
+    /// Returns a reference to the cache's `params` array.
+    fn params(&mut self) -> &[f64];
+
+    /// Returns a mutable reference to the cache's [`Accelerator`], if it exists.
+    fn acc(&mut self) -> Option<&mut Accelerator>;
 
     /// Returns the cache's hits.
     fn hits(&self) -> usize;
@@ -959,40 +974,41 @@ pub trait HarmonicCache: Default + Clone + Debug {
     fn misses(&self) -> usize;
 }
 
-/// Single perturbation harmonic related quantities computation.
-pub trait Harmonic: Clone {
-    /// The implementor's corresponding caching object.
-    type Cache: HarmonicCache;
-
+/// Single perturbation mode related quantities computation.
+#[expect(
+    private_bounds,
+    reason = "only used internally for creating Perturbation"
+)]
+pub trait Mode: DynModeClone {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
     fn psip_state(&self) -> FluxCoordinateState;
 
-    /// Returns a default instance of the Harmonic's corresponding caching object.
+    /// Returns a default instance of the Mode's corresponding caching object.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let cache1 = harmonic.generate_cache();
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let cache1 = mode.generate_cache();
     /// # Ok::<_, EqError>(())
     /// ```
-    fn generate_cache(&self) -> Self::Cache;
+    fn generate_cache(&self) -> DynModeCache;
 
-    /// Calculates the harmonic's amplitude `α(ψ, θ, ζ, t)`.
+    /// Calculates the mode's amplitude `α(ψ, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let a = harmonic.alpha_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let a = mode.alpha_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1005,19 +1021,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's amplitude `α(ψp, θ, ζ, t)`.
+    /// Calculates the mode's amplitude `α(ψp, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let a = harmonic.alpha_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let a = mode.alpha_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1030,19 +1046,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's phase `φ(ψ, θ, ζ, t)`.
+    /// Calculates the mode's phase `φ(ψ, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let phase = harmonic.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let phase = mode.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1055,19 +1071,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's phase `φ(ψ, θ, ζ, t)`.
+    /// Calculates the mode's phase `φ(ψ, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let phase = harmonic.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let phase = mode.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1080,19 +1096,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the full harmonic's value `h(ψ, θ, ζ, t)`.
+    /// Calculates the full mode's value `h(ψ, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let h = harmonic.h_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let h = mode.h_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1105,19 +1121,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the full harmonic's value `h(ψp, θ, ζ, t)`.
+    /// Calculates the full mode's value `h(ψp, θ, ζ, t)`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let h = harmonic.h_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let h = mode.h_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1130,19 +1146,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to ψ, `dh(ψ, θ, ζ, t)/dψ`.
+    /// Calculates the mode's derivative with respect to ψ, `dh(ψ, θ, ζ, t)/dψ`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_dpsi = harmonic.dh_dpsi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_dpsi = mode.dh_dpsi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1155,19 +1171,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to ψp, `dh(ψp, θ, ζ, t)/dψp`.
+    /// Calculates the mode's derivative with respect to ψp, `dh(ψp, θ, ζ, t)/dψp`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_dpsip = harmonic.dh_dpsip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_dpsip = mode.dh_dpsip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1180,19 +1196,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to θ, `dh(ψ, θ, ζ, t)/dθ`.
+    /// Calculates the mode's derivative with respect to θ, `dh(ψ, θ, ζ, t)/dθ`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psi_dtheta = harmonic.dh_of_psi_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psi_dtheta = mode.dh_of_psi_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1205,19 +1221,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to θ, `dh(ψp, θ, ζ, t)/dθ`.
+    /// Calculates the mode's derivative with respect to θ, `dh(ψp, θ, ζ, t)/dθ`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psip_dtheta = harmonic.dh_of_psip_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psip_dtheta = mode.dh_of_psip_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1230,19 +1246,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to ζ, `dh(ψ, θ, ζ, t)/dζ`.
+    /// Calculates the mode's derivative with respect to ζ, `dh(ψ, θ, ζ, t)/dζ`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psi_dzeta = harmonic.dh_of_psi_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psi_dzeta = mode.dh_of_psi_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1255,19 +1271,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to ζ, `dh(ψp, θ, ζ, t)/dζ`.
+    /// Calculates the mode's derivative with respect to ζ, `dh(ψp, θ, ζ, t)/dζ`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psip_dzeta = harmonic.dh_of_psip_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psip_dzeta = mode.dh_of_psip_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1280,19 +1296,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to t, `dh(ψ, θ, ζ, t)/dt`.
+    /// Calculates the mode's derivative with respect to t, `dh(ψ, θ, ζ, t)/dt`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psi_dt = harmonic.dh_of_psi_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psi_dt = mode.dh_of_psi_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1305,19 +1321,19 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the harmonic's derivative with respect to t, `dh(ψp, θ, ζ, t)/dt`.
+    /// Calculates the mode's derivative with respect to t, `dh(ψp, θ, ζ, t)/dt`.
     ///
     /// # Example
     ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
-    /// let mut cache = harmonic.generate_cache();
-    /// let dh_of_psip_dt = harmonic.dh_of_psip_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mut cache = mode.generate_cache();
+    /// let dh_of_psip_dt = mode.dh_of_psip_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -1330,6 +1346,53 @@ pub trait Harmonic: Clone {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
+}
+
+// ================================================================================================
+
+// HACK: This is necessary to clone `dynMode` = `Box<dyn Mode>`.
+// https://stackoverflow.com/questions/30353462/how-to-clone-a-struct-storing-a-boxed-trait-object
+
+/// Clone `Box<dyn Mode>`.
+trait DynModeClone {
+    /// Clone box.
+    fn clone_box(&self) -> DynMode;
+}
+
+/// Clone `Box<dyn ModeCache>`.
+trait DynModeCacheClone {
+    /// Clone box.
+    fn clone_box(&self) -> DynModeCache;
+}
+
+impl<M> DynModeClone for M
+where
+    M: 'static + Mode + Clone,
+{
+    fn clone_box(&self) -> DynMode {
+        Box::new(self.clone())
+    }
+}
+
+impl<C> DynModeCacheClone for C
+where
+    C: 'static + ModeCache + Clone,
+{
+    fn clone_box(&self) -> DynModeCache {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for DynMode {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+impl Clone for DynModeCache {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }

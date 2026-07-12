@@ -388,14 +388,14 @@ pub fn array_3d<T: NcType>(file: &NcFile, name: &str) -> Result<Array3<T>, NcErr
 /// let path = PathBuf::from("netcdf.nc");
 /// let file = extract::open(&path)?;
 ///
-/// let (harmonic32_alpha, harmonic32_phase) = extract::harmonic_arrays::<f64>(&file, 3, 2)?;
+/// let (mode32_alpha, mode32_phase) = extract::mode_arrays::<f64>(&file, 3, 2)?;
 /// # Ok::<_, EqError>(())
 /// ```
 ///
 /// # Errors
 ///
-/// Returns an [`NcError`] if the `netCDF` file does not contain the {`m`, `n`} harmonic.
-pub fn harmonic_arrays<T: NcType>(
+/// Returns an [`NcError`] if the `netCDF` file does not contain the {`m`, `n`} mode.
+pub fn mode_arrays<T: NcType>(
     file: &NcFile,
     m_mode: i64,
     n_mode: i64,
@@ -412,7 +412,7 @@ pub fn harmonic_arrays<T: NcType>(
     Ok((alpha_1d, phase_1d))
 }
 
-/// Returns the logical index of a harmonic's 1D arrays.
+/// Returns the logical index of a mode's 1D arrays.
 ///
 /// For example, if the `netCDF` file contains m = [-1, 0, 1, 2, 4], and we want the arrays
 /// corresponding to m=1, we create the following index-mode mapping:
@@ -443,7 +443,7 @@ fn get_logical_index(file: &NcFile, mode: i64, field: &str) -> Result<usize, NcE
     assert!(pair.len() <= 1, "Duplicate mode numbers found");
 
     pair.first()
-        .ok_or_else(|| NcError::HarmonicModeNotFound {
+        .ok_or_else(|| NcError::FluteModeNotFound {
             which: field.to_lowercase(),
             mode,
         })
@@ -546,7 +546,7 @@ mod test {
     /// WARN: Make sure this test is up to date with the stub netcdf file.
     /// We inspect the (2,2) mode, which corresponds to the indices (0, 1).
     #[test]
-    fn netcdf_harmonic_extraction_values() {
+    fn nc_flute_mode_extraction_values() {
         let file = open_test_file();
 
         let alpha_3d = array_3d::<f64>(&file, NC_ALPHAS_NORM).unwrap();
@@ -578,7 +578,7 @@ mod test {
 
         // Index by mode number
         assert_eq!(
-            harmonic_arrays::<f64>(&file, 2, 2)
+            mode_arrays::<f64>(&file, 2, 2)
                 .unwrap()
                 .0
                 .first()
@@ -588,7 +588,7 @@ mod test {
             "Is this test up to date with the stub netcdf file?"
         );
         assert_eq!(
-            harmonic_arrays::<f64>(&file, 2, 2)
+            mode_arrays::<f64>(&file, 2, 2)
                 .unwrap()
                 .0
                 .last()
@@ -598,7 +598,7 @@ mod test {
             "Is this test up to date with the stub netcdf file?"
         );
         assert_eq!(
-            harmonic_arrays::<f64>(&file, 2, 2)
+            mode_arrays::<f64>(&file, 2, 2)
                 .unwrap()
                 .1
                 .first()
@@ -608,7 +608,7 @@ mod test {
             "Is this test up to date with the stub netcdf file?"
         );
         assert_eq!(
-            harmonic_arrays::<f64>(&file, 2, 2)
+            mode_arrays::<f64>(&file, 2, 2)
                 .unwrap()
                 .1
                 .last()
@@ -654,8 +654,8 @@ mod test {
         ));
 
         assert!(matches!(
-            dbg!(harmonic_arrays::<f64>(&file, 1000, -2000)),
-            Err(NcError::HarmonicModeNotFound { .. })
+            dbg!(mode_arrays::<f64>(&file, 1000, -2000)),
+            Err(NcError::FluteModeNotFound { .. })
         ));
     }
 }

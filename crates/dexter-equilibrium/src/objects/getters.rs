@@ -64,10 +64,10 @@ macro_rules! lcfs_getter_impl {
     };
 }
 
-/// Generates getters for a Harmonic's `m` and `n` mode numbers.
+/// Generates getters for a flute mode's `m` and `n` mode numbers.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! harmonic_mode_number_getter_impl {
+macro_rules! flute_mode_number_getter_impl {
     () => {
         /// Returns the poloidal mode number `m`.
         #[must_use]
@@ -83,19 +83,25 @@ macro_rules! harmonic_mode_number_getter_impl {
     };
 }
 
-/// Generates getters for a [`HarmonicCache`] implementor's hits and misses
+/// Generates getters for a [`crate::ModeCache`] implementor's hits and misses
 #[doc(hidden)]
 #[macro_export]
-macro_rules! harmonic_cache_counts_getter_impl {
+macro_rules! mode_cache_getters_impl {
     ($obj: ident) => {
-        /// Returns the Cache's hit count.
         fn hits(&self) -> usize {
             self.hits
         }
 
-        /// Returns the Cache's miss count.
         fn misses(&self) -> usize {
             self.misses
+        }
+
+        fn cache(&mut self) -> &mut [f64] {
+            &mut self.cache
+        }
+
+        fn params(&mut self) -> &[f64] {
+            &self.params
         }
     };
 }

@@ -68,28 +68,28 @@ fn evaluations_benchmark(c: &mut Criterion) {
 
     // ===========================================================================================
 
-    let cos_harmonic = CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0);
-    let nc_harmonic = NcHarmonicBuilder::new(&path, "steffen", 2, 1)
+    let flute_mode = FluteMode::new(1e-3, lcfs, 1, 2, 0.0);
+    let nc_flute_mode = NcFluteModeBuilder::new(&path, "steffen", 2, 1)
         .with_phase_method(PhaseMethod::Interpolation)
         .build()
         .unwrap();
-    let mut cos_cache = cos_harmonic.generate_cache();
-    let mut nc_cache = nc_harmonic.generate_cache();
+    let mut flute_mode_cache = flute_mode.generate_cache();
+    let mut nc_flute_mode_cache = nc_flute_mode.generate_cache();
 
-    let mut group = c.benchmark_group("Harmonic H(ψ, θ , ζ, t) evaluation");
+    let mut group = c.benchmark_group("Flute mode α(ψ, θ , ζ, t) evaluation");
 
     group.bench_with_input(
-        "CosHarmonic",
+        "Analytical flute mode",
         &(psi, theta, zeta, t),
         |b, &(psi, theta, zeta, t)| {
-            b.iter(|| cos_harmonic.h_of_psi(psi, theta, zeta, t, &mut cos_cache));
+            b.iter(|| flute_mode.h_of_psi(psi, theta, zeta, t, &mut flute_mode_cache));
         },
     );
     group.bench_with_input(
-        "NcHarmonic",
+        "Nc flute mode",
         &(psi, theta, zeta, t),
         |b, &(psi, theta, zeta, t)| {
-            b.iter(|| nc_harmonic.h_of_psi(psi, theta, zeta, t, &mut nc_cache));
+            b.iter(|| nc_flute_mode.h_of_psi(psi, theta, zeta, t, &mut nc_flute_mode_cache));
         },
     );
     group.finish();

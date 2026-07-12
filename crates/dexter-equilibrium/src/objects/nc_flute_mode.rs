@@ -1,11 +1,4 @@
-//! Representation of a numerical equilibrium's single harmonic.
-
-use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    equilibrium_type_getter_impl, harmonic_cache_counts_getter_impl,
-    harmonic_mode_number_getter_impl, interp_type_getter_impl, netcdf_path_getter_impl,
-    netcdf_version_getter_impl,
-};
+//! Representation of a numerical equilibrium's single flute mode.
 
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, DynInterpolation, InterpType, make_interp_type};
@@ -15,10 +8,15 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::constants::NC_ANALYTICAL_THRESHOLD_INDEX;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
+use crate::{DynModeCache, EquilibriumType, Mode, ModeCache};
 use crate::{EqError, EvalError};
-use crate::{EquilibriumType, Harmonic, HarmonicCache};
+use crate::{
+    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
+    equilibrium_type_getter_impl, flute_mode_number_getter_impl, interp_type_getter_impl,
+    mode_cache_getters_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
+};
 
-/// Defines the calculation method of the phase `φ` in an [`NcHarmonic`].
+/// Defines the calculation method of the phase `φ` in an [`NcFluteMode`].
 #[derive(Default, Debug, Clone)]
 pub enum PhaseMethod {
     /// Corresponds to `φ = 0`.
@@ -44,10 +42,10 @@ impl PhaseMethod {
     }
 }
 
-/// Used to create an [`NcHarmonic`].
+/// Used to create an [`NcFluteMode`].
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct NcHarmonicBuilder {
+pub struct NcFluteModeBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
     /// 1D [`DynInterpolation`] type (case-insensitive).
@@ -62,8 +60,8 @@ pub struct NcHarmonicBuilder {
     analytical_threshold_index: usize,
 }
 
-impl NcHarmonicBuilder {
-    /// Creates a new [`NcHarmonicBuilder`] from a netCDF file at `path`, with spline of
+impl NcFluteModeBuilder {
+    /// Creates a new [`NcFluteModeBuilder`] from a netCDF file at `path`, with spline of
     /// `interp1d_type` interpolation type.
     ///
     /// # Example
@@ -71,7 +69,7 @@ impl NcHarmonicBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcHarmonicBuilder::new(&path, "steffen", 3, 2);
+    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2);
     /// ```
     #[must_use]
     pub fn new(path: &Path, interp_type: &str, m: i64, n: i64) -> Self {
@@ -92,7 +90,7 @@ impl NcHarmonicBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
     ///     .with_phase_method(PhaseMethod::Interpolation)
     ///     .build()?;
     /// # Ok::<_, EqError>(())
@@ -103,13 +101,13 @@ impl NcHarmonicBuilder {
         self
     }
 
-    /// Sets the harmonic's analytical threshold point.
+    /// Sets the modes's analytical threshold point.
     ///
     /// By definition, flute modes must behave like `sqrt(ψ)` close to the axis, and therefore their
     /// derivative with respect to the flux must go to infinity. This is a behavior that splines
     /// cannot replicate, resulting to unnatural orbits close to the magnetic axis.
     ///
-    /// To solve this, the harmonic switches to an analytical formula for the values of `ψ/ψp` under
+    /// To solve this, the mode switches to an analytical formula for the values of `ψ/ψp` under
     /// a certain threshold. The threshold is defined by the flux value at the position `index` of
     /// the data array.
     ///
@@ -130,7 +128,7 @@ impl NcHarmonicBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
     ///     .with_analytical_threshold_index(4)
     ///     .build()?;
     /// # Ok::<_, EqError>(())
@@ -141,37 +139,37 @@ impl NcHarmonicBuilder {
         self
     }
 
-    /// Creates a new [`NcHarmonic`] with the Builder's configuration.
+    /// Creates a new [`NcFluteMode`] with the Builder's configuration.
     ///
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let harmonic = NcHarmonicBuilder::new(&path, "cubic", 3, 2).build()?;
+    /// let mode = NcFluteModeBuilder::new(&path, "cubic", 3, 2).build()?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcHarmonic`].
-    pub fn build(self) -> Result<NcHarmonic, EqError> {
-        NcHarmonic::build(self)
+    /// Returns an [`EqError`] if it fails to build the [`NcFluteMode`].
+    pub fn build(self) -> Result<NcFluteMode, EqError> {
+        NcFluteMode::build(self)
     }
 }
 
-/// Single perturbation harmonic from a netCDF file.
+/// Single perturbation flute mode from a netCDF file.
 ///
-/// The harmonic has the form of `α(ψ/ψp) * cos(mθ-nζ+φ(ψ/ψp))`, where `α` and `φ` can be expressed
+/// The mode has the form of `α(ψ/ψp) * cos(mθ-nζ+φ(ψ/ψp))`, where `α` and `φ` can be expressed
 /// as functions of either or both `ψ`, `ψp`, and are calculated by interpolation over the
 /// numerical data.
 ///
 /// `φ` calculation can be further configured with the [`PhaseMethod`] helper struct.
 ///
-/// Should be created with an [`NcHarmonicBuilder`].
+/// Should be created with an [`NcFluteModeBuilder`].
 #[non_exhaustive]
 #[derive(Clone)]
-pub struct NcHarmonic {
+pub struct NcFluteMode {
     /// Path to the netCDF file.
     path: PathBuf,
     /// netCDF's [`semver::Version`].
@@ -182,20 +180,20 @@ pub struct NcHarmonic {
     /// The interpolation type.
     interp_type: String,
 
-    /// The harmonic's poloidal mode number `m`.
+    /// The modes's poloidal mode number `m`.
     m: i64,
-    /// The harmonic's toroidal mode number `n`.
+    /// The modes's toroidal mode number `n`.
     n: i64,
 
-    /// The harmonic as a function of `ψ`.
-    psi_single: SingleNcHarmonic,
-    /// The harmonic as a function of `ψp`.
-    psip_single: SingleNcHarmonic,
+    /// The mode as a function of `ψ`.
+    psi_single: SingleNcFluteMode,
+    /// The mode as a function of `ψp`.
+    psip_single: SingleNcFluteMode,
 }
 
-impl NcHarmonic {
-    /// Constructs an [`NcHarmonic`] from an [`NcHarmonicBuilder`].
-    pub(crate) fn build(builder: NcHarmonicBuilder) -> Result<Self, EqError> {
+impl NcFluteMode {
+    /// Constructs an [`NcFluteMode`] from an [`NcFluteModeBuilder`].
+    pub(crate) fn build(builder: NcFluteModeBuilder) -> Result<Self, EqError> {
         use crate::extract;
 
         // Make path absolute for display purposes.
@@ -206,8 +204,8 @@ impl NcHarmonic {
         let psi = NcFlux::toroidal(&file);
         let psip = NcFlux::poloidal(&file);
 
-        let psi_single = SingleNcHarmonic::build(&file, &builder, psi, "ψ".into())?;
-        let psip_single = SingleNcHarmonic::build(&file, &builder, psip, "ψp".into())?;
+        let psi_single = SingleNcFluteMode::build(&file, &builder, psi, "ψ".into())?;
+        let psip_single = SingleNcFluteMode::build(&file, &builder, psip, "ψp".into())?;
 
         Ok(Self {
             equilibrium_type: EquilibriumType::Numerical,
@@ -231,9 +229,9 @@ impl NcHarmonic {
     }
 }
 
-impl std::fmt::Debug for NcHarmonic {
+impl std::fmt::Debug for NcFluteMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NcHarmonic")
+        f.debug_struct("NcFluteMode")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
             .field("equilibrium type", &self.equilibrium_type())
@@ -251,18 +249,21 @@ impl std::fmt::Debug for NcHarmonic {
     }
 }
 
-/// Stores an [`NcHarmonic`]'s constant parameters and cached quantities.
+/// Stores an [`NcFluteMode`]'s constant parameters and cached quantities.
 #[derive(Debug, Clone)]
-pub struct NcHarmonicCache {
+pub struct NcFluteModeCache {
     /// The number of cache hits.
     hits: usize,
     /// The number of cache misses.
     misses: usize,
-    /// The harmonic's poloidal mode number `m`, casted to `f64` to use for evaluations.
-    m: f64,
-    /// The harmonic's toroidal mode number `n`, casted to `f64` to use for evaluations.
-    n: f64,
-    /// Ordered array with the intermediate values.
+    /// Ordered array with the mode's static parameters.
+    ///
+    /// params = [
+    ///     0 = m
+    ///     1 = n
+    /// ].
+    params: [f64; 2],
+    /// Ordered array with the modes intermediate cached values.
     ///
     /// cache = [
     ///     0 = flux
@@ -281,20 +282,19 @@ pub struct NcHarmonicCache {
     acc: Accelerator,
 }
 
-impl Default for NcHarmonicCache {
+impl Default for NcFluteModeCache {
     fn default() -> Self {
         Self {
             hits: 0,
             misses: 0,
-            m: f64::NAN,
-            n: f64::NAN,
+            params: [f64::NAN; 2],
             cache: [f64::NAN; 10],
             acc: Accelerator::new(),
         }
     }
 }
 
-impl HarmonicCache for NcHarmonicCache {
+impl ModeCache for NcFluteModeCache {
     fn is_updated(&mut self, flux: f64, theta: f64, zeta: f64, _: f64) -> bool {
         #[expect(
             clippy::float_cmp,
@@ -314,17 +314,20 @@ impl HarmonicCache for NcHarmonicCache {
         self.cache[1] = theta;
         self.cache[2] = zeta;
 
-        self.cache[7] = (self.m * theta - self.n * zeta + self.cache[5]).rem_euclid(TAU);
+        self.cache[7] =
+            (self.params()[0] * theta - self.params()[1] * zeta + self.cache[5]).rem_euclid(TAU);
         (self.cache[8], self.cache[9]) = self.cache[7].sin_cos();
     }
 
-    harmonic_cache_counts_getter_impl!(NcHarmonicCache);
+    fn acc(&mut self) -> Option<&mut Accelerator> {
+        Some(&mut self.acc)
+    }
+
+    mode_cache_getters_impl!(NcFluteModeCache);
 }
 
 // Perform psi/psip debug assertions here since he have the extra information about the flux.
-impl Harmonic for NcHarmonic {
-    type Cache = NcHarmonicCache;
-
+impl Mode for NcFluteMode {
     fn psi_state(&self) -> FluxCoordinateState {
         self.psi_single.flux.state()
     }
@@ -333,13 +336,12 @@ impl Harmonic for NcHarmonic {
         self.psip_single.flux.state()
     }
 
-    fn generate_cache(&self) -> Self::Cache {
-        Self::Cache {
-            m: self.m as f64,
-            n: self.n as f64,
+    fn generate_cache(&self) -> DynModeCache {
+        Box::new(NcFluteModeCache {
+            params: [self.m as f64, self.n as f64],
             cache: [f64::NAN; 10],
             ..Default::default()
-        }
+        })
     }
 
     fn alpha_of_psi(
@@ -348,7 +350,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "α(ψ)")?;
@@ -361,7 +363,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "α(ψp)")?;
@@ -374,7 +376,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "φ(ψ)")?;
@@ -387,7 +389,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "φ(ψp)")?;
@@ -400,7 +402,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "h(ψ)")?;
@@ -413,7 +415,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "h(ψp)")?;
@@ -426,7 +428,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dψ")?;
@@ -439,7 +441,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dψp")?;
@@ -452,7 +454,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dθ")?;
@@ -465,7 +467,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dθ")?;
@@ -478,7 +480,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dζ")?;
@@ -491,7 +493,7 @@ impl Harmonic for NcHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut Self::Cache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dζ")?;
@@ -504,7 +506,7 @@ impl Harmonic for NcHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut Self::Cache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(0.0)
@@ -516,7 +518,7 @@ impl Harmonic for NcHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut Self::Cache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Ok(0.0)
@@ -524,14 +526,14 @@ impl Harmonic for NcHarmonic {
 }
 
 // Getters.
-impl NcHarmonic {
+impl NcFluteMode {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
     equilibrium_type_getter_impl!();
     interp_type_getter_impl!(1);
-    harmonic_mode_number_getter_impl!();
+    flute_mode_number_getter_impl!();
 
-    /// Returns the `NcHarmonic`'s [`PhaseMethod`].
+    /// Returns the mode's [`PhaseMethod`].
     ///
     /// Both flux coordinates have the same [`PhaseMethod`].
     #[must_use]
@@ -603,7 +605,7 @@ impl NcHarmonic {
     /// Returns the index of the analytical threshold.
     #[must_use]
     pub fn analytical_threshold_index(&self) -> usize {
-        // This exists in both single harmonics
+        // This exists in both single modes
         self.psi_single.analytical_threshold_index
     }
 }
@@ -611,23 +613,23 @@ impl NcHarmonic {
 // ===============================================================================================
 // ===============================================================================================
 
-/// Representation of a numerical Harmonic, defined as a function of only one of the two flux
+/// Representation of a numerical flute mode, defined as a function of only one of the two flux
 /// coordinates (and θ, ζ, t).
 ///
-/// Splitting an [`NcHarmonic`] into two `SingleNcHarmonics` makes the code much clearer.
+/// Splitting an [`NcFluteMode`] into two `SingleNcFluteModes` makes the code much clearer.
 ///
-/// Both harmonics end up identical, with the only difference being the corresponding [`NcFlux`].
+/// Both modes end up identical, with the only difference being the corresponding [`NcFlux`].
 #[non_exhaustive]
-struct SingleNcHarmonic {
+struct SingleNcFluteMode {
     /// The interpolation type.
     interp_type: String,
     /// The current flux coordinate.
     flux: NcFlux,
-    /// `ψ` or `ψp`, to be used in [`EqError::UndefinedEvaluation`] message.
+    /// `ψ` or `ψp`, to be used in [`EvalError::UndefinedEvaluation`] message.
     which: Box<str>,
-    /// The harmonic's poloidal mode number `m`.
+    /// The mode's poloidal mode number `m`.
     m: i64,
-    /// The harmonic's toroidal mode number `n`.
+    /// The mode's toroidal mode number `n`.
     n: i64,
     /// The phase calculation method.
     phase_method: PhaseMethod,
@@ -655,7 +657,7 @@ struct SingleNcHarmonic {
 }
 
 // Unforturately we must rebuild the interpolators, since they are trait objects.
-impl Clone for SingleNcHarmonic {
+impl Clone for SingleNcFluteMode {
     fn clone(&self) -> Self {
         Self {
             interp_type: self.interp_type.clone(),
@@ -685,20 +687,20 @@ impl Clone for SingleNcHarmonic {
 }
 
 // Creation.
-impl SingleNcHarmonic {
-    /// Creates a `SingleNcHarmonic` from a [`NcFlux`].
+impl SingleNcFluteMode {
+    /// Creates a `SingleNcFluteMode` from a [`NcFlux`].
     ///
     /// The object always exists, even if the corresponding flux coordinate does not exist, so all
     /// logic and error handling is handle here.
     pub(crate) fn build(
         file: &netcdf::File,
-        builder: &NcHarmonicBuilder,
+        builder: &NcFluteModeBuilder,
         flux: NcFlux,
         which: Box<str>,
     ) -> Result<Self, EqError> {
         use crate::extract;
 
-        let (alpha_data, phase_data) = extract::harmonic_arrays(file, builder.m, builder.n)?;
+        let (alpha_data, phase_data) = extract::mode_arrays(file, builder.m, builder.n)?;
         let alphas = alpha_data.to_vec();
         let phases = phase_data.to_vec();
 
@@ -789,7 +791,7 @@ impl SingleNcHarmonic {
             .uvalues()
             .get(self.analytical_threshold_index)
             .copied()
-            .ok_or(EqError::InvalidHarmonicAnalyticalThresholdIndex)?;
+            .ok_or(EqError::InvalidFluteModeAnalyticalThresholdIndex)?;
         let switch_alpha = interp
             .eval(self.flux.uvalues(), &self.alpha_values, flux_value, acc)
             .expect("domain just checked");
@@ -816,7 +818,7 @@ impl SingleNcHarmonic {
 }
 
 /// External cache update.
-impl SingleNcHarmonic {
+impl SingleNcFluteMode {
     /// Updates the interpolated values, since they cannot take place inside the cache without
     /// messing up the whole structure.
     ///
@@ -826,43 +828,42 @@ impl SingleNcHarmonic {
     fn update_cache_interps(
         &self,
         flux: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<(), EvalError> {
-        let acc = &mut cache.acc;
 
         if self.analytical_threshold_flux.is_some_and(|threshold| flux < threshold) {
             let root = flux.sqrt();
             let patch_beta = self.patch_beta.expect("just checked");
             let patch_gamma = self.patch_gamma.expect("just checked");
-            cache.cache[3] = patch_beta * root + patch_gamma;
-            cache.cache[4] = patch_beta / (2.0 * root);
+            cache.cache()[3] = patch_beta * root + patch_gamma;
+            cache.cache()[4] = patch_beta / (2.0 * root);
         } else {
-            cache.cache[3] = match self.alpha_interp.as_ref() {
-                Some(interp) => interp.eval(self.flux.uvalues(), &self.alpha_values, flux, acc)?,
+            cache.cache()[3] = match self.alpha_interp.as_ref() {
+                Some(interp) => interp.eval(self.flux.uvalues(), &self.alpha_values, flux, cache.acc().expect("has"))?,
                 None => return Err(EvalError::UndefinedEvaluation("α(flux)".into())),
             };
-            cache.cache[4] = match self.alpha_interp.as_ref() {
-                Some(interp) => interp.eval_deriv(self.flux.uvalues(), &self.alpha_values, flux, acc)?,
+            cache.cache()[4] = match self.alpha_interp.as_ref() {
+                Some(interp) => interp.eval_deriv(self.flux.uvalues(), &self.alpha_values, flux, cache.acc().expect("has"))?,
                 None => return Err(EvalError::UndefinedEvaluation("da(flux)/dflux".into())),
             };
         }
 
-        cache.cache[5] = match self.phase_method {
+        cache.cache()[5] = match self.phase_method {
             PhaseMethod::Zero => 0.0,
             PhaseMethod::Average => self.phase_average.expect("Exists"),
             PhaseMethod::Resonance => self.phase_resonance.expect("Exists"),
             PhaseMethod::Custom(custom_phase) => custom_phase,
             PhaseMethod::Interpolation => {
                 match self.phase_interp.as_ref() {
-                    Some(interp) => interp.eval(self.flux.uvalues(), &self.phase_values, flux, acc)?,
+                    Some(interp) => interp.eval(self.flux.uvalues(), &self.phase_values, flux, cache.acc().expect("has"))?,
                     None => return Err(EvalError::UndefinedEvaluation("φ(flux)".into())),
                 }
             }
         };
-        cache.cache[6] = match self.phase_method {
+        cache.cache()[6] = match self.phase_method {
             PhaseMethod::Interpolation => {
                 match self.phase_interp.as_ref() {
-                    Some(interp) => interp.eval_deriv(self.flux.uvalues(), &self.phase_values, flux, acc)?,
+                    Some(interp) => interp.eval_deriv(self.flux.uvalues(), &self.phase_values, flux, cache.acc().expect("has"))?,
                     None => return Err(EvalError::UndefinedEvaluation("φ(flux)".into())),
                 }
             }
@@ -872,113 +873,113 @@ impl SingleNcHarmonic {
     }
 }
 
-/// Intermediate Interpolations. This is effectively where the [`Harmonic`] trait is implemented.
-impl SingleNcHarmonic {
-    /// Calculates the single harmonic's amplitude.
+/// Intermediate Interpolations. This is effectively where the [`Mode`] trait is implemented.
+impl SingleNcFluteMode {
+    /// Calculates the single modes's amplitude.
     fn alpha(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
-        Ok(debug_assert_is_finite!(cache.cache[3]))
+        Ok(debug_assert_is_finite!(cache.cache()[3]))
     }
 
-    /// Calculates the single harmonic's phase.
+    /// Calculates the single mode's phase.
     fn phase(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
-        Ok(debug_assert_is_finite!(cache.cache[5]))
+        Ok(debug_assert_is_finite!(cache.cache()[5]))
     }
 
-    /// Calculates the single harmonic's value.
+    /// Calculates the single mode's value.
     fn h(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
-        Ok(debug_assert_is_finite!(cache.cache[3] * cache.cache[9]))
+        Ok(debug_assert_is_finite!(cache.cache()[3] * cache.cache()[9]))
     }
 
-    /// Calculates the single harmonic's derivative with respect to the current flux coordinate.
+    /// Calculates the single mode's derivative with respect to the current flux coordinate.
     fn dh_dflux(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
-        Ok(debug_assert_is_finite!(cache.cache[4] * cache.cache[9])
-            - cache.cache[3] * cache.cache[8] * cache.cache[6])
+        Ok(debug_assert_is_finite!(cache.cache()[4] * cache.cache()[9])
+            - cache.cache()[3] * cache.cache()[8] * cache.cache()[6])
     }
 
-    /// Calculates the single harmonic's derivative with respect to theta.
+    /// Calculates the single mode's derivative with respect to theta.
     fn dh_dtheta(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
         Ok(debug_assert_is_finite!(
-            -cache.m * cache.cache[3] * cache.cache[8]
+            -cache.params()[0] * cache.cache()[3] * cache.cache()[8]
         ))
     }
 
-    /// Calculates the single harmonic's derivative with respect to zeta.
+    /// Calculates the single mode's derivative with respect to zeta.
     fn dh_dzeta(
         &self,
         flux: f64,
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut NcHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         if !cache.is_updated(flux, theta, zeta, t) {
             self.update_cache_interps(flux, cache)?;
             cache.update(flux, theta, zeta, t);
         };
         Ok(debug_assert_is_finite!(
-            cache.n * cache.cache[3] * cache.cache[8]
+            cache.params()[1] * cache.cache()[3] * cache.cache()[8]
         ))
     }
 }
 
-impl std::fmt::Debug for SingleNcHarmonic {
+impl std::fmt::Debug for SingleNcFluteMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SingleNcHarmonic")
+        f.debug_struct("SingleNcFluteMode")
             .field("NcFlux", &self.flux)
             .field("phase method", &self.phase_method)
             .field("phase average", &self.phase_average)
@@ -1004,13 +1005,13 @@ impl std::fmt::Debug for SingleNcHarmonic {
 mod test_utils {
     use super::*;
 
-    pub(super) fn create_nc_harmonic_builder(path: &str) -> NcHarmonicBuilder {
+    pub(super) fn create_nc_flute_mode_builder(path: &str) -> NcFluteModeBuilder {
         let path = PathBuf::from(path);
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+        NcFluteModeBuilder::new(&path, "steffen", 3, 2)
     }
 
-    pub(super) fn create_nc_harmonic(path: &str) -> NcHarmonic {
-        create_nc_harmonic_builder(path)
+    pub(super) fn create_nc_flute_mode(path: &str) -> NcFluteMode {
+        create_nc_flute_mode_builder(path)
             .with_phase_method(PhaseMethod::Zero)
             .build()
             .unwrap()
@@ -1028,37 +1029,40 @@ mod phase_methods {
     #[test]
     fn zero_phase_method() {
         use PhaseMethod::Zero;
-        let h = create_nc_harmonic_builder(TEST_NETCDF_PATH)
+        let mode = create_nc_flute_mode_builder(TEST_NETCDF_PATH)
             .with_phase_method(Zero)
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
 
-        assert!(matches!(h.phase_method(), Zero));
-        assert!(h.psi_single.phase_average.is_none());
-        assert!(h.psi_single.phase_resonance.is_none());
+        assert!(matches!(mode.phase_method(), Zero));
+        assert!(mode.psi_single.phase_average.is_none());
+        assert!(mode.psi_single.phase_resonance.is_none());
 
-        assert_eq!(h.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
-        assert_eq!(h.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
+        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
+        assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
     }
 
     #[test]
     fn average_phase_method() {
         use PhaseMethod::Average;
-        let h = create_nc_harmonic_builder(TEST_NETCDF_PATH)
+        let mode = create_nc_flute_mode_builder(TEST_NETCDF_PATH)
             .with_phase_method(Average)
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
 
-        let expected = h.phase_array().mean().unwrap();
+        let expected = mode.phase_array().mean().unwrap();
 
-        assert!(matches!(h.phase_method(), Average));
-        assert!(h.psi_single.phase_average.is_some());
-        assert!(h.psi_single.phase_resonance.is_none());
+        assert!(matches!(mode.phase_method(), Average));
+        assert!(mode.psi_single.phase_average.is_some());
+        assert!(mode.psi_single.phase_resonance.is_none());
 
-        assert_eq!(h.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), expected);
-        assert_eq!(h.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), expected);
+        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), expected);
+        assert_eq!(
+            mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(),
+            expected
+        );
     }
 
     #[test]
@@ -1066,26 +1070,26 @@ mod phase_methods {
     fn resonance_phase_method() {
         use PhaseMethod::Resonance;
         let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-        let h = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+        let mode = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
             .with_phase_method(Resonance)
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
 
-        assert!(h.psip_single.phase_average.is_none());
+        assert!(mode.psip_single.phase_average.is_none());
 
         // m=3 and n=2, we expect a resonance at q=n/m=2/3=0.666, which is inbounds in our
         // poloidal_test_netcdf. However, only ψp is a good coordinate.
 
         // From the create_test_netcdf script:
-        let q_res = h.n() as f64 / h.m() as f64;
+        let q_res = mode.n() as f64 / mode.m() as f64;
         let psip_res = TAU * (TAU * q_res).cos(); // we defined ψ = sin(2πψp)
-        let expected = h.phase_of_psip(psip_res, 0.1, 0.1, 0.1, c).unwrap();
+        let expected = mode.phase_of_psip(psip_res, 0.1, 0.1, 0.1, c).unwrap();
 
-        assert!(matches!(h.phase_method(), Resonance));
-        assert!(h.psip_single.phase_average.is_none());
+        assert!(matches!(mode.phase_method(), Resonance));
+        assert!(mode.psip_single.phase_average.is_none());
         assert_relative_eq!(
-            h.psip_single.phase_resonance.unwrap(),
+            mode.psip_single.phase_resonance.unwrap(),
             expected,
             epsilon = 1e-10
         );
@@ -1094,21 +1098,21 @@ mod phase_methods {
     #[test]
     fn interpolation_phase_method() {
         use PhaseMethod::Interpolation;
-        let h = create_nc_harmonic_builder(POLOIDAL_TEST_NETCDF_PATH)
+        let mode = create_nc_flute_mode_builder(POLOIDAL_TEST_NETCDF_PATH)
             .with_phase_method(Interpolation)
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
 
         // Calculated with a stable version, on the same dataset
         let expected = 0.8414720460746888;
 
-        assert!(matches!(h.phase_method(), Interpolation));
-        assert!(h.psi_single.phase_average.is_none());
-        assert!(h.psi_single.phase_resonance.is_none());
+        assert!(matches!(mode.phase_method(), Interpolation));
+        assert!(mode.psi_single.phase_average.is_none());
+        assert!(mode.psi_single.phase_resonance.is_none());
 
         assert_relative_eq!(
-            h.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap(),
+            mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap(),
             expected,
             epsilon = 1e-5 // unsure why there is this small difference here.
         );
@@ -1117,35 +1121,35 @@ mod phase_methods {
     #[test]
     fn custom_phase_method() {
         use PhaseMethod::Custom;
-        let h = create_nc_harmonic_builder(TEST_NETCDF_PATH)
+        let mode = create_nc_flute_mode_builder(TEST_NETCDF_PATH)
             .with_phase_method(Custom(10.0))
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
 
-        assert!(matches!(h.phase_method(), Custom(10.0)));
-        assert!(h.psi_single.phase_average.is_none());
-        assert!(h.psi_single.phase_resonance.is_none());
+        assert!(matches!(mode.phase_method(), Custom(10.0)));
+        assert!(mode.psi_single.phase_average.is_none());
+        assert!(mode.psi_single.phase_resonance.is_none());
 
-        assert_eq!(h.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
-        assert_eq!(h.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
+        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
+        assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
     }
 
     #[test]
     #[ignore = "re-write"]
     fn fallback_phase_method() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let h = NcHarmonicBuilder::new(&path, "steffen", 2, 2)
+        let mode = NcFluteModeBuilder::new(&path, "steffen", 2, 2)
             .with_phase_method(PhaseMethod::Resonance)
             .build()
             .unwrap();
-        dbg!(&h);
+        dbg!(&mode);
 
         // q=1 on our test_netcdf, so no resonance should be found for m=3, n=2, since q_res = 2/3
 
-        assert!(h.psip_single.phase_average.is_none());
-        assert!(h.psip_single.phase_resonance.is_none());
-        assert!(matches!(h.phase_method(), PhaseMethod::Zero));
+        assert!(mode.psip_single.phase_average.is_none());
+        assert!(mode.psip_single.phase_resonance.is_none());
+        assert!(matches!(mode.phase_method(), PhaseMethod::Zero));
     }
 }
 
@@ -1158,46 +1162,46 @@ mod test_toroidal_nc_evals {
 
     #[test]
     fn flux_and_interp_states() {
-        let harmonic = create_nc_harmonic(TOROIDAL_TEST_NETCDF_PATH);
-        assert_eq!(harmonic.psi_state(), FluxCoordinateState::Good);
-        assert_eq!(harmonic.psip_state(), FluxCoordinateState::Bad);
-        assert!(harmonic.psi_single.alpha_interp.is_some());
-        assert!(harmonic.psi_single.phase_interp.is_some());
-        assert!(harmonic.psip_single.alpha_interp.is_none());
-        assert!(harmonic.psip_single.phase_interp.is_none());
+        let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
+        assert_eq!(mode.psi_state(), FluxCoordinateState::Good);
+        assert_eq!(mode.psip_state(), FluxCoordinateState::Bad);
+        assert!(mode.psi_single.alpha_interp.is_some());
+        assert!(mode.psi_single.phase_interp.is_some());
+        assert!(mode.psip_single.alpha_interp.is_none());
+        assert!(mode.psip_single.phase_interp.is_none());
 
-        assert!(harmonic.psi_array().is_some());
-        assert!(harmonic.psip_array().is_some());
+        assert!(mode.psi_array().is_some());
+        assert!(mode.psip_array().is_some());
     }
 
     #[test]
     #[rustfmt::skip]
     fn good_psi_evals() {
-        let harmonic = create_nc_harmonic(TOROIDAL_TEST_NETCDF_PATH);
-        let c = &mut harmonic.generate_cache();
-        assert!(harmonic.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.phase_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.h_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_dpsi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
+        let c = &mut mode.generate_cache();
+        assert!(mode.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.h_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_dpsi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
     #[rustfmt::skip]
     fn bad_psip_evals() {
-        let h = create_nc_harmonic(TOROIDAL_TEST_NETCDF_PATH);
-        let c = &mut h.generate_cache();
+        let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
+        let c = &mut mode.generate_cache();
 
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(h.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.phase_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.h_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_dpsip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.h_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_dpsip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
@@ -1210,51 +1214,51 @@ mod test_poloidal_nc_evals {
 
     #[test]
     fn flux_and_interp_states() {
-        let harmonic = create_nc_harmonic(POLOIDAL_TEST_NETCDF_PATH);
-        assert_eq!(harmonic.psi_state(), FluxCoordinateState::Bad);
-        assert_eq!(harmonic.psip_state(), FluxCoordinateState::Good);
-        assert!(harmonic.psi_single.alpha_interp.is_none());
-        assert!(harmonic.psi_single.phase_interp.is_none());
-        assert!(harmonic.psip_single.alpha_interp.is_some());
-        assert!(harmonic.psip_single.phase_interp.is_some());
+        let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
+        assert_eq!(mode.psi_state(), FluxCoordinateState::Bad);
+        assert_eq!(mode.psip_state(), FluxCoordinateState::Good);
+        assert!(mode.psi_single.alpha_interp.is_none());
+        assert!(mode.psi_single.phase_interp.is_none());
+        assert!(mode.psip_single.alpha_interp.is_some());
+        assert!(mode.psip_single.phase_interp.is_some());
 
-        assert!(harmonic.psi_array().is_some());
-        assert!(harmonic.psip_array().is_some());
+        assert!(mode.psi_array().is_some());
+        assert!(mode.psip_array().is_some());
     }
 
     #[test]
     #[rustfmt::skip]
     fn good_psip_evals() {
-        let harmonic = create_nc_harmonic(POLOIDAL_TEST_NETCDF_PATH);
-        let c = &mut harmonic.generate_cache();
-        assert!(harmonic.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.h_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_dpsip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(harmonic.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
+        let c = &mut mode.generate_cache();
+        assert!(mode.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.h_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_dpsip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
     #[rustfmt::skip]
     fn bad_psi_evals() {
-        let h = create_nc_harmonic(POLOIDAL_TEST_NETCDF_PATH);
-        let c = &mut h.generate_cache();
+        let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
+        let c = &mut mode.generate_cache();
 
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(h.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.phase_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.h_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_dpsi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(h.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.h_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_dpsi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
 #[cfg(test)]
-mod nc_harmonic_cache {
+mod nc_flute_mode_cache {
     use crate::extract::TEST_NETCDF_PATH;
 
     use super::test_utils::*;
@@ -1263,38 +1267,38 @@ mod nc_harmonic_cache {
     #[test]
     #[allow(unused_results)]
     fn counts() {
-        let h = create_nc_harmonic_builder(TEST_NETCDF_PATH)
+        let mode = create_nc_flute_mode_builder(TEST_NETCDF_PATH)
             // other methods don't touch the cache at all
             .with_phase_method(PhaseMethod::Interpolation)
             .build()
             .unwrap();
-        let c = &mut h.generate_cache();
+        let c = &mut mode.generate_cache();
         let t = 0.0; // not checked
 
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        h.phase_of_psi(0.01, 0.1, 0.1, t, c).unwrap();
+        mode.phase_of_psi(0.01, 0.1, 0.1, t, c).unwrap();
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
-        h.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap();
+        mode.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap();
         assert_eq!(c.hits(), 1);
         assert_eq!(c.misses(), 1);
 
         let psi = 0.1;
         let theta = 3.14;
         let zeta = 1.0;
-        h.alpha_of_psi(psi, theta, zeta, t, c).unwrap();
-        h.phase_of_psi(psi, theta, zeta, t, c).unwrap();
-        h.h_of_psi(psi, theta, zeta, t, c).unwrap();
-        h.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        h.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.alpha_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.phase_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.h_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
+        mode.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 2);
 
-        h.dh_dpsi(psi / 2.0, theta, zeta, t, c).unwrap();
+        mode.dh_dpsi(psi / 2.0, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 3);
@@ -1304,7 +1308,7 @@ mod nc_harmonic_cache {
 }
 
 #[cfg(test)]
-mod nc_harmonic_analytical_threshold {
+mod nc_flute_mode_analytical_threshold {
     use crate::extract::TEST_NETCDF_PATH;
 
     use super::*;
@@ -1312,17 +1316,17 @@ mod nc_harmonic_analytical_threshold {
     #[test]
     fn normal_construction() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let harmonic = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+        let mode = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(5)
             .build()
             .unwrap();
 
-        let mut cache = harmonic.generate_cache();
-        assert_eq!(harmonic.analytical_threshold_index(), 5);
+        let mut cache = mode.generate_cache();
+        assert_eq!(mode.analytical_threshold_index(), 5);
         // set cos=1 and make sure it does go to infinity
         assert!(
-            dbg!(harmonic.dh_dpsi(1e-20, 0.0, 0.0, 0.0, &mut cache))
+            dbg!(mode.dh_dpsi(1e-20, 0.0, 0.0, 0.0, &mut cache))
                 .is_ok_and(|value| value.abs() > 1000.0)
         )
     }
@@ -1330,18 +1334,17 @@ mod nc_harmonic_analytical_threshold {
     #[test]
     fn construction_with_zero_index() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let harmonic_attempt = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+        let mode_attempt = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(0)
             .build();
-        assert!(harmonic_attempt.is_ok());
+        assert!(mode_attempt.is_ok());
 
-        let harmonic = harmonic_attempt.unwrap();
+        let mode = mode_attempt.unwrap();
 
-        let mut cache = harmonic.generate_cache();
+        let mut cache = mode.generate_cache();
         assert!(
-            harmonic
-                .h_of_psi(1e-5, 0.0, 0.0, 0.0, &mut cache)
+            mode.h_of_psi(1e-5, 0.0, 0.0, 0.0, &mut cache)
                 .unwrap()
                 .is_finite()
         );
@@ -1350,14 +1353,14 @@ mod nc_harmonic_analytical_threshold {
     #[test]
     fn erroneous_construction() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let harmonic_attempt = NcHarmonicBuilder::new(&path, "steffen", 3, 2)
+        let mode_attempt = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(5000000000)
             .build();
 
         assert!(
-            harmonic_attempt
-                .is_err_and(|err| matches!(err, EqError::InvalidHarmonicAnalyticalThresholdIndex))
+            mode_attempt
+                .is_err_and(|err| matches!(err, EqError::InvalidFluteModeAnalyticalThresholdIndex))
         );
     }
 }

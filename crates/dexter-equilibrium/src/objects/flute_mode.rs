@@ -1,57 +1,61 @@
-//! Representation of analytical Harmonics.
+//! Representation of analytical Flute Modes.
 
-use crate::{
-    FluxCoordinateState, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, equilibrium_type_getter_impl,
-    harmonic_cache_counts_getter_impl, harmonic_mode_number_getter_impl,
-};
+use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
 
-use crate::EvalError;
-use crate::{EquilibriumType, Harmonic, HarmonicCache, LastClosedFluxSurface};
+use crate::{
+    DynModeCache, EquilibriumType, EvalError, FluxCoordinateState, LastClosedFluxSurface, Mode,
+    ModeCache,
+};
+use crate::{
+    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
+    equilibrium_type_getter_impl, flute_mode_number_getter_impl, mode_cache_getters_impl,
+};
 
 // ===============================================================================================
 
-/// A simple analytical Harmonic of the form `ε*sqrt(ψ/ψlast)*cos(mθ-nζ+φ)` or
+/// A simple analytical flute mode of the form `ε*sqrt(ψ/ψlast)*cos(mθ-nζ+φ)` or
 /// `ε*sqrt(ψp/ψplast)*cos(mθ-nζ+φ)`, where `ε` and `φ` are constants and `ψlast/ψplast` the last
 /// closed flux surface.
 ///
-/// The square root is necessary since the harmonic must behave like the square root of the
+/// The square root is necessary since the modes must behave like the square root of the
 /// magnetic flux close to the axis.
 ///
-/// Used in pair with [`CosHarmonicCache`].
+/// Used in pair with [`FluteModeCache`].
+///
+/// TODO: add `ωt` term.
 #[non_exhaustive]
 #[derive(Clone)]
-pub struct CosHarmonic {
+pub struct FluteMode {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
-    /// The harmonic's "amplitude" `ε`. Corresponds the value of the amplitude at the last closed
+    /// The modes's "amplitude" `ε`. Corresponds the value of the amplitude at the last closed
     /// flux surface.
     epsilon: f64,
-    /// The harmonic's poloidal mode number `m`.
+    /// The modes's poloidal mode number `m`.
     m: i64,
-    /// The harmonic's toroidal mode number `n`.
+    /// The modes's toroidal mode number `n`.
     n: i64,
-    /// The harmonic's phase.
+    /// The modes's phase.
     phase: f64,
     /// The last closed flux surface.
     lcfs: LastClosedFluxSurface,
-    /// The value of the last closed toroidal flux surface, if the harmonic was defined through the
+    /// The value of the last closed toroidal flux surface, if the mode was defined through the
     /// toroidal flux.
     psi_last: Option<f64>,
-    /// The value of the last closed poloidal flux surface, if the harmonic was defined through the
+    /// The value of the last closed poloidal flux surface, if the mode was defined through the
     /// poloidal flux.
     psip_last: Option<f64>,
 }
 
-impl CosHarmonic {
-    /// Creates a new [`CosHarmonic`].
+impl FluteMode {
+    /// Creates a new `FluteMode`.
     ///
     /// # Example
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let harmonic = CosHarmonic::new(1e-3, lcfs, 3, 2, 0.0);
+    /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// ```
     #[must_use]
     pub fn new(epsilon: f64, lcfs: LastClosedFluxSurface, m: i64, n: i64, phase: f64) -> Self {
@@ -80,19 +84,19 @@ impl CosHarmonic {
         }
     }
 
-    /// Returns the Harmonic's last closed flux surface.
+    /// Returns the mode's last closed flux surface.
     #[must_use]
     pub fn lcfs(&self) -> LastClosedFluxSurface {
         self.lcfs
     }
 
-    /// Returns the Harmonic's constant "amplitude" `ε`.
+    /// Returns the mode's constant "amplitude" `ε`.
     #[must_use]
     pub fn epsilon(&self) -> f64 {
         self.epsilon
     }
 
-    /// Returns the Harmonic's constant phase `φ`.
+    /// Returns the mode's constant phase `φ`.
     #[must_use]
     pub fn phase(&self) -> f64 {
         self.phase
@@ -110,13 +114,13 @@ impl CosHarmonic {
         self.psip_last
     }
 
-    harmonic_mode_number_getter_impl!();
+    flute_mode_number_getter_impl!();
     equilibrium_type_getter_impl!();
 }
 
-impl std::fmt::Debug for CosHarmonic {
+impl std::fmt::Debug for FluteMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CosHarmonic")
+        f.debug_struct("FluteMode")
             .field("equilibrium_type", &self.equilibrium_type)
             .field("epsilon", &self.epsilon)
             .field("LCFS", &self.lcfs())
@@ -127,24 +131,24 @@ impl std::fmt::Debug for CosHarmonic {
     }
 }
 
-/// Stores a [`CosHarmonic`]'s constant parameters and cached quantities.
+/// Stores a [`FluteMode`]'s constant parameters and cached quantities.
 #[derive(Debug, Clone)]
-pub struct CosHarmonicCache {
+pub struct FluteModeCache {
     /// The number of cache hits.
     hits: usize,
     /// The number of cache misses.
     misses: usize,
-    /// The harmonic's constant `ε`.
-    epsilon: f64,
-    /// The harmonic's poloidal mode number `m`, casted to `f64` to use for evaluations.
-    m: f64,
-    /// The harmonic's toroidal mode number `n`, casted to `f64` to use for evaluations.
-    n: f64,
-    /// The harmonic's phase.
-    phase: f64,
-    /// The square root of the value of the last closed flux surface.
-    lcfs_root: f64,
-    /// Ordered array with the intermediate values.
+    /// Ordered array with the mode's static parameters.
+    ///
+    /// cache = [
+    ///     0 = epsilon,
+    ///     1 = m,
+    ///     2 = n,
+    ///     3 = phase,
+    ///     4 = sqrt(LCFS)
+    /// ].
+    params: [f64; 5],
+    /// Ordered array with the modes intermediate cached values.
     ///
     /// cache = [
     ///     0 = flux,
@@ -158,22 +162,18 @@ pub struct CosHarmonicCache {
     cache: [f64; 7],
 }
 
-impl Default for CosHarmonicCache {
+impl Default for FluteModeCache {
     fn default() -> Self {
         Self {
             hits: 0,
             misses: 0,
-            epsilon: f64::NAN,
-            m: f64::NAN,
-            n: f64::NAN,
-            phase: f64::NAN,
-            lcfs_root: f64::NAN,
+            params: [f64::NAN; 5],
             cache: [f64::NAN; 7],
         }
     }
 }
 
-impl HarmonicCache for CosHarmonicCache {
+impl ModeCache for FluteModeCache {
     fn is_updated(&mut self, flux: f64, theta: f64, zeta: f64, _: f64) -> bool {
         #[expect(
             clippy::float_cmp,
@@ -193,16 +193,19 @@ impl HarmonicCache for CosHarmonicCache {
         self.cache[1] = theta;
         self.cache[2] = zeta;
         self.cache[3] = flux.sqrt();
-        self.cache[4] = (self.m * theta - self.n * zeta + self.phase).rem_euclid(TAU);
+        self.cache[4] =
+            (self.params[1] * theta - self.params[2] * zeta + self.params[3]).rem_euclid(TAU);
         (self.cache[5], self.cache[6]) = self.cache[4].sin_cos();
     }
 
-    harmonic_cache_counts_getter_impl!(CosHarmonicCache);
+    fn acc(&mut self) -> Option<&mut Accelerator> {
+        None
+    }
+
+    mode_cache_getters_impl!(FluteModeCache);
 }
 
-impl Harmonic for CosHarmonic {
-    type Cache = CosHarmonicCache;
-
+impl Mode for FluteMode {
     fn psi_state(&self) -> FluxCoordinateState {
         match self.psi_last {
             Some(_) => FluxCoordinateState::Good,
@@ -217,20 +220,22 @@ impl Harmonic for CosHarmonic {
         }
     }
 
-    fn generate_cache(&self) -> Self::Cache {
+    fn generate_cache(&self) -> DynModeCache {
         let lcfs_root = match self.lcfs {
             LastClosedFluxSurface::Toroidal(last) | LastClosedFluxSurface::Poloidal(last) => {
                 last.sqrt()
             }
         };
-        Self::Cache {
-            epsilon: self.epsilon,
-            m: self.m as f64,
-            n: self.n as f64,
-            phase: self.phase,
-            lcfs_root,
+        Box::new(FluteModeCache {
+            params: [
+                self.epsilon,
+                self.m as f64,
+                self.n as f64,
+                self.phase,
+                lcfs_root,
+            ],
             ..Default::default()
-        }
+        })
     }
 
     fn alpha_of_psi(
@@ -239,7 +244,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         if self.psi_last.is_none() {
@@ -249,7 +254,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psi, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                self.epsilon * cache.cache[3] / cache.lcfs_root
+                self.epsilon * cache.cache()[3] / cache.params()[4]
             ))
         }
     }
@@ -260,7 +265,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         if self.psip_last.is_none() {
@@ -270,7 +275,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psip, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                self.epsilon * cache.cache[3] / cache.lcfs_root
+                self.epsilon * cache.cache()[3] / cache.params()[4]
             ))
         }
     }
@@ -281,7 +286,7 @@ impl Harmonic for CosHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut CosHarmonicCache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(self.phase))
@@ -293,7 +298,7 @@ impl Harmonic for CosHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut CosHarmonicCache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Ok(debug_assert_is_finite!(self.phase))
@@ -305,7 +310,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         if self.psi_last.is_none() {
@@ -315,7 +320,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psi, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[6]
+                cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
             ))
         }
     }
@@ -326,7 +331,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         if self.psip_last.is_none() {
@@ -336,7 +341,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psip, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[6]
+                cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
             ))
         }
     }
@@ -347,7 +352,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         if self.psi_last.is_none() {
@@ -357,7 +362,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psi, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.epsilon / (2.0 * cache.lcfs_root * cache.cache[3]) * cache.cache[6]
+                cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3]) * cache.cache()[6]
             ))
         }
     }
@@ -368,7 +373,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         if self.psip_last.is_none() {
@@ -378,7 +383,7 @@ impl Harmonic for CosHarmonic {
                 cache.update(psip, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.epsilon / (2.0 * cache.lcfs_root * cache.cache[3]) * cache.cache[6]
+                cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3]) * cache.cache()[6]
             ))
         }
     }
@@ -389,7 +394,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         if self.psi_last.is_none() {
@@ -399,7 +404,8 @@ impl Harmonic for CosHarmonic {
                 cache.update(psi, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                -cache.m * cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[5]
+                -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                    * cache.cache()[5]
             ))
         }
     }
@@ -410,7 +416,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         if self.psip_last.is_none() {
@@ -420,7 +426,8 @@ impl Harmonic for CosHarmonic {
                 cache.update(psip, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                -cache.m * cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[5]
+                -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                    * cache.cache()[5]
             ))
         }
     }
@@ -431,7 +438,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         if self.psi_last.is_none() {
@@ -441,7 +448,8 @@ impl Harmonic for CosHarmonic {
                 cache.update(psi, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.n * cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[5]
+                cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                    * cache.cache()[5]
             ))
         }
     }
@@ -452,7 +460,7 @@ impl Harmonic for CosHarmonic {
         theta: f64,
         zeta: f64,
         t: f64,
-        cache: &mut CosHarmonicCache,
+        cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         if self.psip_last.is_none() {
@@ -462,7 +470,8 @@ impl Harmonic for CosHarmonic {
                 cache.update(psip, theta, zeta, t);
             }
             Ok(debug_assert_is_finite!(
-                cache.n * cache.epsilon * cache.cache[3] / cache.lcfs_root * cache.cache[5]
+                cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                    * cache.cache()[5]
             ))
         }
     }
@@ -473,7 +482,7 @@ impl Harmonic for CosHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut CosHarmonicCache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(0.0_f64))
@@ -485,7 +494,7 @@ impl Harmonic for CosHarmonic {
         _: f64,
         _: f64,
         _: f64,
-        _: &mut CosHarmonicCache,
+        _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Ok(debug_assert_is_finite!(0.0_f64))
@@ -493,7 +502,7 @@ impl Harmonic for CosHarmonic {
 }
 
 #[cfg(test)]
-mod cos_harmonic_values {
+mod flute_mode_values {
     use super::*;
     use approx::assert_relative_eq;
 
@@ -501,7 +510,7 @@ mod cos_harmonic_values {
     #[rustfmt::skip]
     fn desmos_values_toroidal_lcfs() -> Result<(), EvalError> {
         let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-        let har = dbg!(CosHarmonic::new(10.0, lcfs, 3, 2, 1.0));
+        let har = dbg!(FluteMode::new(10.0, lcfs, 3, 2, 1.0));
         assert_eq!(har.psi_state(), FluxCoordinateState::Good);
         assert_eq!(har.psip_state(), FluxCoordinateState::Bad);
 
@@ -536,7 +545,7 @@ mod cos_harmonic_values {
     #[rustfmt::skip]
     fn desmos_values_poloidal_lcfs() -> Result<(), EvalError> {
         let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-        let har = dbg!(CosHarmonic::new(10.0, lcfs, 3, 2, 1.0));
+        let har = dbg!(FluteMode::new(10.0, lcfs, 3, 2, 1.0));
         assert_eq!(har.psi_state(), FluxCoordinateState::Bad);
         assert_eq!(har.psip_state(), FluxCoordinateState::Good);
 
@@ -570,39 +579,39 @@ mod cos_harmonic_values {
 
 #[cfg(test)]
 #[expect(unused_results)]
-mod cos_harmonic_cache {
+mod flute_mode_cache {
 
     use super::*;
 
     #[test]
     fn counts() {
         let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-        let h = dbg!(CosHarmonic::new(10.0, lcfs, 3, 2, 1.0));
-        let c = &mut h.generate_cache();
+        let mode = dbg!(FluteMode::new(10.0, lcfs, 3, 2, 1.0));
+        let c = &mut mode.generate_cache();
         let psi = 0.01; // not checked
         let t = 0.0; // not checked
 
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        h.phase_of_psi(psi, 0.1, 0.1, t, c).unwrap(); // Does not check
+        mode.phase_of_psi(psi, 0.1, 0.1, t, c).unwrap(); // Does not check
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        h.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap(); // First check
+        mode.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap(); // First check
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
         let theta = 3.14;
         let zeta = 1.0;
-        h.h_of_psi(psi, theta, zeta, t, c).unwrap();
-        h.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        h.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.h_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
+        mode.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 2);
 
-        h.dh_of_psi_dzeta(psi, theta / 2.0, zeta, t, c).unwrap();
+        mode.dh_of_psi_dzeta(psi, theta / 2.0, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 3);

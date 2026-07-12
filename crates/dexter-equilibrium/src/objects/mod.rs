@@ -5,9 +5,9 @@ pub(crate) mod nc_flux;
 
 pub(crate) mod bfield;
 pub(crate) mod currents;
+pub(crate) mod flute_mode;
 pub(crate) mod geometries;
-pub(crate) mod harmonics;
-pub(crate) mod nc_harmonic;
+pub(crate) mod nc_flute_mode;
 pub(crate) mod perturbation;
 pub(crate) mod qfactors;
 
