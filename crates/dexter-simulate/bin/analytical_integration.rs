@@ -1,7 +1,8 @@
 //! Integration of a particle for a long time, useful for profiling.
 
 use dexter_equilibrium::{
-    CosHarmonic, LarBfield, LarCurrent, LastClosedFluxSurface, ParabolicQfactor, Perturbation,
+    Equilibrium, FluteMode, LarBfield, LarCurrent, LastClosedFluxSurface, ParabolicQfactor,
+    Perturbation,
 };
 use dexter_simulate::{
     InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams, SteppingMethod,
@@ -14,9 +15,17 @@ fn main() {
     let current = LarCurrent::new();
     let bfield = LarBfield::new();
     let perturbation = Perturbation::new(&[
-        CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 4, 0.0),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
     ]);
+
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(qfactor),
+        bfield: Box::new(bfield),
+        current: Box::new(current),
+        perturbation,
+    };
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
@@ -31,14 +40,7 @@ fn main() {
         max_steps: 10_000_000,
         ..Default::default()
     };
-    particle.integrate(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        teval,
-        &solver_params,
-    );
+    particle.integrate(&equilibrium, teval, &solver_params);
     dbg!(&particle);
     assert!(
         matches!(

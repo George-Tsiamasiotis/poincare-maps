@@ -4,7 +4,7 @@ mod energy;
 mod energy_pzeta_plane;
 mod tp_boundary;
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Qfactor};
+use dexter_equilibrium::Equilibrium;
 use ndarray::{Array1, Array2};
 
 pub use energy_pzeta_plane::EnergyPzetaPlane;
@@ -38,9 +38,13 @@ impl COMs {
     /// # use std::f64::consts::PI;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.1);
-    /// let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// let coms = COMs {
     ///     energy: None,
@@ -52,41 +56,31 @@ impl COMs {
     /// let theta_array = Array1::linspace(-PI, PI, 50);
     ///
     /// let grid: Array2<f64> = coms.energy_of_psi_grid(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
+    ///     &equilibrium,
     ///     &psi_array,
     ///     &theta_array,
     /// )?;
     /// # Ok::<_, COMError>(())
-    ///
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`COMError`] if `pzeta` or `mu` are not defined, or if any of the
     /// `psi_array` values is out of bounds.
-    pub fn energy_of_psi_grid<Q, C, B>(
+    pub fn energy_of_psi_grid(
         &self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
+        equilibrium: &Equilibrium,
         psi_array: &Array1<f64>,
         theta_array: &Array1<f64>,
-    ) -> Result<Array2<f64>, COMError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
-        energy::energy_of_psi_grid(self, qfactor, current, bfield, psi_array, theta_array)
+    ) -> Result<Array2<f64>, COMError> {
+        energy::energy_of_psi_grid(self, equilibrium, psi_array, theta_array)
     }
 
     /// Calculates the Energy on a 2D meshgrid of the `ψp` and `θ` arrays, in Normalized Units.
     ///
     /// Both `pzeta` and `mu` fields must be defined.
     ///
-    /// Note that the [`Qfactor`] object is not needed here.
+    /// Note that this calculation is independent from the [`Qfactor`](dexter_equilibrium::Qfactor) used.
     ///
     /// # Example
     ///
@@ -98,9 +92,13 @@ impl COMs {
     /// # use std::f64::consts::PI;
     /// #
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let geometry = NcGeometryBuilder::new(&path, "steffen", "bicubic").build()?;
-    /// let current = NcCurrentBuilder::new(&path, "steffen").build()?;
-    /// let bfield = NcBfieldBuilder::new(&path, "bicubic").build()?;
+    /// let equilibrium = Equilibrium {
+    ///     geometry: Some(Box::new(NcGeometryBuilder::new(&path, "steffen", "bicubic").build()?)),
+    ///     qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build()?),
+    ///     current: Box::new(NcCurrentBuilder::new(&path, "steffen").build()?),
+    ///     bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build()?),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// let coms = COMs {
     ///     energy: None,
@@ -108,35 +106,28 @@ impl COMs {
     ///     mu: Some(1e5),
     /// };
     ///
-    /// let psip_array = Array1::linspace(0.0, geometry.psip_last().unwrap(), 50);
+    /// let psip_array = Array1::linspace(0.0, equilibrium.psip_last(), 50);
     /// let theta_array = Array1::linspace(-PI, PI, 50);
     ///
     /// let grid: Array2<f64> = coms.energy_of_psip_grid(
-    ///     &current,
-    ///     &bfield,
+    ///     &equilibrium,
     ///     &psip_array,
     ///     &theta_array,
     /// )?;
     /// # Ok::<_, COMError>(())
-    ///
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`COMError`] if `pzeta` or `mu` are not defined, or if any of the
     /// `psi_array` values is out of bounds.
-    pub fn energy_of_psip_grid<C, B>(
+    pub fn energy_of_psip_grid(
         &self,
-        current: &C,
-        bfield: &B,
+        equilibrium: &Equilibrium,
         psip_array: &Array1<f64>,
         theta_array: &Array1<f64>,
-    ) -> Result<Array2<f64>, COMError>
-    where
-        C: Current,
-        B: Bfield,
-    {
-        energy::energy_of_psip_grid(self, current, bfield, psip_array, theta_array)
+    ) -> Result<Array2<f64>, COMError> {
+        energy::energy_of_psip_grid(self, equilibrium, psip_array, theta_array)
     }
 
     /// Constructs a [`EnergyPzetaPlane`].
@@ -152,6 +143,13 @@ impl COMs {
     /// let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1));
     /// let current = LarCurrent::new();
     /// let bfield = LarBfield::new();
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1))),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// let coms = COMs{
     ///     mu: Some(1e-5),
@@ -159,28 +157,17 @@ impl COMs {
     ///     pzeta: None,
     /// };
     ///
-    /// let energy_pzeta_plane = coms.build_energy_pzeta_plane(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield
-    /// )?;
+    /// let energy_pzeta_plane = coms.build_energy_pzeta_plane(&equilibrium)?;
     /// # Ok::<_, COMError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns a [`COMError`] if the [`COMs::mu`] field is `None`.
-    pub fn build_energy_pzeta_plane<Q, C, B>(
+    pub fn build_energy_pzeta_plane(
         &self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-    ) -> Result<EnergyPzetaPlane, COMError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
-        EnergyPzetaPlane::from_coms(qfactor, current, bfield, self)
+        equilibrium: &Equilibrium,
+    ) -> Result<EnergyPzetaPlane, COMError> {
+        EnergyPzetaPlane::from_coms(equilibrium, self)
     }
 }

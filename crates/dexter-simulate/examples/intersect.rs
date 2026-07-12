@@ -13,13 +13,16 @@ fn main() {
 fn analytical_equilibrium_intersect() {
     // Equilibrium setup
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let qfactor = ParabolicQfactor::new(1.1, 3.8, lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
-    let perturbation = Perturbation::new(&[
-        CosHarmonic::new(1e-3, lcfs, 2, 1, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 3, 1, 0.0),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::new(&[
+            Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
+            Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
+        ]),
+    };
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
@@ -27,33 +30,33 @@ fn analytical_equilibrium_intersect() {
     let mut particle = Particle::new(&initial);
 
     // Calculate intersections
-    particle.intersect(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        &intersect_params,
-        &SolverParams::default(),
-    );
+    particle.intersect(&equilibrium, &intersect_params, &SolverParams::default());
     dbg!(&particle);
 }
 
 fn numerical_equilibrium_intersect() {
     // Equilibrium setup
     let path = Path::new("crates/dexter-simulate").join(TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-    let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1)
-            .with_phase_method(PhaseMethod::Interpolation)
-            .build()
-            .unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2)
-            .with_phase_method(PhaseMethod::Interpolation)
-            .build()
-            .unwrap(),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::new(&[
+            Box::new(
+                NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+                    .with_phase_method(PhaseMethod::Interpolation)
+                    .build()
+                    .unwrap(),
+            ),
+            Box::new(
+                NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+                    .with_phase_method(PhaseMethod::Interpolation)
+                    .build()
+                    .unwrap(),
+            ),
+        ]),
+    };
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 0.0, 0.0, 1e-6, 0.0);
@@ -61,13 +64,6 @@ fn numerical_equilibrium_intersect() {
     let mut particle = Particle::new(&initial);
 
     // Calculate intersections
-    particle.intersect(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        &intersect_params,
-        &SolverParams::default(),
-    );
+    particle.intersect(&equilibrium, &intersect_params, &SolverParams::default());
     dbg!(&particle);
 }

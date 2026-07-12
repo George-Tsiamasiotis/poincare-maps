@@ -20,13 +20,16 @@ use std::{f64::consts::TAU, path::PathBuf};
 fn gc_toroidal_integration_uniQ_larC_larB_cosP() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let qfactor = UnityQfactor::new(lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
-    let perturbation = Perturbation::new(&[
-        CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 4, 0.0),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(UnityQfactor::new(lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::new(&[
+            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+        ]),
+    };
 
     let solver_params = SolverParams::default();
 
@@ -36,7 +39,7 @@ fn gc_toroidal_integration_uniQ_larC_larB_cosP() {
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
     let teval = (0.0, 1e5);
-    particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    particle.integrate(&equilibrium, teval, &solver_params);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Integrated));
     assert_eq!(particle.steps_stored(), particle.steps_taken());
@@ -55,13 +58,16 @@ fn gc_toroidal_integration_ncdQ_ncdC_ncdB_ncdP() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TOROIDAL_TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-    let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap(),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor : Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current : Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield : Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::new(&[
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+        ]),
+    };
 
     let solver_params = SolverParams::default();
 
@@ -71,7 +77,7 @@ fn gc_toroidal_integration_ncdQ_ncdC_ncdB_ncdP() {
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
     let teval = (0.0, 1e5);
-    particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    particle.integrate(&equilibrium, teval, &solver_params);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Integrated));
     assert_eq!(particle.steps_stored(), particle.steps_taken());
@@ -90,13 +96,16 @@ fn gc_poloidal_integration_ncdQ_ncdC_ncdB_ncdP() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-    let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap(),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor : Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current : Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield : Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::new(&[
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+        ]),
+    };
 
     let solver_params = SolverParams::default();
 
@@ -106,7 +115,7 @@ fn gc_poloidal_integration_ncdQ_ncdC_ncdB_ncdP() {
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
     let teval = (0.0, 1e5);
-    particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    particle.integrate(&equilibrium, teval, &solver_params);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Integrated));
     assert_eq!(particle.steps_stored(), particle.steps_taken());
@@ -124,10 +133,13 @@ fn gc_poloidal_integration_ncdQ_ncdC_ncdB_ncdP() {
 fn gc_toroidal_integration_gcmotion_check_uniQ_larC_larB_cosP() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let qfactor = UnityQfactor::new(lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
-    let perturbation = Perturbation::zero();
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor : Box::new(UnityQfactor::new(lcfs)),
+        current : Box::new(LarCurrent::new()),
+        bfield : Box::new(LarBfield::new()),
+        perturbation: Perturbation::zero(),
+    };
 
     let solver_params = SolverParams::default();
 
@@ -141,7 +153,7 @@ fn gc_toroidal_integration_gcmotion_check_uniQ_larC_larB_cosP() {
     ));
 
     let teval = (0.0, 3e3);
-    particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    particle.integrate(&equilibrium, teval, &solver_params);
 
     assert!(matches!(
         particle.integration_status(),
@@ -155,7 +167,7 @@ fn gc_toroidal_integration_gcmotion_check_uniQ_larC_larB_cosP() {
     assert_relative_eq!(particle.initial_energy().unwrap(), particle.final_energy().unwrap(), epsilon = 1e-8);
 
     assert_relative_eq!(particle.initial_energy().unwrap(), 1.5189224863170239e-05, epsilon = 1e-20);
-    assert_relative_eq!(initial.mu0() * bfield.b_of_psi(psi0, 0.0, &mut Accelerator::new(), &mut Accelerator::new(), &mut Cache::new()).unwrap(),
+    assert_relative_eq!(initial.mu0() * equilibrium.bfield.b_of_psi(psi0, 0.0, &mut Accelerator::new(), &mut Accelerator::new(), &mut Cache::new()).unwrap(),
         8.083468084746437e-07,
         epsilon = 1e-15
     );
@@ -177,18 +189,21 @@ fn gc_toroidal_poloidal_equivalence() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-    let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap(),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor : Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current : Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield : Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::new(&[
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+        ]),
+    };
 
     let solver_params = SolverParams::default();
 
     let psi0 = 0.2;
-    let psip0 = qfactor.psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
+    let psip0 = equilibrium.qfactor.psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
     let tor_initial = InitialConditions::boozer(0.0, Toroidal(psi0), 0.0, 0.0, 1e-4, 1e-6);
     let pol_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, 1e-4, 1e-6);
 
@@ -198,8 +213,8 @@ fn gc_toroidal_poloidal_equivalence() {
     assert!(matches!(pol_particle.integration_status(), IntegrationStatus::Initialized));
 
     let teval = (0.0, 4.14e5);
-    tor_particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
-    pol_particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    tor_particle.integrate(&equilibrium, teval, &solver_params);
+    pol_particle.integrate(&equilibrium, teval, &solver_params);
     dbg!(&tor_particle);
     dbg!(&pol_particle);
 
@@ -229,12 +244,12 @@ fn gc_toroidal_poloidal_equivalence() {
     assert_abs_diff_eq!(
         tor_particle.psi_array().last().copied().unwrap(),
         pol_particle.psi_array().last().copied().unwrap(),
-        epsilon = 1e-3*qfactor.psi_last()
+        epsilon = 1e-3*equilibrium.qfactor.psi_last()
     );
     assert_abs_diff_eq!(
         tor_particle.psip_array().last().copied().unwrap(),
         pol_particle.psip_array().last().copied().unwrap(),
-        epsilon = 1e-3*qfactor.psip_last()
+        epsilon = 1e-3*equilibrium.qfactor.psip_last()
     );
     assert_abs_diff_eq!(
         tor_particle.rho_array().last().copied().unwrap(),
@@ -269,19 +284,22 @@ fn gc_mixed_boozer_equivalence() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-    let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap(),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor : Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current : Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield : Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::new(&[
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+        ]),
+    };
 
     let solver_params = SolverParams::default();
 
     let rho0 = 1e-4;
     let psip0 = 0.2;
-    let g0 = current.g_of_psip(psip0, &mut Accelerator::new()).unwrap();
+    let g0 = equilibrium.current.g_of_psip(psip0, &mut Accelerator::new()).unwrap();
     let pzeta0 = rho0 * g0 - psip0;
 
     let boozer_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, rho0, 1e-6);
@@ -293,8 +311,8 @@ fn gc_mixed_boozer_equivalence() {
     assert!(matches!(mixed_particle.integration_status(), IntegrationStatus::PartlyInitialized));
 
     let teval = (0.0, 2.3e5);
-    boozer_particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
-    mixed_particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    boozer_particle.integrate(&equilibrium, teval, &solver_params);
+    mixed_particle.integrate(&equilibrium, teval, &solver_params);
     dbg!(&boozer_particle);
     dbg!(&mixed_particle);
 
@@ -324,12 +342,12 @@ fn gc_mixed_boozer_equivalence() {
     assert_abs_diff_eq!(
         boozer_particle.psi_array().last().copied().unwrap(),
         mixed_particle.psi_array().last().copied().unwrap(),
-        epsilon = 1e-3*qfactor.psi_last()
+        epsilon = 1e-3*equilibrium.qfactor.psi_last()
     );
     assert_abs_diff_eq!(
         boozer_particle.psip_array().last().copied().unwrap(),
         mixed_particle.psip_array().last().copied().unwrap(),
-        epsilon = 1e-3*qfactor.psip_last()
+        epsilon = 1e-3*equilibrium.qfactor.psip_last()
     );
     assert_abs_diff_eq!(
         boozer_particle.rho_array().last().copied().unwrap(),
@@ -363,10 +381,13 @@ fn gc_mixed_boozer_equivalence() {
 fn gc_const_pzeta_toroidal_integration_uniQ_larC_larB_cosP() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let qfactor = UnityQfactor::new(lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
-    let perturbation = Perturbation::zero();
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(UnityQfactor::new(lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::zero(),
+    };
 
     let solver_params = SolverParams::default();
     let initial = InitialConditions::mixed(0.0, Toroidal(0.03), 0.0, 0.0, -0.03, 1e-6);
@@ -375,7 +396,7 @@ fn gc_const_pzeta_toroidal_integration_uniQ_larC_larB_cosP() {
     assert!(matches!(particle.integration_status(), IntegrationStatus::PartlyInitialized));
 
     let teval = (0.0, 6e5);
-    particle.integrate(&qfactor, &current, &bfield, &perturbation, teval, &solver_params);
+    particle.integrate(&equilibrium, teval, &solver_params);
     let pzeta_array = particle.pzeta_array();
     dbg!(&particle);
 

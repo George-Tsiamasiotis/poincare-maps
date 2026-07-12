@@ -3,6 +3,8 @@
 //! For analytical equilibria, this is achieved by evaluation of analytical formulas, while for
 //! numerical equilibria by interpolation over the reconstructed data arrays.
 
+use std::fmt::Debug;
+
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, Cache};
 
@@ -15,7 +17,7 @@ pub type DynMode = Box<dyn Mode>;
 pub type DynModeCache = Box<dyn ModeCache>;
 
 /// Equilibrium geometry related quantities computation.
-pub trait Geometry {
+pub trait Geometry: Debug + Send + Sync {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
@@ -351,7 +353,7 @@ pub trait FluxCommute {
 }
 
 /// q-factor related quantities computation.
-pub trait Qfactor {
+pub trait Qfactor: FluxCommute + Debug + Send + Sync {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
@@ -558,7 +560,7 @@ pub trait Qfactor {
 }
 
 /// Plasma current related quantities computation.
-pub trait Current {
+pub trait Current: Debug + Send + Sync {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
@@ -743,7 +745,7 @@ pub trait Current {
 }
 
 /// Magnetic field related quantities computation.
-pub trait Bfield {
+pub trait Bfield: Debug + Send + Sync {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
@@ -950,7 +952,7 @@ pub trait Bfield {
     private_bounds,
     reason = "only used internally for creating Perturbation"
 )]
-pub trait ModeCache: DynModeCacheClone {
+pub trait ModeCache: DynModeCacheClone + Debug {
     /// Checks if the cache's stored independent coordinates are up-to-date, i.e. are equal to the
     /// passed arguments.
     fn is_updated(&mut self, flux: f64, theta: f64, zeta: f64, t: f64) -> bool;
@@ -979,7 +981,7 @@ pub trait ModeCache: DynModeCacheClone {
     private_bounds,
     reason = "only used internally for creating Perturbation"
 )]
-pub trait Mode: DynModeClone {
+pub trait Mode: DynModeClone + Debug + Send + Sync {
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 

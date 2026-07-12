@@ -1,10 +1,10 @@
 //! Classification of a particle's orbit by projection on the `(E, Pζ, μ)` space.
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Harmonic, Qfactor};
+use dexter_equilibrium::Equilibrium;
 use parabola::Point;
 use rsl_interpolation::Accelerator;
 
-use crate::particle::{EqObjects, IntegrationCaches, Particle};
+use crate::particle::{IntegrationCaches, Particle};
 use crate::state::GCState;
 use crate::{EnergyPzetaPlane, OrbitType};
 
@@ -148,21 +148,16 @@ impl EnergyPzetaPosition {
 ///
 /// If a `_plane` is passed, then that plane is used for the calculations, avoiding the
 /// need for generating a new one. See [`Particle::_classify`].
-pub(super) fn classify<Q, C, B, H>(
+pub(super) fn classify(
     particle: &mut Particle,
-    objects: &EqObjects<Q, C, B, H>,
+    equilibrium: &Equilibrium,
     _plane: Option<&EnergyPzetaPlane>,
-) where
-    Q: Qfactor + FluxCommute,
-    C: Current,
-    B: Bfield,
-    H: Harmonic,
-{
+) {
     // =============== Particle Setup
 
     // Do not alter the `evolution` or `integration_status`
-    let mut caches = IntegrationCaches::<H::Cache> {
-        harmonic_caches: objects.perturbation.generate_caches(),
+    let mut caches = IntegrationCaches {
+        mode_caches: equilibrium.perturbation.generate_caches(),
         ..Default::default()
     };
 
@@ -171,11 +166,12 @@ pub(super) fn classify<Q, C, B, H>(
         particle.orbit_type = OrbitType::Undefined;
         return;
     }
-    if particle.initial_conditions.finalize(objects).is_err() {
+    if particle.initial_conditions.finalize(equilibrium).is_err() {
         particle.orbit_type = OrbitType::Undefined;
         return;
     }
-    let Ok(initial_state) = GCState::new(&particle.initial_conditions, objects, &mut caches) else {
+    let Ok(initial_state) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches)
+    else {
         particle.orbit_type = OrbitType::Undefined;
         return;
     };
@@ -194,7 +190,7 @@ pub(super) fn classify<Q, C, B, H>(
             }
             plane
         }
-        None => &EnergyPzetaPlane::from_mu(objects.qfactor, objects.current, objects.bfield, mu),
+        None => &EnergyPzetaPlane::from_mu(equilibrium, mu),
     };
 
     check_parabola_alphas(plane);

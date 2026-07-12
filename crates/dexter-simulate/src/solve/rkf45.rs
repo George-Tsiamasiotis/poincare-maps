@@ -2,9 +2,9 @@
 
 #![expect(clippy::missing_docs_in_private_items, reason = "unnecessary")]
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Harmonic, Qfactor};
+use dexter_equilibrium::Equilibrium;
 
-use crate::particle::{EqObjects, IntegrationCaches};
+use crate::particle::IntegrationCaches;
 use crate::state::GCState;
 use crate::{SimulationError, SolverParams, SteppingMethod};
 
@@ -93,24 +93,18 @@ impl Stepper {
     }
 
     /// Calculates all intermediate [`GCState`]s, coefficients, weights and errors.
-    pub(crate) fn start<C, Q, B, H>(
+    pub(crate) fn start(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         self.calculate_k1();
-        self.calculate_state_k2(dt, objects, caches)?;
-        self.calculate_state_k3(dt, objects, caches)?;
-        self.calculate_state_k4(dt, objects, caches)?;
-        self.calculate_state_k5(dt, objects, caches)?;
-        self.calculate_state_k6(dt, objects, caches)?;
+        self.calculate_state_k2(dt, equilibrium, caches)?;
+        self.calculate_state_k3(dt, equilibrium, caches)?;
+        self.calculate_state_k4(dt, equilibrium, caches)?;
+        self.calculate_state_k5(dt, equilibrium, caches)?;
+        self.calculate_state_k6(dt, equilibrium, caches)?;
         self.calculate_embedded_weights();
         self.calculate_errors();
         Ok(())
@@ -120,18 +114,12 @@ impl Stepper {
         self.k1 = self.state1.dots()
     }
 
-    pub(crate) fn calculate_state_k2<Q, C, B, H>(
+    pub(crate) fn calculate_state_k2(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         let coef = [
             A21 * self.k1[0],
             A21 * self.k1[1],
@@ -149,23 +137,17 @@ impl Stepper {
         self.state2.rho = self.state1.rho + dt * coef[3];
         self.state2.mu = self.state1.mu + dt * coef[4];
 
-        self.state2.evaluate(objects, caches)?;
+        self.state2.evaluate(equilibrium, caches)?;
         self.k2 = self.state2.dots();
         Ok(())
     }
 
-    pub(crate) fn calculate_state_k3<Q, C, B, H>(
+    pub(crate) fn calculate_state_k3(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         let coef = [
             A31 * self.k1[0] + A32 * self.k2[0],
             A31 * self.k1[1] + A32 * self.k2[1],
@@ -183,23 +165,17 @@ impl Stepper {
         self.state3.rho = self.state1.rho + dt * coef[3];
         self.state3.mu = self.state1.mu + dt * coef[4];
 
-        self.state3.evaluate(objects, caches)?;
+        self.state3.evaluate(equilibrium, caches)?;
         self.k3 = self.state3.dots();
         Ok(())
     }
 
-    pub(crate) fn calculate_state_k4<Q, C, B, H>(
+    pub(crate) fn calculate_state_k4(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         let coef = [
             A41 * self.k1[0] + A42 * self.k2[0] + A43 * self.k3[0],
             A41 * self.k1[1] + A42 * self.k2[1] + A43 * self.k3[1],
@@ -217,23 +193,17 @@ impl Stepper {
         self.state4.rho = self.state1.rho + dt * coef[3];
         self.state4.mu = self.state1.mu + dt * coef[4];
 
-        self.state4.evaluate(objects, caches)?;
+        self.state4.evaluate(equilibrium, caches)?;
         self.k4 = self.state4.dots();
         Ok(())
     }
 
-    pub(crate) fn calculate_state_k5<Q, C, B, H>(
+    pub(crate) fn calculate_state_k5(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         #[rustfmt::skip]
         let coef = [
             A51 * self.k1[0] + A52 * self.k2[0] + A53 * self.k3[0] + A54 * self.k4[0],
@@ -251,23 +221,17 @@ impl Stepper {
         self.state5.rho = self.state1.rho + dt * coef[3];
         self.state5.mu = self.state1.mu + dt * coef[4];
 
-        self.state5.evaluate(objects, caches)?;
+        self.state5.evaluate(equilibrium, caches)?;
         self.k5 = self.state5.dots();
         Ok(())
     }
 
-    pub(crate) fn calculate_state_k6<Q, C, B, H>(
+    pub(crate) fn calculate_state_k6(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         #[rustfmt::skip]
             let coef = [
                 A61 * self.k1[0] + A62 * self.k2[0] + A63 * self.k3[0] + A64 * self.k4[0] + A65 * self.k5[0],
@@ -286,7 +250,7 @@ impl Stepper {
         self.state6.rho = self.state1.rho + dt * coef[3];
         self.state6.mu = self.state1.mu + dt * coef[4];
 
-        self.state6.evaluate(objects, caches)?;
+        self.state6.evaluate(equilibrium, caches)?;
         self.k6 = self.state6.dots();
         Ok(())
     }
@@ -374,18 +338,12 @@ impl Stepper {
         config.safety_factor * dt * (config.error_rel_tol / max_error).powf(exp)
     }
 
-    pub(crate) fn next_state<Q, C, B, H>(
+    pub(crate) fn next_state(
         &mut self,
         dt: f64,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<GCState, SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<GCState, SimulationError> {
         {
             let mut next = GCState::default();
             next.coordinate = self.state1.coordinate;
@@ -397,7 +355,7 @@ impl Stepper {
             next.rho = self.state1.rho + dt * self.weights[3];
             next.mu = self.state1.mu + dt * self.weights[4];
 
-            next.into_evaluated(objects, caches)
+            next.into_evaluated(equilibrium, caches)
         }
     }
 }

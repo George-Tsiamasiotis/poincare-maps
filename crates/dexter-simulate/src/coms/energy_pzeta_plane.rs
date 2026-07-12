@@ -2,7 +2,7 @@
 
 #![expect(clippy::min_ident_chars, reason = "parabola a, b, c coefficients")]
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Qfactor};
+use dexter_equilibrium::Equilibrium;
 use ndarray::Array1;
 use parabola::Parabola;
 use rsl_interpolation::{Accelerator, Cache};
@@ -27,36 +27,21 @@ pub struct EnergyPzetaPlane {
 
 impl EnergyPzetaPlane {
     /// Creates a new `EnergyPzetaPlane` from a set of [`COMs`], in a given equilibrium.
-    pub(crate) fn from_coms<Q, C, B>(
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        coms: &COMs,
-    ) -> Result<Self, COMError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
+    pub(crate) fn from_coms(equilibrium: &Equilibrium, coms: &COMs) -> Result<Self, COMError> {
         let Some(mu) = coms.mu else {
             return Err(COMError::UndefinedMu);
         };
 
-        Ok(Self::from_mu(qfactor, current, bfield, mu))
+        Ok(Self::from_mu(equilibrium, mu))
     }
 
     /// Creates a new `EnergyPzetaPlane` from a set magnetic moment `μ=const` value.
-    pub(crate) fn from_mu<Q, C, B>(qfactor: &Q, current: &C, bfield: &B, mu: f64) -> Self
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
+    pub(crate) fn from_mu(equilibrium: &Equilibrium, mu: f64) -> Self {
         Self {
-            axis_parabola: Self::build_magnetic_axis_parabola(current, bfield, mu),
-            left_wall_parabola: Self::build_left_wall_parabola(qfactor, current, bfield, mu),
-            right_wall_parabola: Self::build_right_wall_parabola(qfactor, current, bfield, mu),
-            tp_boundary: TrappedPassingBoundary::new(qfactor, bfield, mu),
+            axis_parabola: Self::build_magnetic_axis_parabola(equilibrium, mu),
+            left_wall_parabola: Self::build_left_wall_parabola(equilibrium, mu),
+            right_wall_parabola: Self::build_right_wall_parabola(equilibrium, mu),
+            tp_boundary: TrappedPassingBoundary::new(equilibrium, mu),
             mu,
         }
     }
@@ -67,25 +52,24 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (0, 0)`.
     #[must_use]
-    fn build_magnetic_axis_parabola<C, B>(current: &C, bfield: &B, mu: f64) -> Parabola
-    where
-        C: Current,
-        B: Bfield,
-    {
+    fn build_magnetic_axis_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
         let acc1 = &mut Accelerator::new();
         let acc2 = &mut Accelerator::new();
         let cache = &mut Cache::<f64>::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let gaxis = current.g_of_psi(0.0, acc1).unwrap_or_else(|_| {
-            current
+        let gaxis = equilibrium.current.g_of_psi(0.0, acc1).unwrap_or_else(|_| {
+            equilibrium
+                .current
                 .g_of_psip(0.0, acc1)
                 .expect("At least one of the evaluations will always succeed")
         });
-        let baxis = bfield // This might be redundant
+        let baxis = equilibrium
+            .bfield // This might be redundant
             .b_of_psi(0.0, 0.0, acc1, acc2, cache)
             .unwrap_or_else(|_| {
-                bfield
+                equilibrium
+                    .bfield
                     .b_of_psip(0.0, 0.0, acc1, acc2, cache)
                     .expect("At least one of the evaluations will always succeed")
             });
@@ -103,29 +87,30 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (ψlast/ψplast, π)`.
     #[must_use]
-    fn build_left_wall_parabola<Q, C, B>(qfactor: &Q, current: &C, bfield: &B, mu: f64) -> Parabola
-    where
-        Q: Qfactor,
-        C: Current,
-        B: Bfield,
-    {
+    fn build_left_wall_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
         use std::f64::consts::PI;
-        let psi_last = qfactor.psi_last();
-        let psip_last = qfactor.psip_last();
+        let psi_last = equilibrium.qfactor.psi_last();
+        let psip_last = equilibrium.qfactor.psip_last();
         let acc1 = &mut Accelerator::new();
         let acc2 = &mut Accelerator::new();
         let cache = &mut Cache::<f64>::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let glast = current.g_of_psi(psi_last, acc1).unwrap_or_else(|_| {
-            current
-                .g_of_psip(psip_last, acc1)
-                .expect("At least one of the evaluations will always succeed")
-        });
-        let blast = bfield
+        let glast = equilibrium
+            .current
+            .g_of_psi(psi_last, acc1)
+            .unwrap_or_else(|_| {
+                equilibrium
+                    .current
+                    .g_of_psip(psip_last, acc1)
+                    .expect("At least one of the evaluations will always succeed")
+            });
+        let blast = equilibrium
+            .bfield
             .b_of_psi(psi_last, PI, acc1, acc2, cache)
             .unwrap_or_else(|_| {
-                bfield
+                equilibrium
+                    .bfield
                     .b_of_psip(psip_last, PI, acc1, acc2, cache)
                     .expect("At least one of the evaluations will always succeed")
             });
@@ -142,28 +127,29 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (ψlast/ψplast, 0)`.
     #[must_use]
-    fn build_right_wall_parabola<Q, C, B>(qfactor: &Q, current: &C, bfield: &B, mu: f64) -> Parabola
-    where
-        Q: Qfactor,
-        C: Current,
-        B: Bfield,
-    {
-        let psi_last = qfactor.psi_last();
-        let psip_last = qfactor.psip_last();
+    fn build_right_wall_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
+        let psi_last = equilibrium.qfactor.psi_last();
+        let psip_last = equilibrium.qfactor.psip_last();
         let acc1 = &mut Accelerator::new();
         let acc2 = &mut Accelerator::new();
         let cache = &mut Cache::<f64>::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let glast = current.g_of_psi(psi_last, acc1).unwrap_or_else(|_| {
-            current
-                .g_of_psip(psip_last, acc1)
-                .expect("At least one of the evaluations will always succeed")
-        });
-        let blast = bfield
+        let glast = equilibrium
+            .current
+            .g_of_psi(psi_last, acc1)
+            .unwrap_or_else(|_| {
+                equilibrium
+                    .current
+                    .g_of_psip(psip_last, acc1)
+                    .expect("At least one of the evaluations will always succeed")
+            });
+        let blast = equilibrium
+            .bfield
             .b_of_psi(psi_last, 0.0, acc1, acc2, cache)
             .unwrap_or_else(|_| {
-                bfield
+                equilibrium
+                    .bfield
                     .b_of_psip(psip_last, 0.0, acc1, acc2, cache)
                     .expect("At least one of the evaluations will always succeed")
             });

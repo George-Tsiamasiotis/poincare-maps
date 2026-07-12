@@ -9,34 +9,36 @@ use dexter_simulate::*;
 
 const MU: f64 = 6e-5;
 
-fn create_equilibrium() -> (ParabolicQfactor, LarCurrent, LarBfield) {
+fn create_equilibrium() -> Equilibrium {
     let lcfs = LastClosedFluxSurface::Toroidal(0.03);
-    (
-        ParabolicQfactor::new(1.1, 3.9, lcfs),
-        LarCurrent::new(),
-        LarBfield::new(),
-    )
+    Equilibrium {
+        geometry: None,
+        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::zero(),
+    }
 }
 
 /// CuPassing-Confined inside the left wall parabola.
 #[test]
 #[rustfmt::skip]
 fn orbit_alpha() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.001);
-    let pzeta0 = - 0.8 * qfactor.psip_last();
+    let pzeta0 = - 0.8 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Alpha);
     assert_eq!(particle.orbit_type(), OrbitType::CuPassingConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -45,21 +47,21 @@ fn orbit_alpha() {
 #[test]
 #[rustfmt::skip]
 fn orbit_beta() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.02);
-    let pzeta0 = - 1.5 * qfactor.psip_last();
+    let pzeta0 = - 1.5 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Beta);
     assert_eq!(particle.orbit_type(), OrbitType::CuPassingLost);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::Escaped);
 }
 
@@ -67,21 +69,21 @@ fn orbit_beta() {
 #[test]
 #[rustfmt::skip]
 fn orbit_gamma() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.01);
-    let pzeta0 = - 0.8 * qfactor.psip_last();
+    let pzeta0 = - 0.8 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Gamma);
     assert_eq!(particle.orbit_type(), OrbitType::TrappedLost);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::Escaped);
 }
 
@@ -90,21 +92,21 @@ fn orbit_gamma() {
 #[test]
 #[rustfmt::skip]
 fn orbit_delta() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.018);
-    let pzeta0 = - 0.6 * qfactor.psip_last();
+    let pzeta0 = - 0.6 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, PI, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Delta);
     assert_eq!(particle.orbit_type(), OrbitType::CoPassingLost);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::Escaped);
 }
 
@@ -113,21 +115,21 @@ fn orbit_delta() {
 #[test]
 #[rustfmt::skip]
 fn orbit_epsilon() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.003);
-    let pzeta0 = - 0.6 * qfactor.psip_last();
+    let pzeta0 = - 0.6 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, PI, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Epsilon);
     assert_eq!(particle.orbit_type(), OrbitType::CuPassingConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -135,21 +137,21 @@ fn orbit_epsilon() {
 #[test]
 #[rustfmt::skip]
 fn orbit_zeta() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.025);
-    let pzeta0 = - 0.4 * qfactor.psip_last();
+    let pzeta0 = - 0.4 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, PI, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Zeta);
     assert_eq!(particle.orbit_type(), OrbitType::CoPassingLost);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::Escaped);
 }
 
@@ -157,21 +159,21 @@ fn orbit_zeta() {
 #[test]
 #[rustfmt::skip]
 fn orbit_eta() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.015);
-    let pzeta0 = - 0.1 * qfactor.psip_last();
+    let pzeta0 = - 0.1 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Eta);
     assert_eq!(particle.orbit_type(), OrbitType::CoPassingConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -179,21 +181,21 @@ fn orbit_eta() {
 #[test]
 #[rustfmt::skip]
 fn orbit_theta() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.0045);
-    let pzeta0 = - 0.0448 * qfactor.psip_last();
+    let pzeta0 = - 0.0448 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Theta);
     assert_eq!(particle.orbit_type(), OrbitType::Potato);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -201,21 +203,21 @@ fn orbit_theta() {
 #[test]
 #[rustfmt::skip]
 fn orbit_iota() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.016);
-    let pzeta0 = - 0.6 * qfactor.psip_last();
+    let pzeta0 = - 0.6 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Iota);
     assert_eq!(particle.orbit_type(), OrbitType::TrappedConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -223,21 +225,21 @@ fn orbit_iota() {
 #[test]
 #[rustfmt::skip]
 fn orbit_kappa() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.025);
-    let pzeta0 = -0.36 * qfactor.psip_last();
+    let pzeta0 = -0.36 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 0.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Kappa);
     assert_eq!(particle.orbit_type(), OrbitType::CoPassingConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -245,21 +247,21 @@ fn orbit_kappa() {
 #[test]
 #[rustfmt::skip]
 fn orbit_lambda() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.001);
-    let pzeta0 = -0.36 * qfactor.psip_last();
+    let pzeta0 = -0.36 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 0.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Lambda);
     assert_eq!(particle.orbit_type(), OrbitType::CuPassingConfined);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }
 
@@ -267,20 +269,20 @@ fn orbit_lambda() {
 #[test]
 #[rustfmt::skip]
 fn orbit_mu() {
-    let (qfactor, current, bfield) = create_equilibrium();
+    let equilibrium = create_equilibrium();
 
     let psi0 = InitialFlux::Toroidal(0.0014);
-    let pzeta0 = - 0.0 * qfactor.psip_last();
+    let pzeta0 = - 0.0 * equilibrium.qfactor.psip_last();
     let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, MU);
 
     let mut particle = Particle::new(&initial);
     assert_eq!(particle.orbit_type(), OrbitType::Undefined);
 
-    particle.classify(&qfactor, &current, &bfield);
+    particle.classify(&equilibrium);
 
     assert_eq!(particle.energy_pzeta_position(), EnergyPzetaPosition::Mu);
     assert_eq!(particle.orbit_type(), OrbitType::Stagnated);
 
-    particle.close(&qfactor, &current, &bfield, &Perturbation::zero(), 1, &SolverParams::default());
+    particle.close(&equilibrium, 1, &SolverParams::default());
     assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
 }

@@ -1,9 +1,8 @@
 //! Definition of a Particle's initial conditions in various coordinate sets.
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Harmonic, Qfactor};
+use dexter_equilibrium::Equilibrium;
 use rsl_interpolation::Accelerator;
 
-use crate::particle::EqObjects;
 use crate::{InitialFlux, SimulationError};
 
 /// The kind of [`InitialConditions`] set.
@@ -127,40 +126,31 @@ impl InitialConditions {
     /// Returns a [`SimulationError`] if the missing coordinates cannot be calculated. This can
     /// occur if the [`Current`] object specifically does not define g(ψ) (`MixedToroidal` case) or
     /// g(ψp) (`MixedPoloidal` case), which are necessary for calculating the fluxes.
-    pub(crate) fn finalize<Q, C, B, H>(
-        &mut self,
-        objects: &EqObjects<Q, C, B, H>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+    pub(crate) fn finalize(&mut self, equilibrium: &Equilibrium) -> Result<(), SimulationError> {
         let acc = &mut Accelerator::new();
         match self.coordinate_set {
             // Calculate `pzeta0`
             CoordinateSet::BoozerToroidal => {
                 let psi0 = self.flux0.value();
-                let g_of_psi0 = objects.current.g_of_psi(psi0, acc)?;
-                let psip0 = objects.qfactor.psip_of_psi(psi0, acc)?;
+                let g_of_psi0 = equilibrium.current.g_of_psi(psi0, acc)?;
+                let psip0 = equilibrium.qfactor.psip_of_psi(psi0, acc)?;
                 self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g_of_psi0 - psip0)
             }
             CoordinateSet::BoozerPoloidal => {
                 let psip0 = self.flux0.value();
-                let g_of_psip0 = objects.current.g_of_psip(psip0, acc)?;
+                let g_of_psip0 = equilibrium.current.g_of_psip(psip0, acc)?;
                 self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g_of_psip0 - psip0)
             }
             // Calculate `rho0`
             CoordinateSet::MixedToroidal => {
                 let psi0 = self.flux0.value();
-                let g_of_psi0 = objects.current.g_of_psi(psi0, acc)?;
-                let psip0 = objects.qfactor.psip_of_psi(psi0, acc)?;
+                let g_of_psi0 = equilibrium.current.g_of_psi(psi0, acc)?;
+                let psip0 = equilibrium.qfactor.psip_of_psi(psi0, acc)?;
                 self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0) / g_of_psi0);
             }
             CoordinateSet::MixedPoloidal => {
                 let psip0 = self.flux0.value();
-                let g_of_psip0 = objects.current.g_of_psip(psip0, acc)?;
+                let g_of_psip0 = equilibrium.current.g_of_psip(psip0, acc)?;
                 self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0) / g_of_psip0);
             }
         };
@@ -264,26 +254,34 @@ mod test {
 
     #[test]
     fn boozer_initial_conditions() {
-        let objects = EqObjects {
-            qfactor: &UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1)),
-            current: &LarCurrent::new(),
-            bfield: &LarBfield::new(),
-            perturbation: &Perturbation::zero(),
+        let geometry = LarGeometry::new(1.0, 1.75, 0.5);
+        let psi_last = (geometry.rlast() / geometry.raxis()).powi(2) / 2.0;
+        let lcfs = LastClosedFluxSurface::Toroidal(psi_last);
+
+        let equilibrium = Equilibrium {
+            geometry: Some(Box::new(LarGeometry::new(1.0, 1.75, 0.5))),
+            qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+            current: Box::new(LarCurrent::new()),
+            bfield: Box::new(LarBfield::new()),
+            perturbation: Perturbation::new(&[
+                Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
+                Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
+            ]),
         };
         let mut i1 = InitialConditions::boozer(0.0, Toroidal(0.02), PI, PI, 1e-4, 1e-6);
-        i1.finalize(&objects).unwrap();
+        i1.finalize(&equilibrium).unwrap();
         assert_eq!(i1.coordinate_set, CoordinateSet::BoozerToroidal);
         assert!(i1.rho0.is_some());
         assert!(i1.pzeta0.is_some());
 
         let mut i2 = InitialConditions::boozer(0.0, Poloidal(0.02), PI, PI, 1e-4, 1e-6);
-        i2.finalize(&objects).unwrap();
+        i2.finalize(&equilibrium).unwrap();
         assert_eq!(i2.coordinate_set, CoordinateSet::BoozerPoloidal);
         assert!(i2.rho0.is_some());
         assert!(i2.pzeta0.is_some());
 
         let mut initial = InitialConditions::boozer(0.0, Toroidal(0.02), PI, PI, 1e-4, 1e-6);
-        initial.finalize(&objects).unwrap();
+        initial.finalize(&equilibrium).unwrap();
         let _ = initial.t0();
         let _ = initial.flux0();
         let _ = initial.theta0();
@@ -295,90 +293,87 @@ mod test {
 
     #[test]
     fn mixed_toroidal_initial_conditions() {
-        let objects = EqObjects {
-            qfactor: &UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1)),
-            current: &LarCurrent::new(),
-            bfield: &LarBfield::new(),
-            perturbation: &Perturbation::zero(),
+        let geometry = LarGeometry::new(1.0, 1.75, 0.5);
+        let psi_last = (geometry.rlast() / geometry.raxis()).powi(2) / 2.0;
+        let lcfs = LastClosedFluxSurface::Toroidal(psi_last);
+
+        let equilibrium = Equilibrium {
+            geometry: Some(Box::new(LarGeometry::new(1.0, 1.75, 0.5))),
+            qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+            current: Box::new(LarCurrent::new()),
+            bfield: Box::new(LarBfield::new()),
+            perturbation: Perturbation::new(&[
+                Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
+                Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
+            ]),
         };
+
         let mut initial = InitialConditions::mixed(0.0, Toroidal(0.01), PI, PI, -0.027, 1e-6);
-        initial.finalize(&objects).unwrap();
+        initial.finalize(&equilibrium).unwrap();
         assert_eq!(initial.coordinate_set, CoordinateSet::MixedToroidal);
         assert!(initial.rho0.is_some());
         assert!(initial.pzeta0.is_some());
 
         let mut particle = Particle::new(&initial);
-        particle.integrate(
-            objects.qfactor,
-            objects.current,
-            objects.bfield,
-            objects.perturbation,
-            (0.0, 1e2),
-            &SolverParams::default(),
-        );
+        particle.integrate(&equilibrium, (0.0, 1e2), &SolverParams::default());
         assert!(particle.steps_taken() > 10);
         assert!(particle.integration_status() == IntegrationStatus::Integrated);
 
         // LarCurrent defines ψp evaluations but LarBfield cannot integrate with respect to ψp.
         InitialConditions::mixed(0.0, Poloidal(0.01), PI, PI, -0.027, 1e-6)
-            .finalize(&objects)
+            .finalize(&equilibrium)
             .unwrap();
     }
 
     #[test]
     fn mixed_poloidal_initial_conditions() {
         let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-        let qfactor = &NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-        let current = &NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-        let bfield = &NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-        let perturbation = &Perturbation::zero();
+        let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
+        let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
+        let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+        let perturbation = Perturbation::zero();
 
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation,
+        let equilibrium = Equilibrium {
+            geometry: None,
+            qfactor: Box::new(qfactor),
+            current: Box::new(current),
+            bfield: Box::new(bfield),
+            perturbation: perturbation,
         };
 
         let mut initial = InitialConditions::mixed(0.0, Poloidal(0.01), PI, PI, -0.027, 1e-6);
-        initial.finalize(&objects).unwrap();
+        initial.finalize(&equilibrium).unwrap();
         assert!(initial.rho0.is_some());
         assert!(initial.pzeta0.is_some());
 
         let mut particle = Particle::new(&initial);
-        particle.integrate(
-            objects.qfactor,
-            objects.current,
-            objects.bfield,
-            objects.perturbation,
-            (0.0, 1e2),
-            &SolverParams::default(),
-        );
+        particle.integrate(&equilibrium, (0.0, 1e2), &SolverParams::default());
         assert!(particle.steps_taken() > 10);
         assert!(particle.integration_status() == IntegrationStatus::Integrated);
 
         let _ = InitialConditions::mixed(0.0, Toroidal(0.01), PI, PI, -0.027, 1e-6)
-            .finalize(&objects)
+            .finalize(&equilibrium)
             .unwrap_err();
     }
 
     #[test]
     fn boozer_mixed_equivalence() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let qfactor = &NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-        let current = &NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-        let bfield = &NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
-        let perturbation = &Perturbation::zero();
+        let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
+        let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
+        let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+        let perturbation = Perturbation::zero();
 
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation,
+        let equilibrium = Equilibrium {
+            geometry: None,
+            qfactor: Box::new(qfactor),
+            current: Box::new(current),
+            bfield: Box::new(bfield),
+            perturbation: perturbation,
         };
 
         let mut boozer = InitialConditions::boozer(0.0, Toroidal(0.01), PI, PI, 1e-4, 1e-6);
-        boozer.finalize(&objects).unwrap();
+        boozer.finalize(&equilibrium).unwrap();
         assert_relative_eq!(
             boozer.pzeta0.unwrap(),
             -0.00898781038097592,
@@ -387,7 +382,7 @@ mod test {
 
         let mut mixed =
             InitialConditions::mixed(0.0, Toroidal(0.01), PI, PI, boozer.pzeta0.unwrap(), 1e-6);
-        mixed.finalize(&objects).unwrap();
+        mixed.finalize(&equilibrium).unwrap();
         assert_relative_eq!(mixed.rho0.unwrap(), boozer.rho0.unwrap(), epsilon = 1e-12);
     }
 }

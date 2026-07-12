@@ -1,5 +1,9 @@
 #![doc = include_str!("../README.md")]
 //!
+//! # Equilibrium
+//!
+//! + [`Equilibrium`]: Representation of an equilibrium and added perturbations.
+//!
 //! # Equilibrium objects
 //!
 //! + Representations of an equilibrium's general geometry. Provides interpolation methods between `ψ`, `ψp`, `r`, `R`, `Z`, `J`.
@@ -66,6 +70,7 @@
 //! + [`extract::attribute`]: Extraction of a file's attribute as a String.
 //! + [`extract::version`]: Extraction of a files convention [`Semantic Version`](https://semver.org/)
 
+mod equilibrium;
 mod error;
 mod eval;
 mod objects;
@@ -83,6 +88,8 @@ pub use objects::nc_flux::FluxCoordinateState;
 pub use eval::ModeCache;
 pub use eval::{Bfield, Current, FluxCommute, Geometry, Mode, Qfactor};
 pub use eval::{DynMode, DynModeCache};
+
+pub use equilibrium::Equilibrium;
 
 pub use objects::geometries::LarGeometry;
 pub use objects::geometries::NcGeometry;

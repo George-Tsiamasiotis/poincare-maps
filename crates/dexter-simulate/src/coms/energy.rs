@@ -2,11 +2,10 @@
 
 #![expect(clippy::min_ident_chars, reason = "Hamiltonian terms")]
 
+use dexter_equilibrium::Equilibrium;
 use ndarray::{Array1, Array2};
 use rsl_interpolation::{Accelerator, Cache};
 use std::f64::consts::TAU;
-
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Qfactor};
 
 use crate::COMError;
 use crate::COMs;
@@ -19,19 +18,12 @@ use crate::COMs;
 ///
 /// Returns a [`COMError`] if `pzeta` or `mu` are not defined, or if any of the
 /// `psi_array` values is out of bounds.
-pub(crate) fn energy_of_psi_grid<Q, C, B>(
+pub(crate) fn energy_of_psi_grid(
     coms: &COMs,
-    qfactor: &Q,
-    current: &C,
-    bfield: &B,
+    equilibrium: &Equilibrium,
     psi_array: &Array1<f64>,
     theta_array: &Array1<f64>,
-) -> Result<Array2<f64>, COMError>
-where
-    Q: Qfactor + FluxCommute,
-    C: Current,
-    B: Bfield,
-{
+) -> Result<Array2<f64>, COMError> {
     let Some(pzeta) = coms.pzeta else {
         return Err(COMError::UndefinedPzeta);
     };
@@ -51,12 +43,18 @@ where
     // Use `<>_of_psi` evaluation methods to avoid error propagation through double interpolations.
     for i in 0..psi_array.len() {
         let psi = psi_array[i];
-        let psip = qfactor.psip_of_psi(psi, &mut psi_acc)?;
-        let g = current.g_of_psi(psi, &mut psi_acc)?;
+        let psip = equilibrium.qfactor.psip_of_psi(psi, &mut psi_acc)?;
+        let g = equilibrium.current.g_of_psi(psi, &mut psi_acc)?;
         let rho = (pzeta + psip) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = bfield.b_of_psi(psi, theta, &mut psi_acc, &mut theta_acc, &mut cache)?;
+            let b = equilibrium.bfield.b_of_psi(
+                psi,
+                theta,
+                &mut psi_acc,
+                &mut theta_acc,
+                &mut cache,
+            )?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -74,17 +72,12 @@ where
 ///
 /// Returns a [`COMError`] if `pzeta` or `mu` are not defined, or if any of the
 /// `psi_array` values is out of bounds.
-pub(crate) fn energy_of_psip_grid<C, B>(
+pub(crate) fn energy_of_psip_grid(
     coms: &COMs,
-    current: &C,
-    bfield: &B,
+    equilibrium: &Equilibrium,
     psip_array: &Array1<f64>,
     theta_array: &Array1<f64>,
-) -> Result<Array2<f64>, COMError>
-where
-    C: Current,
-    B: Bfield,
-{
+) -> Result<Array2<f64>, COMError> {
     let Some(pzeta) = coms.pzeta else {
         return Err(COMError::UndefinedPzeta);
     };
@@ -103,11 +96,17 @@ where
     // Iterate though `psi_array` first to avoid unnecessarily recalculating `rho`.
     for i in 0..psip_array.len() {
         let psip = psip_array[i];
-        let g = current.g_of_psip(psip, &mut psip_acc)?;
+        let g = equilibrium.current.g_of_psip(psip, &mut psip_acc)?;
         let rho = (pzeta + psip) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = bfield.b_of_psip(psip, theta, &mut psip_acc, &mut theta_acc, &mut cache)?;
+            let b = equilibrium.bfield.b_of_psip(
+                psip,
+                theta,
+                &mut psip_acc,
+                &mut theta_acc,
+                &mut cache,
+            )?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -124,9 +123,13 @@ mod test {
 
     #[test]
     fn gcmotion_check() {
-        let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1));
-        let current = LarCurrent::new();
-        let bfield = LarBfield::new();
+        let equilibrium = Equilibrium {
+            geometry: None,
+            qfactor: Box::new(UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1))),
+            current: Box::new(LarCurrent::new()),
+            bfield: Box::new(LarBfield::new()),
+            perturbation: Perturbation::zero(),
+        };
 
         let psi_array = arr1(&vec![0.01, 0.02]);
         let theta_array = arr1(&vec![-1.0, 1.0]);
@@ -138,7 +141,7 @@ mod test {
         };
 
         let grid_of_psi = coms
-            .energy_of_psi_grid(&qfactor, &current, &bfield, &psi_array, &theta_array)
+            .energy_of_psi_grid(&equilibrium, &psi_array, &theta_array)
             .unwrap();
 
         let expected = arr2(&[
@@ -157,10 +160,18 @@ mod test {
         let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
         let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
 
+        let equilibrium = Equilibrium {
+            geometry: None,
+            qfactor: Box::new(qfactor),
+            current: Box::new(current),
+            bfield: Box::new(bfield),
+            perturbation: Perturbation::zero(),
+        };
+
         let acc = &mut Accelerator::new();
         let psi_array = arr1(&vec![0.01, 0.02]);
         let theta_array = arr1(&vec![-1.0, 1.0]);
-        let psip_array = psi_array.mapv(|psi| qfactor.psip_of_psi(psi, acc).unwrap());
+        let psip_array = psi_array.mapv(|psi| equilibrium.qfactor.psip_of_psi(psi, acc).unwrap());
 
         let coms = COMs {
             energy: None,
@@ -169,10 +180,10 @@ mod test {
         };
 
         let grid_of_psi = coms
-            .energy_of_psi_grid(&qfactor, &current, &bfield, &psi_array, &theta_array)
+            .energy_of_psi_grid(&equilibrium, &psi_array, &theta_array)
             .unwrap();
         let grid_of_psip = coms
-            .energy_of_psip_grid(&current, &bfield, &psip_array, &theta_array)
+            .energy_of_psip_grid(&equilibrium, &psip_array, &theta_array)
             .unwrap();
 
         assert!(grid_of_psi.relative_eq(&grid_of_psip, 1e-11, 1e-14));

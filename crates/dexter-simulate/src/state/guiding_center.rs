@@ -4,11 +4,9 @@
 
 use std::f64::consts::TAU;
 
-use dexter_equilibrium::{
-    Bfield, Current, EvalError, FluxCommute, Harmonic, Perturbation, Qfactor,
-};
+use dexter_equilibrium::{Equilibrium, EvalError};
 
-use crate::particle::{EqObjects, IntegrationCaches};
+use crate::particle::IntegrationCaches;
 use crate::{FluxCoordinate, InitialConditions, InitialFlux, SimulationError};
 
 /// State of the Guiding Center at each step.
@@ -93,17 +91,11 @@ pub(crate) struct GCState {
 /// Creation and evaluation.
 impl GCState {
     /// Creates a new `GCState` from a set of [`InitialConditions`] and evaluates it.
-    pub(crate) fn new<Q, C, B, H>(
+    pub(crate) fn new(
         initial: &InitialConditions,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<Self, SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<Self, SimulationError> {
         let (psi, psip): (f64, f64);
         let coordinate: FluxCoordinate;
         match initial.flux0 {
@@ -130,28 +122,22 @@ impl GCState {
             coordinate,
             ..Default::default()
         }
-        .into_evaluated(objects, caches)
+        .into_evaluated(equilibrium, caches)
     }
 
     /// Performs all evaluations and calculation of intermediate quantities and final time derivatives.
-    pub(crate) fn evaluate<Q, C, B, H>(
+    pub(crate) fn evaluate(
         &mut self,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
         // First do all the interpolations
         self.calculate_modulos();
-        self.calculate_other_flux::<Q, H>(objects.qfactor, caches)?;
-        self.calculate_qfactor_quantities::<Q, H>(objects.qfactor, caches)?;
-        self.calculate_current_quantities::<C, H>(objects.current, caches)?;
-        self.calculate_bfield_quantities::<B, H>(objects.bfield, caches)?;
-        self.calculate_perturbation_quantities::<H>(objects.perturbation, caches)?;
+        self.calculate_other_flux(equilibrium, caches)?;
+        self.calculate_qfactor_quantities(equilibrium, caches)?;
+        self.calculate_current_quantities(equilibrium, caches)?;
+        self.calculate_bfield_quantities(equilibrium, caches)?;
+        self.calculate_perturbation_quantities(equilibrium, caches)?;
 
         // Multiply with `q` where needed, depending on the `FluxCoordinate`
         self.adjust_for_flux();
@@ -175,18 +161,12 @@ impl GCState {
     }
 
     /// Returns the state evaluated, consuming self.
-    pub(crate) fn into_evaluated<Q, C, B, H>(
+    pub(crate) fn into_evaluated(
         mut self,
-        objects: &EqObjects<Q, C, B, H>,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<Self, SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
-        self.evaluate(objects, caches)?;
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<Self, SimulationError> {
+        self.evaluate(equilibrium, caches)?;
         Ok(self)
     }
 }
@@ -199,15 +179,12 @@ impl GCState {
     }
 
     /// Calculates the non-coordinate flux, if it is defined.
-    fn calculate_other_flux<Q, H>(
+    fn calculate_other_flux(
         &mut self,
-        qfactor: &Q,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
+        let qfactor = equilibrium.qfactor.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.psip = match qfactor.psip_of_psi(self.psi, &mut caches.psi_acc) {
                 Ok(psip) => psip,
@@ -224,15 +201,12 @@ impl GCState {
         Ok(())
     }
 
-    fn calculate_qfactor_quantities<Q, H>(
+    fn calculate_qfactor_quantities(
         &mut self,
-        qfactor: &Q,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        Q: Qfactor + FluxCommute,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
+        let qfactor = equilibrium.qfactor.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.q = qfactor.q_of_psi(self.psi, &mut caches.psi_acc)?;
         } else {
@@ -241,15 +215,12 @@ impl GCState {
         Ok(())
     }
 
-    fn calculate_current_quantities<C, H>(
+    fn calculate_current_quantities(
         &mut self,
-        current: &C,
-        caches: &mut IntegrationCaches<H::Cache>,
-    ) -> Result<(), SimulationError>
-    where
-        C: Current,
-        H: Harmonic,
-    {
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
+    ) -> Result<(), SimulationError> {
+        let current = equilibrium.current.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.g = current.g_of_psi(self.psi, &mut caches.psi_acc)?;
             self.i = current.i_of_psi(self.psi, &mut caches.psi_acc)?;
@@ -265,15 +236,13 @@ impl GCState {
     }
 
     #[rustfmt::skip]
-    fn calculate_bfield_quantities<B, H>(
+    fn calculate_bfield_quantities(
         &mut self,
-        bfield: &B,
-        caches: &mut IntegrationCaches<H::Cache>,
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError>
-    where
-        B: Bfield,
-        H: Harmonic,
     {
+        let bfield = equilibrium.bfield.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.b          = bfield.b_of_psi           (self.psi, self.mod_theta, &mut caches.psi_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
             self.db_dflux   = bfield.db_dpsi            (self.psi, self.mod_theta, &mut caches.psi_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
@@ -288,26 +257,25 @@ impl GCState {
     }
 
     #[rustfmt::skip]
-    fn calculate_perturbation_quantities<H>(
+    fn calculate_perturbation_quantities(
         &mut self,
-        perturbation: &Perturbation<H>,
-        caches: &mut IntegrationCaches<H::Cache>,
+        equilibrium: &Equilibrium,
+        caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError>
-    where
-        H: Harmonic,
     {
+        let perturbation = &equilibrium.perturbation;
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsi          (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psi_dtheta (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psi_dzeta  (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dt      = perturbation.dp_of_psi_dt     (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
+            self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dflux   = perturbation.dp_dpsi          (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dtheta  = perturbation.dp_of_psi_dtheta (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dzeta   = perturbation.dp_of_psi_dzeta  (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dt      = perturbation.dp_of_psi_dt     (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
         } else {
-            self.p          = perturbation.p_of_psip        (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsip         (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psip_dtheta(self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psip_dzeta (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
-            self.dp_dt      = perturbation.dp_of_psip_dt    (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.harmonic_caches)?;
+            self.p          = perturbation.p_of_psip        (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dflux   = perturbation.dp_dpsip         (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dtheta  = perturbation.dp_of_psip_dtheta(self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dzeta   = perturbation.dp_of_psip_dzeta (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.dp_dt      = perturbation.dp_of_psip_dt    (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
         }
         Ok(())
     }

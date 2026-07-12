@@ -6,15 +6,17 @@ use dexter_simulate::*;
 fn main() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-
-    let qfactor = UnityQfactor::new(lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
-    let perturbation = Perturbation::new(&[
-        CosHarmonic::new(1e-2, lcfs, 1, 1, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-        CosHarmonic::new(1e-3, lcfs, 1, 4, 0.0),
-    ]);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(UnityQfactor::new(lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::new(&[
+            Box::new(FluteMode::new(1e-2, lcfs, 1, 1, 0.0)),
+            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+        ]),
+    };
 
     let energy_params = SolverParams {
         method: SteppingMethod::EnergyAdaptiveStep,
@@ -30,7 +32,7 @@ fn main() {
     };
 
     let fixed_params = SolverParams {
-        method: SteppingMethod::FixedStep(2.0),
+        method: SteppingMethod::FixedStep(4.0),
         ..Default::default()
     };
 
@@ -41,30 +43,9 @@ fn main() {
     let mut fixed_particle = Particle::new(&initial);
 
     let teval = (0.0, 1e5);
-    energy_particle.integrate(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        teval,
-        &energy_params,
-    );
-    error_particle.integrate(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        teval,
-        &error_params,
-    );
-    fixed_particle.integrate(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        teval,
-        &fixed_params,
-    );
+    energy_particle.integrate(&equilibrium, teval, &energy_params);
+    error_particle.integrate(&equilibrium, teval, &error_params);
+    fixed_particle.integrate(&equilibrium, teval, &fixed_params);
 
     println!("Energy adaptive step:");
     print_results(&energy_particle);
@@ -77,4 +58,5 @@ fn main() {
 fn print_results(particle: &Particle) {
     println!("\tSteps taken: {}", particle.steps_taken());
     println!("\tEnergy variance: {:?}", particle.energy_var().unwrap());
+    println!("\tDuration: {:?}", particle.duration());
 }

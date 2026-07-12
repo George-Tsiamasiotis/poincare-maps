@@ -8,7 +8,6 @@ pub use initials::QueueInitialConditions;
 pub use initials::{poloidal_fluxes, toroidal_fluxes};
 
 use ndarray::Array1;
-use ndarray_stats::QuantileExt;
 use pbars::{ClosePbar, IntegratePbar, IntersectPbar};
 use stats::QueueStats;
 
@@ -17,7 +16,7 @@ use std::ops::{Index, Range};
 use std::slice::Iter;
 use std::time::Duration;
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Harmonic, Perturbation, Qfactor};
+use dexter_equilibrium::Equilibrium;
 
 use crate::queue::pbars::ClassifyPbar;
 use crate::{EnergyPzetaPlane, IntersectParams, Particle, SolverParams};
@@ -152,14 +151,18 @@ impl Queue {
     /// #
     /// let path = PathBuf::from("./netcdf.nc");
     /// let qfactor = NcQfactorBuilder::new(&path, "steffen").build()?;
-    /// let current = NcCurrentBuilder::new(&path, "steffen").build()?;
-    /// let bfield = NcBfieldBuilder::new(&path, "bicubic").build()?;
     /// let lcfs = LastClosedFluxSurface::Toroidal(qfactor.psi_last());
-    /// let perturbation = Perturbation::new(&[
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 1, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 3, 0.0),
-    /// ]);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(qfactor),
+    ///     current: Box::new(NcCurrentBuilder::new(&path, "steffen").build()?),
+    ///     bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build()?),
+    ///     perturbation: Perturbation::new(&[
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
+    ///     ]),
+    /// };
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -172,34 +175,23 @@ impl Queue {
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
     /// queue.integrate(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
-    ///     &perturbation,
+    ///     &equilibrium,
     ///     (0.0, 1e3),
     ///     &SolverParams::default(),
     /// );
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn integrate<Q, C, B, H>(
+    pub fn integrate(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         teval: (f64, f64),
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute + Send + Sync,
-        C: Current + Send + Sync,
-        B: Bfield + Send + Sync,
-        H: Harmonic + Send + Sync,
-    {
+    ) {
         let pbar = IntegratePbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.integrate(qfactor, current, bfield, perturbation, teval, solver_params);
+            particle.integrate(equilibrium, teval, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
         });
@@ -222,14 +214,17 @@ impl Queue {
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
-    /// let perturbation = Perturbation::new(&[
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 1, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 3, 0.0),
-    /// ]);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::new(&[
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
+    ///     ]),
+    /// };
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -243,42 +238,24 @@ impl Queue {
     /// let mut queue = Queue::new(&initial_conditions);
     /// let intersect_params = IntersectParams::new(Intersection::ConstTheta, 0.0, 100);
     /// queue.intersect(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
-    ///     &perturbation,
+    ///     &equilibrium,
     ///     &intersect_params,
     ///     &SolverParams::default(),
     /// );
     /// # Ok::<_, SimulationError>(())
     /// ```
     #[doc(alias = "poincare_map")]
-    pub fn intersect<Q, C, B, H>(
+    pub fn intersect(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         intersect_params: &IntersectParams,
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute + Send + Sync,
-        C: Current + Send + Sync,
-        B: Bfield + Send + Sync,
-        H: Harmonic + Send + Sync,
-    {
+    ) {
         let pbar = IntersectPbar::new(self, intersect_params);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.intersect(
-                qfactor,
-                current,
-                bfield,
-                perturbation,
-                intersect_params,
-                solver_params,
-            );
+            particle.intersect(equilibrium, intersect_params, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
         });
@@ -297,58 +274,40 @@ impl Queue {
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
-    /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
-    /// let perturbation = Perturbation::zero();
+    /// let lcfs = LastClosedFluxSurface::Toroidal(0.06);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
     ///     &[0.0, 0.1],
-    ///     &[Toroidal(0.15), Toroidal(0.3)],
+    ///     &[Toroidal(0.1), Toroidal(0.2)],
     ///     &[0.0, 0.1],
     ///     &[0.0, 0.0],
-    ///     &[1e-4, 2e-4],
+    ///     &[1e-5, 1e-5],
     ///     &[7e-6, 7e-6],
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.close(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
-    ///     &perturbation,
-    ///     1,
-    ///     &SolverParams::default(),
-    /// );
+    /// dbg!(&queue);
+    /// queue.close(&equilibrium, 1, &SolverParams::default());
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn close<Q, C, B, H>(
+    pub fn close(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         periods: usize,
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute + Send + Sync,
-        C: Current + Send + Sync,
-        B: Bfield + Send + Sync,
-        H: Harmonic + Send + Sync,
-    {
+    ) {
         let pbar = ClosePbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.close(
-                qfactor,
-                current,
-                bfield,
-                perturbation,
-                periods,
-                solver_params,
-            );
+            particle.close(equilibrium, periods, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
             particle.discard_arrays();
@@ -374,9 +333,13 @@ impl Queue {
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -388,20 +351,15 @@ impl Queue {
     ///     &[7e-6, 7e-6],
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.classify(&qfactor, &current, &bfield);
+    /// queue.classify(&equilibrium);
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn classify<Q, C, B>(&mut self, qfactor: &Q, current: &C, bfield: &B)
-    where
-        Q: Qfactor + FluxCommute + Send + Sync,
-        C: Current + Send + Sync,
-        B: Bfield + Send + Sync,
-    {
+    pub fn classify(&mut self, equilibrium: &Equilibrium) {
         let pbar = ClassifyPbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.classify(qfactor, current, bfield);
+            particle.classify(equilibrium);
             pbar.inc(&particle.orbit_type());
             pbar.print_stats();
         });
@@ -435,9 +393,13 @@ impl Queue {
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -449,16 +411,11 @@ impl Queue {
     ///     &[7e-6, 7e-6], // must all be equal
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.classify_common_mu(&qfactor, &current, &bfield);
+    /// queue.classify_common_mu(&equilibrium);
     /// # Ok::<_, SimulationError>(())
     /// ```
     #[expect(clippy::float_cmp, reason = "we need bit-to-bit equivalence")]
-    pub fn classify_common_mu<Q, C, B>(&mut self, qfactor: &Q, current: &C, bfield: &B)
-    where
-        Q: Qfactor + FluxCommute + Send + Sync,
-        C: Current + Send + Sync,
-        B: Bfield + Send + Sync,
-    {
+    pub fn classify_common_mu(&mut self, equilibrium: &Equilibrium) {
         let mus = self.initial_conditions.mu_array_view();
         let mu = mus
             .first()
@@ -468,13 +425,13 @@ impl Queue {
             "All initial `mu0` must be equal"
         );
 
-        let plane = EnergyPzetaPlane::from_mu(qfactor, current, bfield, *mu);
+        let plane = EnergyPzetaPlane::from_mu(equilibrium, *mu);
 
         let pbar = ClassifyPbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle._classify(qfactor, current, bfield, Some(&plane));
+            particle._classify(equilibrium, Some(&plane));
             pbar.inc(&particle.orbit_type());
             pbar.print_stats();
         });
@@ -531,49 +488,6 @@ impl Queue {
             particle
                 .initial_energy()
                 .is_some_and(|energy| span.contains(&energy))
-        });
-    }
-
-    /// Iterates through `self`'s particles, keeping only **one** particle in each `Pζ` *bin*.
-    ///
-    /// *Bins* are defined as the intervals:\
-    /// `Pζmin <= Pζmin + ΔPζ <= Pζmin + 2ΔPζ <= ... <= Pζmin + (n-1)ΔPζ <= Pζmax`,\
-    /// where `n=1..num_bins` and `ΔPζ = (Pζmax - Pζmin)/n`.
-    ///
-    /// When called after [`Queue::retain_energy`] with a small energy span, we can obtain a set of
-    /// particles of approximately same energy and approximately equispaced `Pζ`s, depending on
-    /// the `span` and `num_bins` parameters. This is useful since we essentially have no control
-    /// over the particles' energies.
-    ///
-    /// # Note
-    ///
-    /// Particles are visited in order of instantiation, and the first particle that falls in an
-    /// unfilled bin will be selected.
-    pub fn bin_pzeta(&mut self, num_bins: usize) {
-        // SAFETY: In the case that all Pζs are NaNs, which can happen with partly initialized
-        // particles, all particles are simply discarded.
-        let pzetas = Array1::from_iter(
-            self.particles
-                .iter()
-                .map(|particle| particle.initial_conditions().pzeta0.unwrap_or(f64::NAN)),
-        );
-        let pzetamin = *pzetas.min_skipnan();
-        let pzetamax = *pzetas.max_skipnan();
-
-        let bins = Array1::linspace(pzetamin, pzetamax, num_bins + 1);
-        let mut filled: Array1<bool> = Array1::from_elem(bins.len(), false);
-
-        self.particles.retain(|particle| {
-            let mut found = false;
-            let pzeta = particle.initial_conditions().pzeta0.unwrap_or(f64::NAN);
-            for n in 0..num_bins {
-                if !filled[n] && (bins[n] <= pzeta) && (pzeta <= bins[n + 1]) {
-                    filled[n] = true;
-                    found = true;
-                    break;
-                }
-            }
-            found
         });
     }
 

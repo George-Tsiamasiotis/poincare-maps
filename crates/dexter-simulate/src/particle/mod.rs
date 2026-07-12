@@ -19,9 +19,7 @@ use rsl_interpolation::{Accelerator, Cache};
 use std::time::Duration;
 
 use dexter_common::export_array1D_getter_impl;
-use dexter_equilibrium::{
-    Bfield, Current, FluxCommute, Harmonic, HarmonicCache, Perturbation, Qfactor,
-};
+use dexter_equilibrium::{DynModeCaches, Equilibrium};
 use evolution::Evolution;
 
 /// Helper enum to define an [`InitialConditions`] set with respect to one of the flux
@@ -55,29 +53,9 @@ impl std::fmt::Debug for InitialFlux {
 
 // ===============================================================================================
 
-/// Simple container for the equilibrium objects, to make passing them as parameters a bit easier.
-pub(crate) struct EqObjects<'eq, Q, C, B, H>
-where
-    Q: Qfactor,
-    C: Current,
-    B: Bfield,
-    H: Harmonic,
-{
-    /// The current configuration's [`Qfactor`].
-    pub(crate) qfactor: &'eq Q,
-    /// The current configuration's [`Current`].
-    pub(crate) current: &'eq C,
-    /// The current configuration's [`Bfield`].
-    pub(crate) bfield: &'eq B,
-    /// The current configuration's [`Perturbation`].
-    pub(crate) perturbation: &'eq Perturbation<H>,
-}
-
-// ===============================================================================================
-
 /// Container for the caching objects needed for the evaluations.
 #[derive(Default, Debug)]
-pub(crate) struct IntegrationCaches<C: HarmonicCache> {
+pub(crate) struct IntegrationCaches {
     /// The `ψ` Accelerator. Only used when integrating with respect to `ψ`.
     pub(crate) psi_acc: Accelerator,
     /// The `ψp` Accelerator. Only used when integrating with respect to `ψp`.
@@ -86,8 +64,8 @@ pub(crate) struct IntegrationCaches<C: HarmonicCache> {
     pub(crate) theta_acc: Accelerator,
     /// The 2D Interpolation cache.
     pub(crate) spline_cache: Cache<f64>,
-    /// The caches of the perturbation's harmonics.
-    pub(crate) harmonic_caches: Vec<C>,
+    /// The caches of the perturbation's modes.
+    pub(crate) mode_caches: DynModeCaches,
 }
 
 // ===============================================================================================
@@ -137,10 +115,10 @@ pub struct ParticleCacheStats {
     pub psip_acc: Accelerator,
     /// The final state `θ` Accelerator.
     pub theta_acc: Accelerator,
-    /// The sum of of the individual harmonic caches' hits.
-    pub harmonic_cache_hits: usize,
-    /// The sum of of the individual harmonic caches' misses.
-    pub harmonic_cache_misses: usize,
+    /// The sum of of the individual mode caches' hits.
+    pub mode_cache_hits: usize,
+    /// The sum of of the individual mode caches' misses.
+    pub mode_cache_misses: usize,
 }
 
 // ===============================================================================================
@@ -304,54 +282,40 @@ impl Particle {
     /// ```
     /// # use dexter_equilibrium::*;
     /// # use dexter_simulate::*;
-    /// # use std::path::PathBuf;
-    /// #
-    /// let path = PathBuf::from("./netcdf.nc");
-    /// let qfactor = NcQfactorBuilder::new(&path, "steffen").build()?;
-    /// let current = NcCurrentBuilder::new(&path, "steffen").build()?;
-    /// let bfield = NcBfieldBuilder::new(&path, "bicubic").build()?;
-    /// let lcfs = LastClosedFluxSurface::Toroidal(qfactor.psi_last());
-    /// let perturbation = Perturbation::new(&[
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 1, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 2, 0.0),
-    ///     CosHarmonic::new(1e-3, lcfs, 1, 3, 0.0),
-    /// ]);
+    /// let geometry = LarGeometry::new(1.0, 1.75, 0.5);
+    /// let psi_last = (geometry.rlast() / geometry.raxis()).powi(2) / 2.0;
+    /// let lcfs = LastClosedFluxSurface::Toroidal(psi_last);
     ///
-    /// let psip0 = InitialFlux::Poloidal(0.015);
-    /// let initial = InitialConditions::boozer(0.0, psip0, 0.0, 3.14, 1e-5, 1e-6);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: Some(Box::new(LarGeometry::new(1.0, 1.75, 0.5))),
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::new(&[
+    ///         Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
+    ///         Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
+    ///     ]),
+    /// };
+    ///
+    /// let psi0 = InitialFlux::Toroidal(0.015);
+    /// let initial = InitialConditions::boozer(0.0, psi0, 0.0, 3.14, 1e-5, 1e-6);
     /// let mut particle = Particle::new(&initial);
     /// particle.integrate(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
-    ///     &perturbation,
+    ///     &equilibrium,
     ///     (0.0, 1e2),
     ///     &SolverParams::default(),
     /// );
+    /// assert_eq!(particle.integration_status(), IntegrationStatus::Integrated);
     /// # Ok::<_, SimulationError>(())
     ///
     /// ```
-    pub fn integrate<Q, C, B, H>(
+    pub fn integrate(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         teval: (f64, f64),
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation,
-        };
-        integrate::integrate(self, &objects, teval, solver_params);
+    ) {
+        integrate::integrate(self, equilibrium, teval, solver_params);
     }
 
     /// Integrates the particle, calculating its intersections with a constant `θ` or `ζ` surface.
@@ -367,58 +331,42 @@ impl Particle {
     ///
     /// [`Hénon`]: https://www.sciencedirect.com/science/article/abs/pii/0167278982900343
     ///
-    /// # Example
-    ///
     /// ```
     /// # use dexter_equilibrium::*;
     /// # use dexter_simulate::*;
-    /// # use std::path::PathBuf;
-    /// #
-    /// let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1));
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
-    /// let perturbation = Perturbation::zero();
+    /// let lcfs = LastClosedFluxSurface::Toroidal(0.1);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(UnityQfactor::new(lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// let psi0 = InitialFlux::Toroidal(0.02);
     /// let initial = InitialConditions::boozer(0.0, psi0, 3.14, 0.0, 1e-4, 1e-6);
+    /// let mut particle = Particle::new(&initial);
+    ///
     /// let intersect_params = IntersectParams::new(Intersection::ConstTheta, 3.14, 10);
     ///
-    /// let mut particle = Particle::new(&initial);
     /// particle.intersect(
-    ///     &qfactor,
-    ///     &current,
-    ///     &bfield,
-    ///     &perturbation,
+    ///     &equilibrium,
     ///     &intersect_params,
     ///     &SolverParams::default(),
     /// );
     ///
     /// assert_eq!(particle.steps_stored(), 10);
-    /// # assert!(matches!(particle.integration_status(), IntegrationStatus::Intersected));
+    /// assert_eq!(particle.integration_status(), IntegrationStatus::Intersected);
     /// # Ok::<_, SimulationError>(())
     ///
     /// ```
-    pub fn intersect<Q, C, B, H>(
+    pub fn intersect(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         intersect_params: &IntersectParams,
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation,
-        };
-        intersect::intersect(self, &objects, intersect_params, solver_params);
+    ) {
+        intersect::intersect(self, equilibrium, intersect_params, solver_params);
     }
 
     /// Integrates the particle, for `periods` number of `θ-ψ` periods.
@@ -437,43 +385,38 @@ impl Particle {
     /// ```
     /// # use dexter_equilibrium::*;
     /// # use dexter_simulate::*;
-    /// #
-    /// let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1));
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
-    /// let perturbation = Perturbation::zero();
+    /// let geometry = LarGeometry::new(1.0, 1.75, 0.5);
+    /// let psi_last = (geometry.rlast() / geometry.raxis()).powi(2) / 2.0;
+    /// let lcfs = LastClosedFluxSurface::Toroidal(psi_last);
     ///
-    /// let psi0 = InitialFlux::Toroidal(0.02);
-    /// let initial = InitialConditions::boozer(0.0, psi0, 3.14, 0.0, 1e-4, 1e-6);
+    /// let equilibrium = Equilibrium {
+    ///     geometry: Some(Box::new(LarGeometry::new(1.0, 1.75, 0.5))),
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::new(&[
+    ///         Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
+    ///         Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
+    ///     ]),
+    /// };
     ///
+    /// let psi0 = InitialFlux::Toroidal(0.015);
+    /// let initial = InitialConditions::boozer(0.0, psi0, 0.0, 3.14, 1e-5, 1e-6);
     /// let mut particle = Particle::new(&initial);
-    /// particle.close(&qfactor, &current, &bfield, &perturbation, 1, &SolverParams::default());
     ///
-    /// # assert!(matches!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1)));
+    /// particle.close(&equilibrium, 1, &SolverParams::default());
+    ///
+    /// assert_eq!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1));
     /// # Ok::<_, SimulationError>(())
     ///
     /// ```
-    pub fn close<Q, C, B, H>(
+    pub fn close(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
-        perturbation: &Perturbation<H>,
+        equilibrium: &Equilibrium,
         periods: usize,
         solver_params: &SolverParams,
-    ) where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-        H: Harmonic,
-    {
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation,
-        };
-        close::close(self, &objects, periods, solver_params);
+    ) {
+        close::close(self, equilibrium, periods, solver_params);
     }
 
     /// Classifies the particle's orbit using its position on the `(E, Pζ, μ=const)` plane without integrating.
@@ -488,30 +431,28 @@ impl Particle {
     /// ```
     /// # use dexter_equilibrium::*;
     /// # use dexter_simulate::*;
-    /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.03);
-    /// let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
-    /// let current = LarCurrent::new();
-    /// let bfield = LarBfield::new();
+    /// let equilibrium = Equilibrium {
+    ///     geometry: None,
+    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+    ///     current: Box::new(LarCurrent::new()),
+    ///     bfield: Box::new(LarBfield::new()),
+    ///     perturbation: Perturbation::zero(),
+    /// };
     ///
     /// let psi0 = InitialFlux::Toroidal(0.001);
-    /// let pzeta0 = - 0.8 * qfactor.psip_last();
+    /// let pzeta0 = -0.8 * equilibrium.psip_last();
     /// let initial = InitialConditions::mixed(0.0, psi0, 1.0, 0.0, pzeta0, 6e-5);
     ///
     /// let mut particle = Particle::new(&initial);
-    /// particle.classify(&qfactor, &current, &bfield);
+    /// particle.classify(&equilibrium);
     ///
     /// assert_eq!(particle.orbit_type(), OrbitType::CuPassingConfined);
     /// # Ok::<_, SimulationError>(())
     ///
     /// ```
-    pub fn classify<Q, C, B>(&mut self, qfactor: &Q, current: &C, bfield: &B)
-    where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
-        self._classify(qfactor, current, bfield, None);
+    pub fn classify(&mut self, equilibrium: &Equilibrium) {
+        self._classify(equilibrium, None);
     }
 
     /// Does the actual classification.
@@ -519,24 +460,12 @@ impl Particle {
     /// OPTIM: Since the most common scenario is to classify particles with the same `μ`, we can
     /// generate the [`EnergyPzetaPlane`] only once and use it for all particles. This method should
     /// only be called by [`crate::Queue::classify_common_mu`].
-    pub(crate) fn _classify<Q, C, B>(
+    pub(crate) fn _classify(
         &mut self,
-        qfactor: &Q,
-        current: &C,
-        bfield: &B,
+        equilibrium: &Equilibrium,
         _plane: Option<&EnergyPzetaPlane>,
-    ) where
-        Q: Qfactor + FluxCommute,
-        C: Current,
-        B: Bfield,
-    {
-        let objects = EqObjects {
-            qfactor,
-            current,
-            bfield,
-            perturbation: &Perturbation::zero(),
-        };
-        orbit_classification::classify(self, &objects, _plane)
+    ) {
+        orbit_classification::classify(self, equilibrium, _plane)
     }
 }
 
@@ -696,8 +625,8 @@ impl std::fmt::Display for ParticleCacheStats {
             .field("ψ Accelerator", &self.psi_acc)
             .field("ψp Accelerator", &self.psip_acc)
             .field("θ Accelerator", &self.theta_acc)
-            .field("total harmonic cache hits", &self.harmonic_cache_hits)
-            .field("total harmonic cache misses", &self.harmonic_cache_misses)
+            .field("total mode cache hits", &self.mode_cache_hits)
+            .field("total mode cache misses", &self.mode_cache_misses)
             .finish()
     }
 }

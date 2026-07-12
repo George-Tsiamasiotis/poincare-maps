@@ -2,9 +2,9 @@
 
 use std::time::Instant;
 
-use dexter_equilibrium::{Bfield, Current, FluxCommute, Harmonic, HarmonicCache, Qfactor};
+use dexter_equilibrium::Equilibrium;
 
-use crate::particle::{EqObjects, IntegrationCaches, Particle, ParticleCacheStats};
+use crate::particle::{IntegrationCaches, Particle, ParticleCacheStats};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
 
@@ -14,23 +14,18 @@ use super::IntegrationStatus;
 
 /// We dont want this function to return an error; Instead, we want to set a corresponding
 /// [`IntegrationStatus`] variant for each possible error.
-pub(super) fn integrate<Q, C, B, H>(
+pub(super) fn integrate(
     particle: &mut Particle,
-    objects: &EqObjects<Q, C, B, H>,
+    equilibrium: &Equilibrium,
     teval: (f64, f64),
     solver_params: &SolverParams,
-) where
-    Q: Qfactor + FluxCommute,
-    C: Current,
-    B: Bfield,
-    H: Harmonic,
-{
+) {
     // =============== Setup
 
     let start = Instant::now();
     particle.evolution.reset();
-    let mut caches = IntegrationCaches::<H::Cache> {
-        harmonic_caches: objects.perturbation.generate_caches(),
+    let mut caches = IntegrationCaches {
+        mode_caches: equilibrium.perturbation.generate_caches(),
         ..Default::default()
     };
 
@@ -39,11 +34,12 @@ pub(super) fn integrate<Q, C, B, H>(
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     }
-    if particle.initial_conditions.finalize(objects).is_err() {
+    if particle.initial_conditions.finalize(equilibrium).is_err() {
         particle.integration_status = IntegrationStatus::InvalidInitialConditions;
         return;
     }
-    let Ok(mut state1) = GCState::new(&particle.initial_conditions, objects, &mut caches) else {
+    let Ok(mut state1) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches)
+    else {
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     };
@@ -67,9 +63,9 @@ pub(super) fn integrate<Q, C, B, H>(
         // Perform a step
         let mut stepper = Stepper::new(&state1);
         state2 = if let Ok(state) = stepper
-            .start(dt, objects, &mut caches)
+            .start(dt, equilibrium, &mut caches)
             .inspect(|_| dt = stepper.calculate_optimal_step(dt, solver_params))
-            .and_then(|_| stepper.next_state(dt, objects, &mut caches))
+            .and_then(|_| stepper.next_state(dt, equilibrium, &mut caches))
         {
             state
         } else {
@@ -93,7 +89,7 @@ pub(super) fn integrate<Q, C, B, H>(
         psi_acc: caches.psi_acc,
         psip_acc: caches.psip_acc,
         theta_acc: caches.theta_acc,
-        harmonic_cache_hits: caches.harmonic_caches.iter().map(H::Cache::hits).sum(),
-        harmonic_cache_misses: caches.harmonic_caches.iter().map(H::Cache::misses).sum(),
+        mode_cache_hits: caches.mode_caches.iter().map(|mode| mode.hits()).sum(),
+        mode_cache_misses: caches.mode_caches.iter().map(|mode| mode.misses()).sum(),
     };
 }

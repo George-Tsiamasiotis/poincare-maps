@@ -4,8 +4,8 @@
 
 use dexter_equilibrium::extract::TOROIDAL_TEST_NETCDF_PATH;
 use dexter_equilibrium::{
-    NcBfieldBuilder, NcCurrentBuilder, NcHarmonicBuilder, NcQfactorBuilder, Perturbation,
-    PhaseMethod,
+    Equilibrium, NcBfieldBuilder, NcCurrentBuilder, NcFluteModeBuilder, NcQfactorBuilder,
+    Perturbation, PhaseMethod,
 };
 use dexter_simulate::{InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams};
 use std::path::Path;
@@ -17,15 +17,27 @@ fn main() {
     let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
     let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
     let perturbation = Perturbation::new(&[
-        NcHarmonicBuilder::new(&path, "steffen", 2, 1)
-            .with_phase_method(PhaseMethod::Interpolation)
-            .build()
-            .unwrap(),
-        NcHarmonicBuilder::new(&path, "steffen", 3, 2)
-            .with_phase_method(PhaseMethod::Interpolation)
-            .build()
-            .unwrap(),
+        Box::new(
+            NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+                .with_phase_method(PhaseMethod::Interpolation)
+                .build()
+                .unwrap(),
+        ),
+        Box::new(
+            NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+                .with_phase_method(PhaseMethod::Interpolation)
+                .build()
+                .unwrap(),
+        ),
     ]);
+
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(qfactor),
+        bfield: Box::new(bfield),
+        current: Box::new(current),
+        perturbation,
+    };
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 1.0, 0.0, 1e-4, 1e-6);
@@ -33,14 +45,7 @@ fn main() {
 
     // Integrate
     let teval = (0.0, 1e10);
-    particle.integrate(
-        &qfactor,
-        &current,
-        &bfield,
-        &perturbation,
-        teval,
-        &SolverParams::default(),
-    );
+    particle.integrate(&equilibrium, teval, &SolverParams::default());
     dbg!(&particle);
     particle.print_cache_stats();
     assert!(

@@ -11,15 +11,19 @@ use ndarray::Array1;
 
 fn main() -> Result<(), SimulationError> {
     // Equilibrium setup
-    let lcfs = LastClosedFluxSurface::Toroidal(0.05);
-    let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
+    let lcfs = LastClosedFluxSurface::Toroidal(0.45);
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::zero(),
+    };
 
     // Initial Conditions setup
     let particle_count = 1000000;
-    let pzetas = qfactor.psip_last() * Array1::linspace(-1.4, 0.2, particle_count);
-    let psis = qfactor.psi_last() * Array1::linspace(0.001, 0.5, particle_count);
+    let pzetas = equilibrium.qfactor.psip_last() * Array1::linspace(-1.4, 0.2, particle_count);
+    let psis = equilibrium.qfactor.psi_last() * Array1::linspace(0.001, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::mixed(
         Array1::zeros(particle_count).as_slice().unwrap(),
@@ -34,12 +38,12 @@ fn main() -> Result<(), SimulationError> {
 
     let mut no_common_queue = Queue::new(&initial_conditions);
     let no_common_start = Instant::now();
-    no_common_queue.classify(&qfactor, &current, &bfield);
+    no_common_queue.classify(&equilibrium);
     let no_common_elapsed = no_common_start.elapsed();
 
     let mut common_queue = Queue::new(&initial_conditions);
     let common_start = Instant::now();
-    common_queue.classify_common_mu(&qfactor, &current, &bfield);
+    common_queue.classify_common_mu(&equilibrium);
     let common_elapsed = common_start.elapsed();
 
     // Sanity check

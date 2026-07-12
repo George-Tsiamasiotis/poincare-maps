@@ -11,9 +11,13 @@ use std::path::PathBuf;
 #[test]
 fn lar_energy_pzeta_parabola() {
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let qfactor = UnityQfactor::new(lcfs);
-    let current = LarCurrent::new();
-    let bfield = LarBfield::new();
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(UnityQfactor::new(lcfs)),
+        current: Box::new(LarCurrent::new()),
+        bfield: Box::new(LarBfield::new()),
+        perturbation: Perturbation::zero(),
+    };
 
     let coms = COMs {
         energy: None,
@@ -21,9 +25,7 @@ fn lar_energy_pzeta_parabola() {
         mu: Some(7e-6),
     };
 
-    let plane = coms
-        .build_energy_pzeta_plane(&qfactor, &current, &bfield)
-        .unwrap();
+    let plane = coms.build_energy_pzeta_plane(&equilibrium).unwrap();
     let axis: &Parabola = plane.axis_parabola();
     let left_wall: &Parabola = plane.left_wall_parabola();
     let right_wall: &Parabola = plane.right_wall_parabola();
@@ -35,9 +37,13 @@ fn lar_energy_pzeta_parabola() {
 #[test]
 fn toroidal_nc_energy_pzeta_parabola() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::zero(),
+    };
 
     let coms = COMs {
         energy: None,
@@ -45,9 +51,7 @@ fn toroidal_nc_energy_pzeta_parabola() {
         mu: Some(7e-6),
     };
 
-    let plane = coms
-        .build_energy_pzeta_plane(&qfactor, &current, &bfield)
-        .unwrap();
+    let plane = coms.build_energy_pzeta_plane(&equilibrium).unwrap();
     let axis: &Parabola = plane.axis_parabola();
     let left_wall: &Parabola = plane.left_wall_parabola();
     let right_wall: &Parabola = plane.right_wall_parabola();
@@ -59,9 +63,13 @@ fn toroidal_nc_energy_pzeta_parabola() {
 #[test]
 fn poloidal_nc_energy_pzeta_parabola() {
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+    let equilibrium = Equilibrium {
+        geometry: None,
+        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        perturbation: Perturbation::zero(),
+    };
 
     let coms = COMs {
         energy: None,
@@ -69,9 +77,7 @@ fn poloidal_nc_energy_pzeta_parabola() {
         mu: Some(7e-6),
     };
 
-    let plane = coms
-        .build_energy_pzeta_plane(&qfactor, &current, &bfield)
-        .unwrap();
+    let plane = coms.build_energy_pzeta_plane(&equilibrium).unwrap();
     let axis: &Parabola = plane.axis_parabola();
     let left_wall: &Parabola = plane.left_wall_parabola();
     let right_wall: &Parabola = plane.right_wall_parabola();
