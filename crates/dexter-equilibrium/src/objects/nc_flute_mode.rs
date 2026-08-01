@@ -1,7 +1,7 @@
 //! Representation of a numerical equilibrium's single flute mode.
 
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolation, InterpType, make_interp_type};
+use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
 use std::f64::consts::TAU;
 use std::path::{Path, PathBuf};
 
@@ -44,12 +44,12 @@ impl PhaseMethod {
 
 /// Used to create an [`NcFluteMode`].
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NcFluteModeBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
-    /// 1D [`DynInterpolation`] type (case-insensitive).
-    interp_type: String,
+    /// The interpolation type.
+    interp_type: Interpolation1dType,
     /// The `θ` frequency number.
     m: i64,
     /// The `θ` frequency number.
@@ -69,13 +69,13 @@ impl NcFluteModeBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2);
+    /// let builder = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2);
     /// ```
     #[must_use]
-    pub fn new(path: &Path, interp_type: &str, m: i64, n: i64) -> Self {
+    pub fn new(path: &Path, interp_type: Interpolation1dType, m: i64, n: i64) -> Self {
         Self {
             path: path.to_path_buf(),
-            interp_type: interp_type.into(),
+            interp_type,
             m,
             n,
             phase_method: PhaseMethod::default(),
@@ -90,7 +90,7 @@ impl NcFluteModeBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+    /// let builder = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
     ///     .with_phase_method(PhaseMethod::Interpolation)
     ///     .build()?;
     /// # Ok::<_, EqError>(())
@@ -128,7 +128,8 @@ impl NcFluteModeBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+    /// let typ = Interpolation1dType::Akima;
+    /// let builder = NcFluteModeBuilder::new(&path, typ, 3, 2)
     ///     .with_analytical_threshold_index(4)
     ///     .build()?;
     /// # Ok::<_, EqError>(())
@@ -146,7 +147,8 @@ impl NcFluteModeBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// # let path = PathBuf::from("./netcdf.nc");
-    /// let mode = NcFluteModeBuilder::new(&path, "cubic", 3, 2).build()?;
+    /// let typ = Interpolation1dType::Akima;
+    /// let mode = NcFluteModeBuilder::new(&path, typ, 3, 2).build()?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -178,7 +180,7 @@ pub struct NcFluteMode {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
     /// The interpolation type.
-    interp_type: String,
+    interp_type: Interpolation1dType,
 
     /// The modes's poloidal mode number `m`.
     m: i64,
@@ -193,6 +195,7 @@ pub struct NcFluteMode {
 
 impl NcFluteMode {
     /// Constructs an [`NcFluteMode`] from an [`NcFluteModeBuilder`].
+    #[expect(clippy::needless_pass_by_value, reason = "should be consumed")]
     pub(crate) fn build(builder: NcFluteModeBuilder) -> Result<Self, EqError> {
         use crate::extract;
 
@@ -204,8 +207,8 @@ impl NcFluteMode {
         let psi = NcFlux::toroidal(&file);
         let psip = NcFlux::poloidal(&file);
 
-        let psi_single = SingleNcFluteMode::build(&file, &builder, psi, "ψ".into())?;
-        let psip_single = SingleNcFluteMode::build(&file, &builder, psip, "ψp".into())?;
+        let psi_single = SingleNcFluteMode::build(&file, &builder, psi)?;
+        let psip_single = SingleNcFluteMode::build(&file, &builder, psip)?;
 
         Ok(Self {
             equilibrium_type: EquilibriumType::Numerical,
@@ -593,13 +596,13 @@ impl NcFluteMode {
     /// Returns the `α` values as a 1D array.
     #[must_use]
     pub fn alpha_array(&self) -> Array1<f64> {
-        Array1::from_vec(self.psi_single.alpha_values.clone())
+        Array1::from(self.psi_single.alpha_values.clone())
     }
 
     /// Returns the `φ` values as a 1D array.
     #[must_use]
     pub fn phase_array(&self) -> Array1<f64> {
-        Array1::from_vec(self.psi_single.phase_values.clone())
+        Array1::from(self.psi_single.phase_values.clone())
     }
 
     /// Returns the index of the analytical threshold.
@@ -620,17 +623,10 @@ impl NcFluteMode {
 ///
 /// Both modes end up identical, with the only difference being the corresponding [`NcFlux`].
 #[non_exhaustive]
+#[derive(Clone)]
 struct SingleNcFluteMode {
-    /// The interpolation type.
-    interp_type: String,
     /// The current flux coordinate.
     flux: NcFlux,
-    /// `ψ` or `ψp`, to be used in [`EvalError::UndefinedEvaluation`] message.
-    which: Box<str>,
-    /// The mode's poloidal mode number `m`.
-    m: i64,
-    /// The mode's toroidal mode number `n`.
-    n: i64,
     /// The phase calculation method.
     phase_method: PhaseMethod,
     /// The phase values' average, if `phase_method` is `Average`.
@@ -647,43 +643,13 @@ struct SingleNcFluteMode {
     patch_gamma: Option<f64>,
 
     /// The amplitude values.
-    alpha_values: Vec<f64>,
+    alpha_values: Box<[f64]>,
     /// The phase values.
-    phase_values: Vec<f64>,
+    phase_values: Box<[f64]>,
     /// The `α(flux)` interpolator.
-    alpha_interp: Option<DynInterpolation<f64>>,
+    alpha_interp: Option<DynInterpolator>,
     /// The `φ(flux)` interpolator.
-    phase_interp: Option<DynInterpolation<f64>>,
-}
-
-// Unforturately we must rebuild the interpolators, since they are trait objects.
-impl Clone for SingleNcFluteMode {
-    fn clone(&self) -> Self {
-        Self {
-            interp_type: self.interp_type.clone(),
-            flux: self.flux.clone(),
-            which: self.which.clone(),
-            m: self.m,
-            n: self.n,
-            phase_method: self.phase_method.clone(),
-            phase_average: self.phase_average,
-            phase_resonance: self.phase_resonance,
-            analytical_threshold_index: self.analytical_threshold_index,
-            analytical_threshold_flux: self.analytical_threshold_flux,
-            patch_beta: self.patch_beta,
-            patch_gamma: self.patch_gamma,
-            alpha_values: self.alpha_values.clone(),
-            phase_values: self.phase_values.clone(),
-            alpha_interp: make_interp_type(&self.interp_type)
-                .expect("Already built once, cannot fail")
-                .build(self.flux.uvalues(), &self.alpha_values)
-                .ok(),
-            phase_interp: make_interp_type(&self.interp_type)
-                .expect("Already built once, cannot fail")
-                .build(self.flux.uvalues(), &self.phase_values)
-                .ok(),
-        }
-    }
+    phase_interp: Option<DynInterpolator>,
 }
 
 // Creation.
@@ -696,26 +662,33 @@ impl SingleNcFluteMode {
         file: &netcdf::File,
         builder: &NcFluteModeBuilder,
         flux: NcFlux,
-        which: Box<str>,
     ) -> Result<Self, EqError> {
         use crate::extract;
 
         let (alpha_data, phase_data) = extract::mode_arrays(file, builder.m, builder.n)?;
-        let alphas = alpha_data.to_vec();
-        let phases = phase_data.to_vec();
+        let alpha_values = alpha_data.to_vec().into_boxed_slice();
+        let phase_values = phase_data.to_vec().into_boxed_slice();
 
-        debug_assert_all_finite_values(&alphas);
-        debug_assert_all_finite_values(&phases);
+        debug_assert_all_finite_values(&alpha_values);
+        debug_assert_all_finite_values(&phase_values);
 
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let alpha_interp = match flux.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(flux.uvalues(), &alphas)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                flux.uvalues(),
+                &alpha_values,
+            )?),
             _ => None,
         };
         #[rustfmt::skip]
         let phase_interp = match flux.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(flux.uvalues(), &phases)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                flux.uvalues(),
+                &phase_values,
+            )?),
             _ => None,
         };
 
@@ -723,11 +696,7 @@ impl SingleNcFluteMode {
         let _n = builder.n as f64;
 
         let self_state0 = Self {
-            interp_type: builder.interp_type.clone(),
             flux,
-            which,
-            m: builder.m,
-            n: builder.n,
             phase_method: builder.phase_method.clone(),
             phase_average: None,
             phase_resonance: None,
@@ -735,8 +704,8 @@ impl SingleNcFluteMode {
             analytical_threshold_flux: None,
             patch_beta: None,
             patch_gamma: None,
-            alpha_values: alphas,
-            phase_values: phases,
+            alpha_values,
+            phase_values,
             alpha_interp,
             phase_interp,
         };
@@ -757,7 +726,7 @@ impl SingleNcFluteMode {
             PhaseMethod::Custom(phase) => phase_method = PhaseMethod::Custom(phase),
             PhaseMethod::Average => {
                 phase_method = PhaseMethod::Average;
-                phase_average = Array1::from_vec(self.phase_values.clone()).mean();
+                phase_average = Array1::from(self.phase_values.clone()).mean();
             }
             PhaseMethod::Resonance => match self.find_resonance_phase(file) {
                 Some(value) => {
@@ -1007,7 +976,7 @@ mod test_utils {
 
     pub(super) fn create_nc_flute_mode_builder(path: &str) -> NcFluteModeBuilder {
         let path = PathBuf::from(path);
-        NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+        NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
     }
 
     pub(super) fn create_nc_flute_mode(path: &str) -> NcFluteMode {
@@ -1070,7 +1039,7 @@ mod phase_methods {
     fn resonance_phase_method() {
         use PhaseMethod::Resonance;
         let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-        let mode = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+        let mode = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
             .with_phase_method(Resonance)
             .build()
             .unwrap();
@@ -1139,7 +1108,7 @@ mod phase_methods {
     #[ignore = "re-write"]
     fn fallback_phase_method() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let mode = NcFluteModeBuilder::new(&path, "steffen", 2, 2)
+        let mode = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 2, 2)
             .with_phase_method(PhaseMethod::Resonance)
             .build()
             .unwrap();
@@ -1316,7 +1285,7 @@ mod nc_flute_mode_analytical_threshold {
     #[test]
     fn normal_construction() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let mode = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+        let mode = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(5)
             .build()
@@ -1334,7 +1303,7 @@ mod nc_flute_mode_analytical_threshold {
     #[test]
     fn construction_with_zero_index() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let mode_attempt = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+        let mode_attempt = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(0)
             .build();
@@ -1353,7 +1322,7 @@ mod nc_flute_mode_analytical_threshold {
     #[test]
     fn erroneous_construction() {
         let path = PathBuf::from(TEST_NETCDF_PATH);
-        let mode_attempt = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+        let mode_attempt = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
             .with_phase_method(PhaseMethod::Zero)
             .with_analytical_threshold_index(5000000000)
             .build();

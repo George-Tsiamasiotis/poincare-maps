@@ -5,11 +5,8 @@
 use std::path::PathBuf;
 
 use approx::assert_abs_diff_eq;
-use dexter_equilibrium::{
-    Current, EquilibriumType, FluxCoordinateState, LarCurrent, NcCurrentBuilder,
-};
+use dexter_equilibrium::*;
 use ndarray::Array1;
-use rsl_interpolation::Accelerator;
 
 #[test]
 fn lar_current() {
@@ -31,8 +28,8 @@ fn lar_current() {
 
 #[test]
 fn nc_current() {
-    let path = PathBuf::from(dexter_equilibrium::extract::TEST_NETCDF_PATH);
-    let typ = "steffen";
+    let path = PathBuf::from(extract::TEST_NETCDF_PATH);
+    let typ = Interpolation1dType::Cubic;
     let builder = NcCurrentBuilder::new(&path, typ);
     let current = dbg!(builder.build().unwrap());
     assert_eq!(current.psi_state(), FluxCoordinateState::Good);
@@ -41,7 +38,7 @@ fn nc_current() {
     let equilibrium_type: EquilibriumType = current.equilibrium_type();
     let netcdf_version: semver::Version = current.netcdf_version();
     let path: PathBuf = current.path();
-    let interp_type: String = current.interp_type();
+    let interp_type: Interpolation1dType = current.interp_type();
     let psi_state: FluxCoordinateState = current.psi_state();
     let psip_state: FluxCoordinateState = current.psip_state();
     let psi_last: f64 = current.psi_last().unwrap();

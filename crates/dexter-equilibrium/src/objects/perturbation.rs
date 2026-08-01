@@ -49,11 +49,18 @@ impl Perturbation {
     ///
     /// // from numerical flute modes
     /// let path = PathBuf::from("./netcdf.nc");
+    /// let typ = Interpolation1dType::Cubic;
     /// let perturbation = Perturbation::new(&[
-    ///     Box::new(NcFluteModeBuilder::new(&path, "cubic", 2, 1).build()?),
-    ///     Box::new(NcFluteModeBuilder::new(&path, "cubic", 2, 2).build()?),
-    ///     Box::new(NcFluteModeBuilder::new(&path, "cubic", 3, 1).build()?),
-    ///     Box::new(NcFluteModeBuilder::new(&path, "cubic", 3, 2).build()?),
+    ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build()?),
+    ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 2).build()?),
+    ///     Box::new(NcFluteModeBuilder::new(&path, typ, 3, 1).build()?),
+    ///     Box::new(NcFluteModeBuilder::new(&path, typ, 3, 2).build()?),
+    /// ]);
+    ///
+    /// // Or any combination of the two
+    /// let perturbation = Perturbation::new(&[
+    ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build()?),
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 19, 30, 0.0)),
     /// ]);
     /// # Ok::<_, EqError>(())
     /// ```
@@ -504,10 +511,11 @@ mod perturbation_evals {
     #[rustfmt::skip]
     fn create_nc_flute_mode_perturbation() -> Perturbation {
         let path = PathBuf::from(TEST_NETCDF_PATH);
+        let typ = Interpolation1dType::Cubic;
         Perturbation::new(&[
-            Box::new(NcFluteModeBuilder::new(&path, "cubic", 2, 1).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, "cubic", 2, 1).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, "cubic", 2, 1).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),
         ])
     }
 

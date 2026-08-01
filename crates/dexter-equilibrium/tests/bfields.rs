@@ -4,11 +4,8 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::{
-    Bfield, EquilibriumType, EvalError, FluxCoordinateState, LarBfield, NcBfieldBuilder,
-};
+use dexter_equilibrium::*;
 use ndarray::{Array1, Array2};
-use rsl_interpolation::{Accelerator, Cache};
 
 #[test]
 #[rustfmt::skip]
@@ -17,37 +14,33 @@ fn lar_bfield() {
     assert_eq!(bfield.psi_state(), FluxCoordinateState::Good);
     assert_eq!(bfield.psip_state(), FluxCoordinateState::Bad);
 
-    let psi_acc = &mut Accelerator::new();
-    let psip_acc = &mut Accelerator::new();
-    let theta_acc = &mut Accelerator::new();
-    let cache = &mut Cache::<f64>::new();
+    let acc = &mut Accelerator2d::new();
     let psi = 0.01;
     let psip = 0.015;
     let theta = 3.14;
 
-    let _: f64 = bfield.b_of_psi(psi, theta, psi_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_dpsi(psi, theta, psi_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_of_psi_dtheta(psi, theta, psi_acc, theta_acc, cache).unwrap();
+    let _: f64 = bfield.b_of_psi(psi, theta, acc).unwrap();
+    let _: f64 = bfield.db_dpsi(psi, theta, acc).unwrap();
+    let _: f64 = bfield.db_of_psi_dtheta(psi, theta, acc).unwrap();
 
     assert!(matches!(
-        bfield.b_of_psip(psip, theta, psip_acc, theta_acc, cache),
+        bfield.b_of_psip(psip, theta, acc),
         Err(EvalError::UndefinedEvaluation(..))
     ));
     assert!(matches!(
-        bfield.db_dpsip(psip, theta, psip_acc, theta_acc, cache),
+        bfield.db_dpsip(psip, theta, acc),
         Err(EvalError::UndefinedEvaluation(..))
     ));
     assert!(matches!(
-        bfield.db_of_psip_dtheta(psip, theta, psip_acc, theta_acc, cache),
+        bfield.db_of_psip_dtheta(psip, theta, acc),
         Err(EvalError::UndefinedEvaluation(..))
     ));
 }
 
 #[test]
-#[rustfmt::skip]
 fn nc_bfield_no_pad() {
-    let path = PathBuf::from(dexter_equilibrium::extract::TEST_NETCDF_PATH);
-    let interp_type = "bicubic";
+    let path = PathBuf::from(extract::TEST_NETCDF_PATH);
+    let interp_type = Interpolation2dType::Bicubic;
     let builder = NcBfieldBuilder::new(&path, interp_type).with_padding(0);
     let bfield = dbg!(builder.build().unwrap());
     assert_eq!(bfield.psi_state(), FluxCoordinateState::Good);
@@ -56,7 +49,7 @@ fn nc_bfield_no_pad() {
     let equilibrium_type: EquilibriumType = bfield.equilibrium_type();
     let netcdf_version: semver::Version = bfield.netcdf_version();
     let path: PathBuf = bfield.path();
-    let interp_type: String = bfield.interp_type();
+    let interp_type: Interpolation2dType = bfield.interp_type();
     let baxis: f64 = bfield.baxis();
     let shape: (usize, usize) = bfield.shape();
     let psi_state: FluxCoordinateState = bfield.psi_state();
@@ -73,27 +66,24 @@ fn nc_bfield_no_pad() {
     assert_eq!(theta_array, theta_array_padded);
     assert_eq!(b_array, b_array_padded);
 
-    let psi_acc = &mut Accelerator::new();
-    let psip_acc = &mut Accelerator::new();
-    let theta_acc = &mut Accelerator::new();
-    let cache = &mut Cache::<f64>::new();
+    let acc = &mut Accelerator2d::new();
     let r = 0.2;
     let psi = 0.01;
     let psip = 0.015;
     let theta = 3.14;
 
-    let _: f64 = bfield.b_of_psi(psi, theta, psi_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.b_of_psip(psip, theta, psip_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_dpsi(psi, theta, psi_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_dpsip(psip, theta, psip_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_of_psi_dtheta(psi, theta, psi_acc, theta_acc, cache).unwrap();
-    let _: f64 = bfield.db_of_psip_dtheta(psip, theta, psip_acc, theta_acc, cache).unwrap();
+    let _: f64 = bfield.b_of_psi(psi, theta, acc).unwrap();
+    let _: f64 = bfield.b_of_psip(psip, theta, acc).unwrap();
+    let _: f64 = bfield.db_dpsi(psi, theta, acc).unwrap();
+    let _: f64 = bfield.db_dpsip(psip, theta, acc).unwrap();
+    let _: f64 = bfield.db_of_psi_dtheta(psi, theta, acc).unwrap();
+    let _: f64 = bfield.db_of_psip_dtheta(psip, theta, acc).unwrap();
 }
 
 #[test]
 fn nc_bfield_pad() {
-    let path = PathBuf::from(dexter_equilibrium::extract::TEST_NETCDF_PATH);
-    let interp_type = "bicubic";
+    let path = PathBuf::from(extract::TEST_NETCDF_PATH);
+    let interp_type = Interpolation2dType::Bicubic;
     let no_pad_builder = NcBfieldBuilder::new(&path, interp_type).with_padding(0);
     let pad_builder = NcBfieldBuilder::new(&path, interp_type).with_padding(10);
     let no_pad_bfield = dbg!(no_pad_builder.build().unwrap());

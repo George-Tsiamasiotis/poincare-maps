@@ -5,9 +5,9 @@ use crate::{
     equilibrium_type_getter_impl, fluxes_values_array_getter_impl, interp_type_getter_impl,
     lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
-use dexter_common::vec_to_array1D_getter_impl;
+use dexter_common::array1D_getter_impl;
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolation, InterpType, make_interp_type};
+use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
@@ -23,6 +23,7 @@ use crate::{EqError, EvalError};
 ///
 /// No ψ/ψp bounds checks are performed in evaluations.
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct LarCurrent {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
@@ -109,12 +110,12 @@ impl std::fmt::Debug for LarCurrent {
 ///
 /// Exists for future configuration flexibility.
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NcCurrentBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
-    /// 1D [`DynInterpolation`] type (case-insensitive).
-    interp_type: String,
+    /// The interpolation type.
+    interp_type: Interpolation1dType,
 }
 
 impl NcCurrentBuilder {
@@ -126,13 +127,13 @@ impl NcCurrentBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcCurrentBuilder::new(&path, "cubic");
+    /// let builder = NcCurrentBuilder::new(&path, Interpolation1dType::Cubic);
     /// ```
     #[must_use]
-    pub fn new(path: &Path, interp_type: &str) -> Self {
+    pub fn new(path: &Path, interp_type: Interpolation1dType) -> Self {
         Self {
             path: path.to_path_buf(),
-            interp_type: interp_type.into(),
+            interp_type,
         }
     }
 
@@ -143,7 +144,7 @@ impl NcCurrentBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let current = NcCurrentBuilder::new(&path, "cubic").build()?;
+    /// let current = NcCurrentBuilder::new(&path, Interpolation1dType::Akima).build()?;
     /// Ok::<_, EqError>(())
     /// ```
     ///
@@ -163,6 +164,7 @@ impl NcCurrentBuilder {
 ///
 /// Should be created with an [`NcCurrentBuilder`].
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct NcCurrent {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -172,7 +174,7 @@ pub struct NcCurrent {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
     /// The interpolation type.
-    interp_type: String,
+    interp_type: Interpolation1dType,
 
     /// The toroidal flux coordinate.
     psi: NcFlux,
@@ -180,18 +182,18 @@ pub struct NcCurrent {
     psip: NcFlux,
 
     /// The `g` values.
-    g_values: Vec<f64>,
+    g_values: Box<[f64]>,
     /// The `g(ψ)` interpolatior.
-    g_of_psi_interp: Option<DynInterpolation<f64>>,
+    g_of_psi_interp: Option<DynInterpolator>,
     /// The `g(ψp)` interpolatior.
-    g_of_psip_interp: Option<DynInterpolation<f64>>,
+    g_of_psip_interp: Option<DynInterpolator>,
 
     /// `I` values.
-    i_values: Vec<f64>,
+    i_values: Box<[f64]>,
     /// The `I(ψ)` interpolatior.
-    i_of_psi_interp: Option<DynInterpolation<f64>>,
+    i_of_psi_interp: Option<DynInterpolator>,
     /// The `I(ψp)` interpolatior.
-    i_of_psip_interp: Option<DynInterpolation<f64>>,
+    i_of_psip_interp: Option<DynInterpolator>,
 }
 
 /// Creation.
@@ -217,20 +219,36 @@ impl NcCurrent {
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let g_of_psi_interp = match psi.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psi.uvalues(), &g_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psi.uvalues(),
+                &g_values,
+            )?),
             _ => None,
         };
         let i_of_psi_interp = match psi.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psi.uvalues(), &i_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psi.uvalues(),
+                &i_values,
+            )?),
             _ => None,
         };
 
         let g_of_psip_interp = match psip.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psip.uvalues(), &g_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psip.uvalues(),
+                &g_values,
+            )?),
             _ => None,
         };
         let i_of_psip_interp = match psip.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psip.uvalues(), &i_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psip.uvalues(),
+                &i_values,
+            )?),
             _ => None,
         };
 
@@ -241,8 +259,8 @@ impl NcCurrent {
             interp_type: builder.interp_type,
             psi,
             psip,
-            g_values,
-            i_values,
+            g_values: g_values.into_boxed_slice(),
+            i_values: i_values.into_boxed_slice(),
             g_of_psi_interp,
             g_of_psip_interp,
             i_of_psi_interp,
@@ -373,8 +391,8 @@ impl NcCurrent {
     interp_type_getter_impl!(1);
     lcfs_getter_impl!();
     fluxes_values_array_getter_impl!();
-    vec_to_array1D_getter_impl!(g_array, g_values, g);
-    vec_to_array1D_getter_impl!(i_array, i_values, I);
+    array1D_getter_impl!(g_array, g_values, g);
+    array1D_getter_impl!(i_array, i_values, I);
 }
 
 impl std::fmt::Debug for NcCurrent {
@@ -396,7 +414,7 @@ mod test_utils {
 
     pub(super) fn create_nc_current(path_str: &str) -> NcCurrent {
         let path = PathBuf::from(path_str);
-        let builder = NcCurrentBuilder::new(&path, "steffen");
+        let builder = NcCurrentBuilder::new(&path, Interpolation1dType::Cubic);
         builder.build().unwrap()
     }
 }

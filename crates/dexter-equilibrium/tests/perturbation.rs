@@ -98,13 +98,14 @@ fn cos_poloidal_lcfs_perturbation() {
 #[rustfmt::skip]
 fn nc_perturbation() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let m1 = NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+    let typ = Interpolation1dType::Steffen;
+    let m1 = NcFluteModeBuilder::new(&path, typ, 2, 1)
         .build()
         .unwrap();
-    let m2 = NcFluteModeBuilder::new(&path, "steffen", 2, 2)
+    let m2 = NcFluteModeBuilder::new(&path, typ, 2, 2)
         .build()
         .unwrap();
-    let m3 = NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+    let m3 = NcFluteModeBuilder::new(&path, typ, 3, 2)
         .build()
         .unwrap();
 
@@ -135,7 +136,8 @@ fn nc_perturbation() {
 fn mixed_perturbation() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let nc_mode = NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+    let typ = Interpolation1dType::Cubic;
+    let nc_mode = NcFluteModeBuilder::new(&path, typ, 2, 1)
         .build()
         .unwrap();
     let mode = FluteMode::new(1e-3, lcfs, 1, 3, 0.0);

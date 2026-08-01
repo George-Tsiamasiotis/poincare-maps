@@ -8,7 +8,7 @@ use crate::{
 };
 use ndarray::{Array1, Array2, Axis, Order::ColumnMajor};
 use ndarray::{concatenate, s};
-use rsl_interpolation::{Accelerator, Cache, DynInterpolation2d, Interp2dType, make_interp2d_type};
+use rsl_interpolation::{Accelerator2d, DynInterpolator2d, Interpolation2d, Interpolation2dType};
 use std::f64::consts::TAU;
 use std::path::{Path, PathBuf};
 
@@ -28,6 +28,7 @@ use crate::{EqError, EvalError, NcError};
 ///
 /// No ψ/ψp bounds checks are performed in evaluations.
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct LarBfield {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
@@ -60,51 +61,23 @@ impl Bfield for LarBfield {
         FluxCoordinateState::Bad
     }
 
-    fn b_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn b_of_psi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(
             1.0 - (2.0 * psi).sqrt() * theta.cos()
         ))
     }
 
-    fn b_of_psip(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn b_of_psip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation("B(ψp, θ)".into()))
     }
 
-    fn db_dpsi(
-        &self,
-        psi: f64,
-        theta: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn db_dpsi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(-theta.cos() / (2.0 * psi).sqrt()))
     }
 
-    fn db_dpsip(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn db_dpsip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dψp".into()))
     }
 
@@ -112,22 +85,13 @@ impl Bfield for LarBfield {
         &self,
         psi: f64,
         theta: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
+        _: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!((2.0 * psi).sqrt() * theta.sin()))
     }
 
-    fn db_of_psip_dtheta(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn db_of_psip_dtheta(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dθ".into()))
     }
 }
@@ -147,8 +111,8 @@ impl std::fmt::Debug for LarBfield {
 pub struct NcBfieldBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
-    /// 2D [`DynInterpolation2d`], in case-insensitive string format.
-    interp_type: String,
+    /// The interpolation type.
+    interp_type: Interpolation2dType,
     /// The number of columns to pad the `B` array.
     padding: usize,
 }
@@ -162,13 +126,13 @@ impl NcBfieldBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcBfieldBuilder::new(&path, "bicubic");
+    /// let builder = NcBfieldBuilder::new(&path, Interpolation2dType::Bicubic);
     /// ```
     #[must_use]
-    pub fn new(path: &Path, interp_type: &str) -> Self {
+    pub fn new(path: &Path, interp_type: Interpolation2dType) -> Self {
         Self {
             path: path.to_path_buf(),
-            interp_type: interp_type.into(),
+            interp_type,
             padding: DEFAULT_THETA_PADDING_WIDTH,
         }
     }
@@ -197,7 +161,8 @@ impl NcBfieldBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcBfieldBuilder::new(&path, "bicubic").with_padding(5).build()?;
+    /// let typ = Interpolation2dType::Bicubic;
+    /// let builder = NcBfieldBuilder::new(&path, typ).with_padding(5).build()?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -215,7 +180,8 @@ impl NcBfieldBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let bfield = NcBfieldBuilder::new(&path, "bicubic").build()?;
+    /// let typ = Interpolation2dType::Bicubic;
+    /// let bfield = NcBfieldBuilder::new(&path, typ).build()?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -235,6 +201,7 @@ impl NcBfieldBuilder {
 ///
 /// Should be created with an [`NcBfieldBuilder`].
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct NcBfield {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -244,7 +211,7 @@ pub struct NcBfield {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
     /// The interpolation type.
-    interp_type: String,
+    interp_type: Interpolation2dType,
 
     /// Magnetic field strength on the axis `B0` in [T].
     baxis: f64,
@@ -252,9 +219,9 @@ pub struct NcBfield {
     padding: usize,
 
     /// The boozer toroidal angle `θ` in [rads], as extracted from the netCDF file.
-    theta_values: Vec<f64>,
+    theta_values: Box<[f64]>,
     /// The boozer toroidal angle `θ` in [rads], with the added padding.
-    theta_values_padded: Vec<f64>,
+    theta_values_padded: Box<[f64]>,
     /// The toroidal flux coordinate.
     psi: NcFlux,
     /// The poloidal flux coordinate.
@@ -263,11 +230,11 @@ pub struct NcBfield {
     /// The `B` array as extracted from the netCDF file.
     b_array: Array2<f64>,
     /// The `B` values, flattened in F order, with the added padding.
-    b_values_fortran_flat_padded: Vec<f64>,
+    b_values_fortran_flat_padded: Box<[f64]>,
     /// `B(ψ, θ)` interpolator.
-    b_of_psi_interp: Option<DynInterpolation2d<f64>>,
+    b_of_psi_interp: Option<DynInterpolator2d>,
     /// `B(ψp, θ)` interpolator.
-    b_of_psip_interp: Option<DynInterpolation2d<f64>>,
+    b_of_psip_interp: Option<DynInterpolator2d>,
 }
 
 /// Creation.
@@ -300,7 +267,8 @@ impl NcBfield {
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let b_of_psi_interp = match psi.state() {
-            Good => Some(make_interp2d_type(&builder.interp_type)?.build(
+            Good => Some(DynInterpolator2d::build(
+                builder.interp_type,
                 psi.uvalues(),
                 &theta_values_padded,
                 &b_values_fortran_flat_padded,
@@ -308,7 +276,8 @@ impl NcBfield {
             _ => None,
         };
         let b_of_psip_interp = match psip.state() {
-            Good => Some(make_interp2d_type(&builder.interp_type)?.build(
+            Good => Some(DynInterpolator2d::build(
+                builder.interp_type,
                 psip.uvalues(),
                 &theta_values_padded,
                 &b_values_fortran_flat_padded,
@@ -321,14 +290,14 @@ impl NcBfield {
             netcdf_version,
             path,
             interp_type: builder.interp_type,
-            theta_values: theta_array.to_vec(),
-            theta_values_padded,
+            theta_values: theta_array.to_vec().into_boxed_slice(),
+            theta_values_padded: theta_values_padded.into_boxed_slice(),
             psi,
             psip,
             baxis,
             padding: builder.padding,
             b_array,
-            b_values_fortran_flat_padded,
+            b_values_fortran_flat_padded: b_values_fortran_flat_padded.into_boxed_slice(),
             b_of_psi_interp,
             b_of_psip_interp,
         })
@@ -383,14 +352,7 @@ impl Bfield for NcBfield {
         self.psip.state()
     }
 
-    fn b_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn b_of_psi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         debug_assert_is_2pi_modulo!(theta);
         match self.b_of_psi_interp.as_ref() {
@@ -400,22 +362,13 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("B(ψ, θ)".into())),
         }
     }
 
-    fn b_of_psip(
-        &self,
-        psip: f64,
-        theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn b_of_psip(&self, psip: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         debug_assert_is_2pi_modulo!(theta);
         match self.b_of_psip_interp.as_ref() {
@@ -425,22 +378,13 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("B(ψp, θ)".into())),
         }
     }
 
-    fn db_dpsi(
-        &self,
-        psi: f64,
-        theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn db_dpsi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         debug_assert_is_2pi_modulo!(theta);
         match self.b_of_psi_interp.as_ref() {
@@ -450,22 +394,13 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("dB(ψ, θ)/dψ".into())),
         }
     }
 
-    fn db_dpsip(
-        &self,
-        psip: f64,
-        theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn db_dpsip(&self, psip: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         debug_assert_is_2pi_modulo!(theta);
         match self.b_of_psip_interp.as_ref() {
@@ -475,9 +410,7 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dψp".into())),
         }
@@ -487,9 +420,7 @@ impl Bfield for NcBfield {
         &self,
         psi: f64,
         theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         debug_assert_is_2pi_modulo!(theta);
@@ -500,9 +431,7 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("dB(ψ, θ)/dθ".into())),
         }
@@ -512,9 +441,7 @@ impl Bfield for NcBfield {
         &self,
         psip: f64,
         theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         debug_assert_is_2pi_modulo!(theta);
@@ -525,9 +452,7 @@ impl Bfield for NcBfield {
                 &self.b_values_fortran_flat_padded,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dθ".into())),
         }
@@ -539,7 +464,7 @@ impl NcBfield {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
     equilibrium_type_getter_impl!();
-    interp_type_getter_impl!(1);
+    interp_type_getter_impl!(2);
 
     /// Returns the magnetic field strength on the axis `B0` **in \[T\]**.
     #[must_use]
@@ -580,7 +505,7 @@ impl NcBfield {
             self.b_array.nrows(),
         );
         #[expect(clippy::missing_panics_doc, reason = "infallible")]
-        Array2::from_shape_vec(shape, self.b_values_fortran_flat_padded.clone())
+        Array2::from_shape_vec(shape, self.b_values_fortran_flat_padded.to_vec())
             .expect("Shape is correct by definition")
             .reversed_axes()
     }
@@ -621,7 +546,7 @@ mod test_utils {
 
     pub(super) fn create_nc_bfield(path_str: &str) -> NcBfield {
         let path = PathBuf::from(&path_str);
-        let builder = NcBfieldBuilder::new(&path, "bicubic");
+        let builder = NcBfieldBuilder::new(&path, Interpolation2dType::Bicubic);
         builder.build().unwrap()
     }
 }
@@ -649,34 +574,26 @@ mod test_toroidal_nc_evals {
     }
 
     #[test]
-    #[rustfmt::skip]
     fn good_psi_evals() {
         let b = create_nc_bfield(TOROIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
-        assert!(b.b_of_psi(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(b.db_dpsi(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(b.db_of_psi_dtheta(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
+        assert!(b.b_of_psi(p, t, acc).unwrap().is_finite());
+        assert!(b.db_dpsi(p, t, acc).unwrap().is_finite());
+        assert!(b.db_of_psi_dtheta(p, t, acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psip_evals() {
         let b = create_nc_bfield(TOROIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
         use EvalError::UndefinedEvaluation as err;
-        matches!(b.b_of_psip(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(b.db_dpsip(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(
-            b.db_of_psip_dtheta(p, t, &mut a1, &mut a2, &mut c),
-            Err(err(..))
-        );
+        matches!(b.b_of_psip(p, t, acc), Err(err(..)));
+        matches!(b.db_dpsip(p, t, acc), Err(err(..)));
+        matches!(b.db_of_psip_dtheta(p, t, acc), Err(err(..)));
     }
 }
 
@@ -703,34 +620,26 @@ mod test_poloidal_nc_evals {
     }
 
     #[test]
-    #[rustfmt::skip]
     fn good_psip_evals() {
         let b = create_nc_bfield(POLOIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
-        assert!(b.b_of_psip(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(b.db_dpsip(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(b.db_of_psip_dtheta(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
+        assert!(b.b_of_psip(p, t, acc).unwrap().is_finite());
+        assert!(b.db_dpsip(p, t, acc).unwrap().is_finite());
+        assert!(b.db_of_psip_dtheta(p, t, acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psi_evals() {
         let b = create_nc_bfield(POLOIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
         use EvalError::UndefinedEvaluation as err;
-        matches!(b.b_of_psi(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(b.db_dpsi(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(
-            b.db_of_psi_dtheta(p, t, &mut a1, &mut a2, &mut c),
-            Err(err(..))
-        );
+        matches!(b.b_of_psi(p, t, acc), Err(err(..)));
+        matches!(b.db_dpsi(p, t, acc), Err(err(..)));
+        matches!(b.db_of_psi_dtheta(p, t, acc), Err(err(..)));
     }
 }
 
@@ -743,20 +652,18 @@ mod lar_values {
     #[rustfmt::skip]
     fn lar_bfield_values_gcmotion_check() {
         let b = LarBfield::new();
-        let a1 = &mut Accelerator::new();
-        let a2 = &mut Accelerator::new();
-        let c = &mut Cache::new();
+        let acc = &mut Accelerator2d::new();
         let epsilon = 1e-20;
 
         let (psi, theta) = (0.2, 0.4);
-        assert_relative_eq!(b.b_of_psi(psi, theta, a1, a2, c).unwrap(), 0.4174698790024389, epsilon=epsilon);
-        assert_relative_eq!(b.db_dpsi(psi, theta, a1, a2, c).unwrap(), -1.4563253024939025, epsilon=epsilon);
-        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, a1, a2, c).unwrap(), 0.24628978486848968, epsilon=epsilon);
+        assert_relative_eq!(b.b_of_psi(psi, theta, acc).unwrap(), 0.4174698790024389, epsilon=epsilon);
+        assert_relative_eq!(b.db_dpsi(psi, theta, acc).unwrap(), -1.4563253024939025, epsilon=epsilon);
+        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, acc).unwrap(), 0.24628978486848968, epsilon=epsilon);
 
         let (psi, theta) = (15.0, 1000.0);
-        assert_relative_eq!(b.b_of_psi(psi, theta, a1, a2, c).unwrap(), -2.0802770595333673, epsilon=epsilon);
-        assert_relative_eq!(b.db_dpsi(psi, theta, a1, a2, c).unwrap(), -0.10267590198444558, epsilon=epsilon);
-        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, a1, a2, c).unwrap(), 4.529005766888851, epsilon=epsilon);
+        assert_relative_eq!(b.b_of_psi(psi, theta, acc).unwrap(), -2.0802770595333673, epsilon=epsilon);
+        assert_relative_eq!(b.db_dpsi(psi, theta, acc).unwrap(), -0.10267590198444558, epsilon=epsilon);
+        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, acc).unwrap(), 4.529005766888851, epsilon=epsilon);
     }
 }
 

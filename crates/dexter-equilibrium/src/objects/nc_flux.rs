@@ -42,7 +42,7 @@ impl FluxCoordinateState {
 #[derive(Clone)]
 pub(crate) struct NcFlux {
     /// The extracted flux values, if the extraction was successful.
-    values: Option<Vec<f64>>,
+    values: Option<Box<[f64]>>,
     /// The state of the coordinate.
     state: FluxCoordinateState,
 }
@@ -61,7 +61,7 @@ impl NcFlux {
     /// Creates the Flux Coordinate from raw values.
     pub(crate) fn from_raw_values(values: &[f64]) -> Self {
         Self {
-            values: Some(values.to_vec()),
+            values: Some(values.to_vec().into_boxed_slice()),
             state: FluxCoordinateState::from_array(&Array1::from(values.to_vec())),
         }
     }
@@ -73,7 +73,7 @@ impl NcFlux {
     fn build(file: &netcdf::File, netcdf_field: &str) -> Self {
         match extract::array_1d(file, netcdf_field) {
             Ok(array) => Self {
-                values: Some(array.to_vec()),
+                values: Some(array.to_vec().into_boxed_slice()),
                 state: FluxCoordinateState::from_array(&array),
             },
             Err(_) => Self {

@@ -3,14 +3,15 @@
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
     debug_assert_non_negative_r, equilibrium_type_getter_impl, fluxes_values_array_getter_impl,
-    fortran_vec_to_carray2d_impl, interp_type_getter_impl, lcfs_getter_impl,
-    netcdf_path_getter_impl, netcdf_version_getter_impl, shape2d_getter_impl,
+    fortran_vec_to_carray2d_impl, lcfs_getter_impl, netcdf_path_getter_impl,
+    netcdf_version_getter_impl, shape2d_getter_impl,
 };
-use dexter_common::vec_to_array1D_getter_impl;
+use core::f64::consts::PI;
+use dexter_common::array1D_getter_impl;
 use ndarray::{Array1, Array2, Order::ColumnMajor};
 use rsl_interpolation::{
-    Accelerator, Cache, DynInterpolation, DynInterpolation2d, Interp2dType, InterpType,
-    make_interp_type, make_interp2d_type,
+    Accelerator, Accelerator2d, DynInterpolator, DynInterpolator2d, Interpolation,
+    Interpolation1dType, Interpolation2d, Interpolation2dType,
 };
 use std::path::{Path, PathBuf};
 
@@ -29,7 +30,7 @@ use crate::{EquilibriumType, FluxCommute, Geometry};
 ///
 /// No ψ/ψp bounds checks are performed in evaluations.
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct LarGeometry {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
@@ -100,111 +101,59 @@ impl Geometry for LarGeometry {
         ))
     }
 
-    fn rlab_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn rlab_of_psi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(
             self.raxis + self.raxis * (2.0 * psi).sqrt() * theta.cos()
         ))
     }
 
-    fn rlab_of_psip(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn rlab_of_psip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation(
             "R(ψp, θ) (defined through q)".into(),
         ))
     }
 
-    fn zlab_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn zlab_of_psi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(
             self.raxis * (2.0 * psi).sqrt() * theta.sin()
         ))
     }
 
-    fn zlab_of_psip(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn zlab_of_psip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation(
             "Z(ψp, θ) (defined through q)".into(),
         ))
     }
 
-    fn jacobian_of_psi(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn jacobian_of_psi(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation(
             "J(ψ, θ) (defined through q, g, I and B)".into(),
         ))
     }
 
-    fn jacobian_of_psip(
-        &self,
-        _: f64,
-        _: f64,
-        _: &mut Accelerator,
-        _: &mut Accelerator,
-        _: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn jacobian_of_psip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         Err(EvalError::UndefinedEvaluation(
             "J(ψp, θ) (defined through q, g, I and B)".into(),
         ))
     }
 
     fn rlab_last(&self) -> Array1<f64> {
-        use core::f64::consts::PI;
         let arr = Array1::linspace(0.0, 2.0 * PI, 1000);
-        let mut acc2 = Accelerator::new();
-        let mut acc1 = Accelerator::new();
-        let mut cache = Cache::new();
-        arr.mapv(|theta| {
-            match self.rlab_of_psi(self.psi_last, theta, &mut acc2, &mut acc1, &mut cache) {
-                Ok(rlab_lcfs_value) => rlab_lcfs_value,
-                Err(_) => unreachable!("Expression is analytical, cannot fail"),
-            }
+        let acc = &mut Accelerator2d::new();
+        arr.mapv(|theta| match self.rlab_of_psi(self.psi_last, theta, acc) {
+            Ok(rlab_lcfs_value) => rlab_lcfs_value,
+            Err(_) => unreachable!("Expression is analytical, cannot fail"),
         })
     }
 
     fn zlab_last(&self) -> Array1<f64> {
-        use core::f64::consts::PI;
         let arr = Array1::linspace(0.0, 2.0 * PI, 1000);
-        let mut acc1 = Accelerator::new();
-        let mut acc2 = Accelerator::new();
-        let mut cache = Cache::new();
-        arr.mapv(|theta| {
-            match self.zlab_of_psi(self.psi_last, theta, &mut acc1, &mut acc2, &mut cache) {
-                Ok(zlab_lcfs_value) => zlab_lcfs_value,
-                Err(_) => unreachable!("Expression is analytical, cannot fail"),
-            }
+        let acc = &mut Accelerator2d::new();
+        arr.mapv(|theta| match self.zlab_of_psi(self.psi_last, theta, acc) {
+            Ok(zlab_lcfs_value) => zlab_lcfs_value,
+            Err(_) => unreachable!("Expression is analytical, cannot fail"),
         })
     }
 }
@@ -259,10 +208,10 @@ impl LarGeometry {
 pub struct NcGeometryBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
-    /// 1D [`DynInterpolation`], in case-insensitive string format.
-    interp1d_type: String,
-    /// 2D [`DynInterpolation2d`], in case-insensitive string format.
-    interp2d_type: String,
+    /// The 1D interpolation type.
+    interp1d_type: Interpolation1dType,
+    /// The 2D interpolation type.
+    interp2d_type: Interpolation2dType,
 }
 
 impl NcGeometryBuilder {
@@ -274,14 +223,20 @@ impl NcGeometryBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcGeometryBuilder::new(&path, "akima", "bicubic");
+    /// let interp1d_type = Interpolation1dType::Akima;
+    /// let interp2d_type = Interpolation2dType::Bicubic;
+    /// let builder = NcGeometryBuilder::new(&path, interp1d_type, interp2d_type);
     /// ```
     #[must_use]
-    pub fn new(path: &Path, interp1d_type: &str, interp2d_type: &str) -> Self {
+    pub fn new(
+        path: &Path,
+        interp1d_type: Interpolation1dType,
+        interp2d_type: Interpolation2dType,
+    ) -> Self {
         Self {
             path: path.to_path_buf(),
-            interp1d_type: interp1d_type.into(),
-            interp2d_type: interp2d_type.into(),
+            interp1d_type,
+            interp2d_type,
         }
     }
 
@@ -292,7 +247,9 @@ impl NcGeometryBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let geometry = NcGeometryBuilder::new(&path, "akima", "bicubic").build()?;
+    /// let interp1d_type = Interpolation1dType::Akima;
+    /// let interp2d_type = Interpolation2dType::Bicubic;
+    /// let builder = NcGeometryBuilder::new(&path, interp1d_type, interp2d_type);
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -312,6 +269,7 @@ impl NcGeometryBuilder {
 ///
 /// Should be created with an [`NcGeometryBuilder`].
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct NcGeometry {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -320,10 +278,10 @@ pub struct NcGeometry {
 
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
-    /// Interpolation type of the 1D quantities.
-    interp1d_type: String,
-    /// Interpolation type of the 2D quantities.
-    interp2d_type: String,
+    /// The 1D interpolation type.
+    interp1d_type: Interpolation1dType,
+    /// The 2D interpolation type.
+    interp2d_type: Interpolation2dType,
 
     /// Magnetic field strength on the axis `B0` in [T].
     baxis: f64,
@@ -342,41 +300,41 @@ pub struct NcGeometry {
     psip: NcFlux,
 
     /// The `ψp(ψ)` interpolator.
-    psip_of_psi_interp: Option<DynInterpolation<f64>>,
+    psip_of_psi_interp: Option<DynInterpolator>,
     /// The `ψ(ψp)` interpolator.
-    psi_of_psip_interp: Option<DynInterpolation<f64>>,
+    psi_of_psip_interp: Option<DynInterpolator>,
 
     /// The radial coordinate r in [m].
     r_values: Vec<f64>,
     /// The `r(ψ)` interpolator.
-    r_of_psi_interp: Option<DynInterpolation<f64>>,
+    r_of_psi_interp: Option<DynInterpolator>,
     /// The `r(ψp)` interpolator.
-    r_of_psip_interp: Option<DynInterpolation<f64>>,
+    r_of_psip_interp: Option<DynInterpolator>,
     /// The `ψ(r)` interpolator.
-    psi_of_r_interp: Option<DynInterpolation<f64>>,
+    psi_of_r_interp: Option<DynInterpolator>,
     /// The `ψp(r)` interpolator.
-    psip_of_r_interp: Option<DynInterpolation<f64>>,
+    psip_of_r_interp: Option<DynInterpolator>,
 
     /// The `R` coordinate in [m], flattened in F order.
     rlab_values_fortran_flat: Vec<f64>,
     /// `R(ψ, θ)` interpolator.
-    rlab_of_psi_interp: Option<DynInterpolation2d<f64>>,
+    rlab_of_psi_interp: Option<DynInterpolator2d>,
     /// `R(ψp, θ)` interpolator.
-    rlab_of_psip_interp: Option<DynInterpolation2d<f64>>,
+    rlab_of_psip_interp: Option<DynInterpolator2d>,
 
     /// The `Z` coordinate in [m], flattened in F order.
     zlab_values_fortran_flat: Vec<f64>,
     /// `Z(ψ, θ)` interpolator.
-    zlab_of_psi_interp: Option<DynInterpolation2d<f64>>,
+    zlab_of_psi_interp: Option<DynInterpolator2d>,
     /// `Z(ψp, θ)` interpolator.
-    zlab_of_psip_interp: Option<DynInterpolation2d<f64>>,
+    zlab_of_psip_interp: Option<DynInterpolator2d>,
 
     /// The VMEC output to Boozer Jacobian in [m/T], flattened in F order.
     jacobian_values_fortran_flat: Vec<f64>,
     /// `J(ψ, θ)` interpolator.
-    jacobian_of_psi_interp: Option<DynInterpolation2d<f64>>,
+    jacobian_of_psi_interp: Option<DynInterpolator2d>,
     /// `J(ψp, θ)` interpolator.
-    jacobian_of_psip_interp: Option<DynInterpolation2d<f64>>,
+    jacobian_of_psip_interp: Option<DynInterpolator2d>,
 }
 
 /// Creation.
@@ -423,102 +381,108 @@ impl NcGeometry {
 
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
-        let psip_of_psi_interp = if (psi.state() == Good)
-            & (psip.state() != FluxCoordinateState::NoValues)
-        {
-            Some(make_interp_type(&builder.interp1d_type)?.build(psi.uvalues(), psip.uvalues())?)
-        } else {
-            None
-        };
-        let psi_of_psip_interp = if (psip.state() == Good)
-            & (psi.state() != FluxCoordinateState::NoValues)
-        {
-            Some(make_interp_type(&builder.interp1d_type)?.build(psip.uvalues(), psi.uvalues())?)
-        } else {
-            None
-        };
+        let psip_of_psi_interp =
+            if (psi.state() == Good) & (psip.state() != FluxCoordinateState::NoValues) {
+                Some(DynInterpolator::build(
+                    builder.interp1d_type,
+                    psi.uvalues(),
+                    psip.uvalues(),
+                )?)
+            } else {
+                None
+            };
+        let psi_of_psip_interp =
+            if (psip.state() == Good) & (psi.state() != FluxCoordinateState::NoValues) {
+                Some(DynInterpolator::build(
+                    builder.interp1d_type,
+                    psip.uvalues(),
+                    psi.uvalues(),
+                )?)
+            } else {
+                None
+            };
 
-        let r_of_psi_interp = if psi.state() == Good {
-            Some(make_interp_type(&builder.interp1d_type)?.build(psi.uvalues(), &r_values)?)
-        } else {
-            None
+        let r_of_psi_interp = match psi.state() {
+            Good => DynInterpolator::build(builder.interp1d_type, psi.uvalues(), &r_values).ok(),
+            _ => None,
         };
-        let r_of_psip_interp = if psip.state() == Good {
-            Some(make_interp_type(&builder.interp1d_type)?.build(psip.uvalues(), &r_values)?)
-        } else {
-            None
+        let r_of_psip_interp = match psip.state() {
+            Good => DynInterpolator::build(builder.interp1d_type, psip.uvalues(), &r_values).ok(),
+            _ => None,
         };
 
         // Neither the fluxes or `r` is guaranteed to exist.
         // If `r` exists, then it is guaranteed it's in increasing order.
         let psi_of_r_interp = match psi.state() {
             FluxCoordinateState::NoValues => None,
-            _ => make_interp_type(&builder.interp1d_type)?
-                .build(&r_values, psi.uvalues())
-                .ok(),
+            _ => DynInterpolator::build(builder.interp1d_type, &r_values, psi.uvalues()).ok(),
         };
         let psip_of_r_interp = match psip.state() {
             FluxCoordinateState::NoValues => None,
-            _ => make_interp_type(&builder.interp1d_type)?
-                .build(&r_values, psip.uvalues())
-                .ok(),
+            _ => DynInterpolator::build(builder.interp1d_type, &r_values, psip.uvalues()).ok(),
         };
 
-        let rlab_of_psi_interp = if psi.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let rlab_of_psi_interp = match psi.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
                 &rlab_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
-        let rlab_of_psip_interp = if psip.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let rlab_of_psip_interp = match psip.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,
                 &rlab_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
 
-        let zlab_of_psi_interp = if psi.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let zlab_of_psi_interp = match psi.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
                 &zlab_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
-        let zlab_of_psip_interp = if psip.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let zlab_of_psip_interp = match psip.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,
                 &zlab_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
 
-        let jacobian_of_psi_interp = if psi.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let jacobian_of_psi_interp = match psi.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
                 &jacobian_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
-        let jacobian_of_psip_interp = if psip.state() == Good {
-            Some(make_interp2d_type(&builder.interp2d_type)?.build(
+        let jacobian_of_psip_interp = match psip.state() {
+            Good => DynInterpolator2d::build(
+                builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,
                 &jacobian_values_fortran_flat,
-            )?)
-        } else {
-            None
+            )
+            .ok(),
+            _ => None,
         };
 
         Ok(Self {
@@ -643,14 +607,7 @@ impl Geometry for NcGeometry {
         }
     }
 
-    fn rlab_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn rlab_of_psi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         match self.rlab_of_psi_interp.as_ref() {
             Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
@@ -659,9 +616,7 @@ impl Geometry for NcGeometry {
                 &self.rlab_values_fortran_flat,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("R(ψ, θ)".into())),
         }
@@ -671,9 +626,7 @@ impl Geometry for NcGeometry {
         &self,
         psip: f64,
         theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         match self.rlab_of_psip_interp.as_ref() {
@@ -683,22 +636,13 @@ impl Geometry for NcGeometry {
                 &self.rlab_values_fortran_flat,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("R(ψp, θ)".into())),
         }
     }
 
-    fn zlab_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
-    ) -> Result<f64, EvalError> {
+    fn zlab_of_psi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         match self.zlab_of_psi_interp.as_ref() {
             Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
@@ -707,9 +651,7 @@ impl Geometry for NcGeometry {
                 &self.zlab_values_fortran_flat,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("Z(ψ, θ)".into())),
         }
@@ -719,9 +661,7 @@ impl Geometry for NcGeometry {
         &self,
         psip: f64,
         theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         match self.zlab_of_psip_interp.as_ref() {
@@ -731,9 +671,7 @@ impl Geometry for NcGeometry {
                 &self.zlab_values_fortran_flat,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("Z(ψp, θ)".into())),
         }
@@ -743,9 +681,7 @@ impl Geometry for NcGeometry {
         &self,
         psi: f64,
         theta: f64,
-        psi_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         match self.jacobian_of_psi_interp.as_ref() {
@@ -755,9 +691,7 @@ impl Geometry for NcGeometry {
                 &self.jacobian_values_fortran_flat,
                 psi,
                 theta,
-                psi_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("J(ψ, θ)".into())),
         }
@@ -767,9 +701,7 @@ impl Geometry for NcGeometry {
         &self,
         psip: f64,
         theta: f64,
-        psip_acc: &mut Accelerator,
-        theta_acc: &mut Accelerator,
-        cache: &mut Cache<f64>,
+        acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         match self.jacobian_of_psip_interp.as_ref() {
@@ -779,9 +711,7 @@ impl Geometry for NcGeometry {
                 &self.jacobian_values_fortran_flat,
                 psip,
                 theta,
-                psip_acc,
-                theta_acc,
-                cache,
+                acc,
             )?)),
             None => Err(EvalError::UndefinedEvaluation("J(ψp, θ)".into())),
         }
@@ -803,7 +733,18 @@ impl NcGeometry {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
     equilibrium_type_getter_impl!();
-    interp_type_getter_impl!(2);
+
+    /// Returns the 1D interpolation type.
+    #[must_use]
+    pub fn interp1d_type(&self) -> Interpolation1dType {
+        self.interp1d_type
+    }
+
+    /// Returns the 2D interpolation type.
+    #[must_use]
+    pub fn interp2d_type(&self) -> Interpolation2dType {
+        self.interp2d_type
+    }
 
     /// Returns the magnetic field strength on the axis `B0` **in \[T\]**.
     #[must_use]
@@ -841,8 +782,8 @@ impl NcGeometry {
     shape2d_getter_impl!();
     lcfs_getter_impl!();
     fluxes_values_array_getter_impl!();
-    vec_to_array1D_getter_impl!(theta_array, theta_values, theta);
-    vec_to_array1D_getter_impl!(r_array, r_values, r);
+    array1D_getter_impl!(theta_array, theta_values, theta);
+    array1D_getter_impl!(r_array, r_values, r);
     fortran_vec_to_carray2d_impl!(rlab_array, rlab_values_fortran_flat, R);
     fortran_vec_to_carray2d_impl!(zlab_array, zlab_values_fortran_flat, Z);
     fortran_vec_to_carray2d_impl!(jacobian_array, jacobian_values_fortran_flat, J);
@@ -874,7 +815,11 @@ mod test_utils {
 
     pub(super) fn create_nc_geometry(path_str: &str) -> NcGeometry {
         let path = PathBuf::from(&path_str);
-        let builder = NcGeometryBuilder::new(&path, "steffen", "bicubic");
+        let builder = NcGeometryBuilder::new(
+            &path,
+            Interpolation1dType::Steffen,
+            Interpolation2dType::Bicubic,
+        );
         builder.build().unwrap()
     }
 }
@@ -917,35 +862,30 @@ mod test_toroidal_nc_evals {
     #[rustfmt::skip]
     fn good_psi_evals() {
         let g = create_nc_geometry(TOROIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc1 = &mut Accelerator::new();
+        let acc2 = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
-        assert!(g.psip_of_psi(p, &mut a1).unwrap().is_finite());
-        assert!(g.r_of_psi(p, &mut a1).unwrap().is_finite());
-        assert!(g.rlab_of_psi(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(g.zlab_of_psi(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(g.jacobian_of_psi(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
+        assert!(g.psip_of_psi(p, acc1).unwrap().is_finite());
+        assert!(g.r_of_psi(p, acc1).unwrap().is_finite());
+        assert!(g.rlab_of_psi(p, t, acc2).unwrap().is_finite());
+        assert!(g.zlab_of_psi(p, t, acc2).unwrap().is_finite());
+        assert!(g.jacobian_of_psi(p, t, acc2).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psip_evals() {
         let g = create_nc_geometry(TOROIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc1 = &mut Accelerator::new();
+        let acc2 = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
         use EvalError::UndefinedEvaluation as err;
-        matches!(g.psi_of_psip(p, &mut a1), Err(err(..)));
-        matches!(g.r_of_psip(p, &mut a1), Err(err(..)));
-        matches!(g.rlab_of_psip(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(g.zlab_of_psip(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(
-            g.jacobian_of_psip(p, t, &mut a1, &mut a2, &mut c),
-            Err(err(..))
-        );
+        matches!(g.psi_of_psip(p, acc1), Err(err(..)));
+        matches!(g.r_of_psip(p, acc1), Err(err(..)));
+        matches!(g.rlab_of_psip(p, t, acc2), Err(err(..)));
+        matches!(g.zlab_of_psip(p, t, acc2), Err(err(..)));
+        matches!(g.jacobian_of_psip(p, t, acc2), Err(err(..)));
     }
 }
 
@@ -987,34 +927,29 @@ mod test_poloidal_nc_evals {
     #[rustfmt::skip]
     fn good_psip_evals() {
         let g = create_nc_geometry(POLOIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc1 = &mut Accelerator::new();
+        let acc2 = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
-        assert!(g.psi_of_psip(p, &mut a1).unwrap().is_finite());
-        assert!(g.r_of_psip(p, &mut a1).unwrap().is_finite());
-        assert!(g.rlab_of_psip(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(g.zlab_of_psip(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
-        assert!(g.jacobian_of_psip(p, t, &mut a1, &mut a2, &mut c).unwrap().is_finite());
+        assert!(g.psi_of_psip(p, acc1).unwrap().is_finite());
+        assert!(g.r_of_psip(p, acc1).unwrap().is_finite());
+        assert!(g.rlab_of_psip(p, t, acc2).unwrap().is_finite());
+        assert!(g.zlab_of_psip(p, t, acc2).unwrap().is_finite());
+        assert!(g.jacobian_of_psip(p, t, acc2).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psi_evals() {
         let g = create_nc_geometry(POLOIDAL_TEST_NETCDF_PATH);
-        let mut a1 = Accelerator::new();
-        let mut a2 = Accelerator::new();
-        let mut c = Cache::new();
+        let acc1 = &mut Accelerator::new();
+        let acc2 = &mut Accelerator2d::new();
         let p = 0.01;
         let t = 3.14;
         use EvalError::UndefinedEvaluation as err;
-        matches!(g.psip_of_psi(p, &mut a1), Err(err(..)));
-        matches!(g.r_of_psi(p, &mut a1), Err(err(..)));
-        matches!(g.rlab_of_psi(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(g.zlab_of_psi(p, t, &mut a1, &mut a2, &mut c), Err(err(..)));
-        matches!(
-            g.jacobian_of_psi(p, t, &mut a1, &mut a2, &mut c),
-            Err(err(..))
-        );
+        matches!(g.psip_of_psi(p, acc1), Err(err(..)));
+        matches!(g.r_of_psi(p, acc1), Err(err(..)));
+        matches!(g.rlab_of_psi(p, t, acc2), Err(err(..)));
+        matches!(g.zlab_of_psi(p, t, acc2), Err(err(..)));
+        matches!(g.jacobian_of_psi(p, t, acc2), Err(err(..)));
     }
 }

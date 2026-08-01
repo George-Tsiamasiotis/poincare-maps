@@ -17,7 +17,7 @@ pub enum EqError {
 
     /// Error from [`rsl_interpolation`].
     #[error("Interpolation error: {0}")]
-    InterpolationError(#[from] rsl_interpolation::InterpolationError),
+    InterpolationError(#[from] rsl_interpolation::InterpolatorError),
 
     /// Analytical threshold index cannot be greater that the number of data points.
     #[error("Analytical threshold index cannot be greater that the number of data points")]
@@ -27,9 +27,13 @@ pub enum EqError {
 /// Evaluation related errors.
 #[derive(thiserror::Error, Debug)]
 pub enum EvalError {
-    /// Interpolation domain error from [`rsl_interpolation`].
-    #[error("Interpolation domain error: {0}")]
-    DomainError(#[from] rsl_interpolation::DomainError),
+    /// 1D Interpolation domain error from [`rsl_interpolation`].
+    #[error("1D Interpolation domain error: {0}")]
+    Domain1dError(#[from] rsl_interpolation::Domain1dError),
+
+    /// 2D Interpolation domain error from [`rsl_interpolation`].
+    #[error("2D Interpolation domain error: {0}")]
+    Domain2dError(#[from] rsl_interpolation::Domain2dError),
 
     /// Analytical evaluation method received an out-of-bounds input.
     ///

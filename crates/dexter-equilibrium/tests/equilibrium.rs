@@ -1,7 +1,6 @@
 //! Tests `Equilibrium` functionality.
 
 use dexter_equilibrium::*;
-use rsl_interpolation::{Accelerator, Cache};
 
 #[test]
 #[rustfmt::skip]
@@ -22,8 +21,7 @@ fn create_analytical() {
     });
 
     let acc1 = &mut Accelerator::new();
-    let acc2 = &mut Accelerator::new();
-    let cache = &mut Cache::new();
+    let acc2 = &mut Accelerator2d::new();
     let caches = &mut eq.perturbation.generate_caches();
 
     assert!(eq.psi_last().is_finite());
@@ -32,6 +30,6 @@ fn create_analytical() {
     assert!(eq.geometry.is_some_and(|g| g.r_of_psi(0.01, acc1).unwrap().is_finite()));
     assert!(eq.qfactor.q_of_psi(0.01, acc1).unwrap().is_finite());
     assert!(eq.current.g_of_psi(0.01, acc1).unwrap().is_finite());
-    assert!(eq.bfield.b_of_psi(0.01, 0.0, acc1, acc2, cache).unwrap().is_finite());
+    assert!(eq.bfield.b_of_psi(0.01, 0.0, acc2).unwrap().is_finite());
     assert!(eq.perturbation.p_of_psi(0.01, 0.0, 0.0, 0.0, caches).unwrap().is_finite());
 }

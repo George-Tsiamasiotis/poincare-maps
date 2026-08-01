@@ -140,22 +140,16 @@ macro_rules! interp_type_getter_impl {
     (1) => {
         /// Returns the interpolation type.
         #[must_use]
-        pub fn interp_type(&self) -> String {
-            self.interp_type.clone()
+        pub fn interp_type(&self) -> Interpolation1dType {
+            self.interp_type
         }
     };
     // 2D Interpolation
     (2) => {
-        /// Returns the 1D interpolation type.
+        /// Returns the interpolation type.
         #[must_use]
-        pub fn interp1d_type(&self) -> String {
-            self.interp1d_type.clone()
-        }
-
-        /// Returns the 2D interpolation type.
-        #[must_use]
-        pub fn interp2d_type(&self) -> String {
-            self.interp2d_type.clone()
+        pub fn interp_type(&self) -> Interpolation2dType {
+            self.interp_type
         }
     };
 }

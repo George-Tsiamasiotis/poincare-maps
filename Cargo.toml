@@ -17,7 +17,7 @@ ndarray = "0.17.2"
 thiserror = "2.0.18"
 criterion = "0.8.2"
 parabola = "0.1.1"
-rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "dev", features = ["openblas-system"] }
+rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "refactor", features = ["openblas-system"] }
 
 dexter = { path = "crates/dexter" }
 dexter-common = { path = "crates/dexter-common" }

@@ -5,12 +5,8 @@
 use std::path::PathBuf;
 
 use approx::{assert_abs_diff_eq, assert_relative_eq};
-use dexter_equilibrium::{
-    EquilibriumType, FluxCommute, FluxCoordinateState, LastClosedFluxSurface, NcQfactorBuilder,
-    ParabolicQfactor, Qfactor, UnityQfactor,
-};
+use dexter_equilibrium::*;
 use ndarray::Array1;
-use rsl_interpolation::Accelerator;
 
 #[test]
 fn unity_qfactor() {
@@ -68,8 +64,8 @@ fn parabolic_qfactor() {
 
 #[test]
 fn nc_qfactor() {
-    let path = PathBuf::from(dexter_equilibrium::extract::TEST_NETCDF_PATH);
-    let typ = "steffen";
+    let path = PathBuf::from(extract::TEST_NETCDF_PATH);
+    let typ = Interpolation1dType::Cubic;
     let builder = NcQfactorBuilder::new(&path, typ);
     let qfactor = dbg!(builder.build().unwrap());
 
@@ -79,7 +75,7 @@ fn nc_qfactor() {
     let equilibrium_type: EquilibriumType = qfactor.equilibrium_type();
     let netcdf_version: semver::Version = qfactor.netcdf_version();
     let path: PathBuf = qfactor.path();
-    let interp_type: String = qfactor.interp_type();
+    let interp_type: Interpolation1dType = qfactor.interp_type();
     let psi_state: FluxCoordinateState = qfactor.psi_state();
     let psip_state: FluxCoordinateState = qfactor.psip_state();
     let qaxis: f64 = qfactor.qaxis();
@@ -105,8 +101,8 @@ fn nc_qfactor() {
 
 #[test]
 fn nc_qfactor_inverse_q() {
-    let path = PathBuf::from(dexter_equilibrium::extract::TEST_NETCDF_PATH);
-    let typ = "steffen";
+    let path = PathBuf::from(extract::TEST_NETCDF_PATH);
+    let typ = Interpolation1dType::Akima;
     let builder = NcQfactorBuilder::new(&path, typ);
     let qfactor = dbg!(builder.build().unwrap());
     let acc = &mut Accelerator::new();

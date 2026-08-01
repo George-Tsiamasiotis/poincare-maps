@@ -5,9 +5,9 @@ use crate::{
     equilibrium_type_getter_impl, fluxes_values_array_getter_impl, interp_type_getter_impl,
     netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
-use dexter_common::vec_to_array1D_getter_impl;
+use dexter_common::array1D_getter_impl;
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolation, InterpType, make_interp_type};
+use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
@@ -19,6 +19,7 @@ use crate::{EquilibriumType, FluxCommute, LastClosedFluxSurface, Qfactor};
 
 /// Analytical q-factor profile of q = 1 and ψ=ψp.
 #[non_exhaustive]
+#[derive(Clone)]
 pub struct UnityQfactor {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
@@ -145,6 +146,7 @@ impl std::fmt::Debug for UnityQfactor {
 // ===============================================================================================
 
 /// Analytical q-factor of parabolic q(ψ) profile.
+#[derive(Clone)]
 pub struct ParabolicQfactor {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
@@ -373,12 +375,12 @@ impl std::fmt::Debug for ParabolicQfactor {
 /// Used to create a [`NcQfactor`].
 ///
 /// Exists for future configuration flexibility.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NcQfactorBuilder {
     /// Path to the netCDF file.
     path: PathBuf,
-    /// 1D [`DynInterpolation`] type (case-insensitive).
-    interp_type: String,
+    /// The interpolation type.
+    interp_type: Interpolation1dType,
 }
 
 impl NcQfactorBuilder {
@@ -390,13 +392,13 @@ impl NcQfactorBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let builder = NcQfactorBuilder::new(&path, "cubic");
+    /// let builder = NcQfactorBuilder::new(&path, Interpolation1dType::Cubic);
     /// ```
     #[must_use]
-    pub fn new(path: &Path, interp_type: &str) -> Self {
+    pub fn new(path: &Path, interp_type: Interpolation1dType) -> Self {
         Self {
             path: path.to_path_buf(),
-            interp_type: interp_type.into(),
+            interp_type,
         }
     }
 
@@ -407,7 +409,7 @@ impl NcQfactorBuilder {
     /// # use std::path::PathBuf;
     /// # use dexter_equilibrium::*;
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let qfactor = NcQfactorBuilder::new(&path, "cubic").build()?;
+    /// let qfactor = NcQfactorBuilder::new(&path, Interpolation1dType::Akima).build()?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
@@ -428,6 +430,7 @@ impl NcQfactorBuilder {
 /// If either `psi_norm` or `psip_norm` is missing from the netCDF file, it is calculated from the
 /// other by integrating `q(ψp)` or `ι(ψ)` respectively. In the case that the calculated values are
 /// monotonic, the other flux can be used as a flux coordinate as well.
+#[derive(Clone)]
 pub struct NcQfactor {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -437,7 +440,7 @@ pub struct NcQfactor {
     /// The object's equilibrium type.
     equilibrium_type: EquilibriumType,
     /// The interpolation type.
-    interp_type: String,
+    interp_type: Interpolation1dType,
 
     /// The toroidal flux coordinate.
     psi: NcFlux,
@@ -445,21 +448,21 @@ pub struct NcQfactor {
     psip: NcFlux,
 
     /// `ψp(ψ)` interpolator.
-    psip_of_psi_interp: Option<DynInterpolation<f64>>,
+    psip_of_psi_interp: Option<DynInterpolator>,
     /// `ψ(ψp)` interpolator.
-    psi_of_psip_interp: Option<DynInterpolation<f64>>,
+    psi_of_psip_interp: Option<DynInterpolator>,
 
     /// The `q` values.
-    q_values: Vec<f64>,
+    q_values: Box<[f64]>,
     /// `q(ψ)` interpolator.
-    q_of_psi_interp: Option<DynInterpolation<f64>>,
+    q_of_psi_interp: Option<DynInterpolator>,
     /// `q(ψp)` interpolator.
-    q_of_psip_interp: Option<DynInterpolation<f64>>,
+    q_of_psip_interp: Option<DynInterpolator>,
 
     /// `ψp(q)` interpolator.
-    psi_of_q_interp: Option<DynInterpolation<f64>>,
+    psi_of_q_interp: Option<DynInterpolator>,
     /// `ψp(q)` interpolator.
-    psip_of_q_interp: Option<DynInterpolation<f64>>,
+    psip_of_q_interp: Option<DynInterpolator>,
 }
 
 /// Creation.
@@ -489,7 +492,7 @@ impl NcQfactor {
             let acc = &mut Accelerator::new();
             let psip_values = psip.values().expect("At least one of the fluxes exists");
             let q_of_psip_interp =
-                make_interp_type(&builder.interp_type)?.build(psip_values, &q_values)?;
+                DynInterpolator::build(builder.interp_type, psip_values, &q_values)?;
             let psi_values: Vec<f64> = psip_values
                 .iter()
                 .map(|psip_value| {
@@ -511,7 +514,7 @@ impl NcQfactor {
             let psi_values = psi.values().expect("At least one of the fluxes exists");
             let i_values: Vec<f64> = q_values.iter().map(|q| q.recip()).collect();
             let i_of_psi_interp =
-                make_interp_type(&builder.interp_type)?.build(psi_values, &i_values)?;
+                DynInterpolator::build(builder.interp_type, psi_values, &i_values)?;
             let psip_values: Vec<f64> = psi_values
                 .iter()
                 .map(|psi_value| {
@@ -527,38 +530,50 @@ impl NcQfactor {
         use FluxCoordinateState::Good;
         let psip_of_psi_interp =
             if (psi.state() == Good) & (psip.state() != FluxCoordinateState::NoValues) {
-                Some(make_interp_type(&builder.interp_type)?.build(psi.uvalues(), psip.uvalues())?)
+                Some(DynInterpolator::build(
+                    builder.interp_type,
+                    psi.uvalues(),
+                    psip.uvalues(),
+                )?)
             } else {
                 None
             };
         let psi_of_psip_interp =
             if (psip.state() == Good) & (psi.state() != FluxCoordinateState::NoValues) {
-                Some(make_interp_type(&builder.interp_type)?.build(psip.uvalues(), psi.uvalues())?)
+                Some(DynInterpolator::build(
+                    builder.interp_type,
+                    psip.uvalues(),
+                    psi.uvalues(),
+                )?)
             } else {
                 None
             };
 
         let q_of_psi_interp = match psi.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psi.uvalues(), &q_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psi.uvalues(),
+                &q_values,
+            )?),
             _ => None,
         };
         let q_of_psip_interp = match psip.state() {
-            Good => Some(make_interp_type(&builder.interp_type)?.build(psip.uvalues(), &q_values)?),
+            Good => Some(DynInterpolator::build(
+                builder.interp_type,
+                psip.uvalues(),
+                &q_values,
+            )?),
             _ => None,
         };
 
         // If flux values exist, we must also check if q is monotonic
         let psi_of_q_interp = match psi.state() {
             FluxCoordinateState::NoValues => None,
-            _ => make_interp_type(&builder.interp_type)?
-                .build(&q_values, psi.uvalues())
-                .ok(),
+            _ => DynInterpolator::build(builder.interp_type, &q_values, psi.uvalues()).ok(),
         };
         let psip_of_q_interp = match psip.state() {
             FluxCoordinateState::NoValues => None,
-            _ => make_interp_type(&builder.interp_type)?
-                .build(&q_values, psip.uvalues())
-                .ok(),
+            _ => DynInterpolator::build(builder.interp_type, &q_values, psip.uvalues()).ok(),
         };
 
         Ok(Self {
@@ -570,7 +585,7 @@ impl NcQfactor {
             psip,
             psip_of_psi_interp,
             psi_of_psip_interp,
-            q_values,
+            q_values: q_values.into_boxed_slice(),
             q_of_psi_interp,
             q_of_psip_interp,
             psi_of_q_interp,
@@ -745,7 +760,7 @@ impl NcQfactor {
     }
 
     fluxes_values_array_getter_impl!();
-    vec_to_array1D_getter_impl!(q_array, q_values, q);
+    array1D_getter_impl!(q_array, q_values, q);
 }
 
 impl std::fmt::Debug for NcQfactor {
@@ -770,7 +785,7 @@ mod test_utils {
 
     pub(super) fn create_nc_qfactor(path_str: &str) -> NcQfactor {
         let path = PathBuf::from(&path_str);
-        let builder = NcQfactorBuilder::new(&path, "steffen");
+        let builder = NcQfactorBuilder::new(&path, Interpolation1dType::Steffen);
         builder.build().unwrap()
     }
 

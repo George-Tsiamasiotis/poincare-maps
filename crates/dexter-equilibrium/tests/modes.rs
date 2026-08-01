@@ -90,7 +90,7 @@ fn flute_mode_poloidal_lcfs() {
 #[test]
 fn nc_flute_mode() {
     let path = PathBuf::from(extract::TEST_NETCDF_PATH);
-    let typ = "steffen";
+    let typ = Interpolation1dType::Steffen;
     let (m, n) = (3, 2);
     use PhaseMethod::Interpolation;
     let builder = NcFluteModeBuilder::new(&path, typ, m, n).with_phase_method(Interpolation);
@@ -105,7 +105,7 @@ fn nc_flute_mode() {
 
     let netcdf_version: semver::Version = mode.netcdf_version();
     let path: PathBuf = mode.path();
-    let interp_type: String = mode.interp_type();
+    let interp_type: Interpolation1dType = mode.interp_type();
     let psi_state: FluxCoordinateState = mode.psi_state();
     let psip_state: FluxCoordinateState = mode.psip_state();
     let psi_last: f64 = mode.psi_last().unwrap();
