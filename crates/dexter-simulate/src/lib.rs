@@ -86,7 +86,7 @@ pub use solve::{FluxCoordinate, SolverParams, SteppingMethod};
 
 pub use particle::{
     CoordinateSet, EnergyPzetaPosition, Frequencies, InitialConditions, InitialFlux,
-    IntegrationStatus, IntersectParams, Intersection, OrbitType, Particle, ParticleCacheStats,
+    IntegrationStatus, IntersectParams, Intersection, OrbitType, Particle,
 };
 
 pub use queue::{Queue, QueueInitialConditions, Routine};

@@ -11,7 +11,7 @@ use crate::particle::intersect::{
     calculate_intersection_state, calculate_mod_state1, calculate_mod_state2, calculate_mod_step,
     intersected,
 };
-use crate::particle::{IntegrationCaches, Particle, ParticleCacheStats};
+use crate::particle::{IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
 use crate::{Frequencies, IntersectParams};
@@ -171,13 +171,7 @@ pub(super) fn close(
     particle.evolution.duration = start.elapsed();
     particle.final_energy = Some(state1.energy());
     particle.evolution.finish();
-    particle.stats = ParticleCacheStats {
-        psi_acc: caches.psi_acc,
-        psip_acc: caches.psip_acc,
-        theta_acc: caches.theta_acc,
-        mode_cache_hits: caches.mode_caches.iter().map(|mode| mode.hits()).sum(),
-        mode_cache_misses: caches.mode_caches.iter().map(|mode| mode.misses()).sum(),
-    };
+    particle.store_caches(caches);
 }
 
 /// Checks if `state1` and `state2` stand 'left and right' of the period closing point. This

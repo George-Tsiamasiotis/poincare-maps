@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use dexter_equilibrium::Equilibrium;
 
-use crate::particle::{IntegrationCaches, Particle, ParticleCacheStats};
+use crate::particle::{IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
 
@@ -85,11 +85,5 @@ pub(super) fn integrate(
     particle.evolution.duration = start.elapsed();
     particle.final_energy = Some(state1.energy());
     particle.evolution.finish();
-    particle.stats = ParticleCacheStats {
-        psi_acc: caches.psi_acc,
-        psip_acc: caches.psip_acc,
-        theta_acc: caches.theta_acc,
-        mode_cache_hits: caches.mode_caches.iter().map(|mode| mode.hits()).sum(),
-        mode_cache_misses: caches.mode_caches.iter().map(|mode| mode.misses()).sum(),
-    };
+    particle.store_caches(caches);
 }

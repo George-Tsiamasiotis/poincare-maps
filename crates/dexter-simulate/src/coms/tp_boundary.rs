@@ -4,7 +4,9 @@ use std::f64::consts::PI;
 
 use dexter_equilibrium::{Equilibrium, FluxCoordinateState};
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, Cache, InterpType, Interpolation, Steffen, SteffenInterp};
+use rsl_interpolation::{
+    Accelerator, Accelerator2d, AkimaInterpolator, Interpolation, Interpolator,
+};
 
 use crate::constants::TRAPPED_PASSING_BOUNDARY_DENSITY;
 
@@ -34,15 +36,15 @@ use crate::constants::TRAPPED_PASSING_BOUNDARY_DENSITY;
 #[derive(Clone)]
 pub struct TrappedPassingBoundary {
     /// The `Pζ = [-ψp_last, 0]` interval array.
-    pub(crate) pzeta_interval: Vec<f64>,
+    pub(crate) pzeta_interval: Box<[f64]>,
     /// The curve corresponding to the lower part of the boundary, defined by `θ=0` (eq. 1).
-    pub(crate) lower: Vec<f64>,
+    pub(crate) lower: Box<[f64]>,
     /// The curve corresponding to the upper part of the boundary, defined by `θ=π` (eq. 2).
-    pub(crate) upper: Vec<f64>,
+    pub(crate) upper: Box<[f64]>,
     /// The `Pζ` -> lower trapped-passing boundary interpolator.
-    pub(crate) lower_interp: SteffenInterp<f64>,
+    pub(crate) lower_interp: AkimaInterpolator,
     /// The `Pζ` -> upper trapped-passing boundary interpolator.
-    pub(crate) upper_interp: SteffenInterp<f64>,
+    pub(crate) upper_interp: AkimaInterpolator,
 }
 
 impl TrappedPassingBoundary {
@@ -120,39 +122,35 @@ impl TrappedPassingBoundary {
         let psip_last = equilibrium.qfactor.psip_last();
         let psip_interval = Array1::linspace(psip_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
 
-        let mut psip_acc = Accelerator::new();
-        let mut theta_acc = Accelerator::new();
-        let mut cache = Cache::new();
+        let acc = &mut Accelerator2d::new();
 
         let lower_array = mu
             * psip_interval.mapv(|psip| {
                 equilibrium
                     .bfield
-                    .b_of_psip(psip, 0.0, &mut psip_acc, &mut theta_acc, &mut cache)
+                    .b_of_psip(psip, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psip_interval.mapv(|psip| {
                 equilibrium
                     .bfield
-                    .b_of_psip(psip, PI, &mut psip_acc, &mut theta_acc, &mut cache)
+                    .b_of_psip(psip, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
 
         let pzeta_interval = (-&psip_interval).to_vec();
         let lower = lower_array.to_vec();
         let upper = upper_array.to_vec();
-        let lower_interp = Steffen
-            .build(&pzeta_interval, &lower)
+        let lower_interp = AkimaInterpolator::build(&pzeta_interval, &lower)
             .expect("sorted dataset and same shape by definition");
-        let upper_interp = Steffen
-            .build(&pzeta_interval, &upper)
+        let upper_interp = AkimaInterpolator::build(&pzeta_interval, &upper)
             .expect("sorted dataset and same shape by definition");
 
         Self {
-            pzeta_interval,
-            lower,
-            upper,
+            pzeta_interval: pzeta_interval.into_boxed_slice(),
+            lower: lower.into_boxed_slice(),
+            upper: upper.into_boxed_slice(),
             lower_interp,
             upper_interp,
         }
@@ -170,46 +168,42 @@ impl TrappedPassingBoundary {
         let psi_last = equilibrium.qfactor.psi_last();
         let psi_interval = Array1::linspace(psi_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
 
-        let mut psi_acc = Accelerator::new();
-        let mut theta_acc = Accelerator::new();
-        let mut cache = Cache::new();
+        let acc = &mut Accelerator2d::new();
 
         let lower_array = mu
             * psi_interval.mapv(|psi| {
                 equilibrium
                     .bfield
-                    .b_of_psi(psi, 0.0, &mut psi_acc, &mut theta_acc, &mut cache)
+                    .b_of_psi(psi, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psi_interval.mapv(|psi| {
                 equilibrium
                     .bfield
-                    .b_of_psi(psi, PI, &mut psi_acc, &mut theta_acc, &mut cache)
+                    .b_of_psi(psi, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
 
         let psip_interval = psi_interval.mapv(|psi| {
             equilibrium
                 .qfactor
-                .psip_of_psi(psi, &mut psi_acc)
+                .psip_of_psi(psi, acc.xacc())
                 .expect("psi is always inbound and evaluation is defined")
         });
 
         let pzeta_interval = (-&psip_interval).to_vec();
         let lower = lower_array.to_vec();
         let upper = upper_array.to_vec();
-        let lower_interp = Steffen
-            .build(&pzeta_interval, &lower)
+        let lower_interp = AkimaInterpolator::build(&pzeta_interval, &lower)
             .expect("sorted dataset and same shape by definition");
-        let upper_interp = Steffen
-            .build(&pzeta_interval, &upper)
+        let upper_interp = AkimaInterpolator::build(&pzeta_interval, &upper)
             .expect("sorted dataset and same shape by definition");
 
         Self {
-            pzeta_interval,
-            lower,
-            upper,
+            pzeta_interval: pzeta_interval.into_boxed_slice(),
+            lower: lower.into_boxed_slice(),
+            upper: upper.into_boxed_slice(),
             lower_interp,
             upper_interp,
         }

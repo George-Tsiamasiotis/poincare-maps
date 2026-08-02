@@ -15,7 +15,7 @@ pub use orbit_classification::EnergyPzetaPosition;
 // ===============================================================================================
 
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, Cache};
+use rsl_interpolation::{Accelerator, Accelerator2d};
 use std::time::Duration;
 
 use dexter_common::export_array1D_getter_impl;
@@ -54,18 +54,35 @@ impl std::fmt::Debug for InitialFlux {
 // ===============================================================================================
 
 /// Container for the caching objects needed for the evaluations.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
+#[non_exhaustive]
 pub(crate) struct IntegrationCaches {
-    /// The `ψ` Accelerator. Only used when integrating with respect to `ψ`.
-    pub(crate) psi_acc: Accelerator,
-    /// The `ψp` Accelerator. Only used when integrating with respect to `ψp`.
-    pub(crate) psip_acc: Accelerator,
-    /// The `θ` Accelerator.
-    pub(crate) theta_acc: Accelerator,
-    /// The 2D Interpolation cache.
-    pub(crate) spline_cache: Cache<f64>,
+    /// The 2D integration Accelerator.
+    acc: Accelerator2d,
     /// The caches of the perturbation's modes.
-    pub(crate) mode_caches: DynModeCaches,
+    mode_caches: DynModeCaches,
+}
+
+impl IntegrationCaches {
+    /// Returns a mutable reference to the 2D Accelerator.
+    pub(crate) fn acc(&mut self) -> &mut Accelerator2d {
+        &mut self.acc
+    }
+
+    /// Returns a mutable reference to the magnetic flux Accelerator.
+    pub(crate) fn flux_acc(&mut self) -> &mut Accelerator {
+        self.acc.xacc()
+    }
+
+    /// Returns a mutable reference to the theta angle Accelerator.
+    pub(crate) fn theta_acc(&mut self) -> &mut Accelerator {
+        self.acc.yacc()
+    }
+
+    /// Returns a mutable reference to mode caches.
+    pub(crate) fn mode_caches(&mut self) -> &mut DynModeCaches {
+        &mut self.mode_caches
+    }
 }
 
 // ===============================================================================================
@@ -102,23 +119,6 @@ pub enum IntegrationStatus {
     TimedOut(Duration),
     /// Simulation failed for unknown reasons.
     Failed(Box<str>),
-}
-
-// ===============================================================================================
-
-/// Accelerator/Cache stats of an integration routine.
-#[derive(Debug, Default, Clone)]
-pub struct ParticleCacheStats {
-    /// The final state `ψ` Accelerator.
-    pub psi_acc: Accelerator,
-    /// The final state `ψp` Accelerator.
-    pub psip_acc: Accelerator,
-    /// The final state `θ` Accelerator.
-    pub theta_acc: Accelerator,
-    /// The sum of of the individual mode caches' hits.
-    pub mode_cache_hits: usize,
-    /// The sum of of the individual mode caches' misses.
-    pub mode_cache_misses: usize,
 }
 
 // ===============================================================================================
@@ -216,8 +216,8 @@ pub struct Particle {
     integration_status: IntegrationStatus,
     /// The time evolution of the particle.
     evolution: Evolution,
-    /// Stats about the particle's integration.
-    stats: ParticleCacheStats,
+    /// The integration Accelerator and Mode caches.
+    caches: IntegrationCaches,
     /// The particle's position on the `E-Pζ` plane, relative to the orbit classification curves.
     energy_pzeta_position: EnergyPzetaPosition,
     /// The particle's orbit type.
@@ -237,14 +237,8 @@ impl Particle {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
-    /// # use std::path::PathBuf;
     /// # use dexter_simulate::*;
-    /// #
-    /// # let path = PathBuf::from("./netcdf.nc");
-    /// # let geometry = NcGeometryBuilder::new(&path, "steffen", "bicubic").build()?;
-    /// # let psip_last = geometry.psip_last().unwrap();
-    /// let psip0 = InitialFlux::Poloidal(0.5 * psip_last);
+    /// let psip0 = InitialFlux::Poloidal(0.05);
     /// let initial = InitialConditions::boozer(0.0, psip0, 0.0, 3.14, 1e-5, 1e-6);
     /// let mut particle = Particle::new(&initial);
     /// # Ok::<_, SimulationError>(())
@@ -261,10 +255,10 @@ impl Particle {
             initial_conditions: initial_conditions.to_owned(),
             integration_status,
             evolution: Evolution::default(),
+            caches: IntegrationCaches::default(),
             energy_pzeta_position: EnergyPzetaPosition::default(),
             orbit_type: OrbitType::default(),
             frequencies: Frequencies::default(),
-            stats: ParticleCacheStats::default(),
             initial_energy: None,
             final_energy: None,
         }
@@ -521,12 +515,6 @@ impl Particle {
         self.evolution.energy_var()
     }
 
-    /// Returns the particle's [`ParticleCacheStats`].
-    #[must_use]
-    pub fn cache_stats(&self) -> ParticleCacheStats {
-        self.stats.clone()
-    }
-
     /// Returns the particle's [`EnergyPzetaPosition`].
     #[must_use]
     pub fn energy_pzeta_position(&self) -> EnergyPzetaPosition {
@@ -563,15 +551,68 @@ impl Particle {
         self.frequencies.qkinetic
     }
 
-    /// Prints the particle's integration interpolation caches, [`Cache`] and
-    /// [`Accelerator`].
-    pub fn print_cache_stats(&self) {
-        println!("{:#}", self.stats);
+    /// Prints the Accelerators' and mode caches' hits and misses.
+    pub fn print_caches(&self) {
+        println!("Particle caches {{");
+        println!("\tFlux cache hits: {}", self.flux_cache_hits());
+        println!("\tFlux cache misses: {}", self.flux_cache_misses());
+        println!("\tTheta cache hits: {}", self.theta_cache_hits());
+        println!("\tTheta cache misses: {}", self.theta_cache_misses());
+        println!("\tMode cache hits: {}", self.mode_cache_hits());
+        println!("\tMode cache misses: {}", self.mode_cache_misses());
+        println!("}}");
     }
 
     /// Discares the time evolution arrays, keeping metadata such as duration, step count, etc.
-    pub fn discard_arrays(&mut self) {
-        self.evolution.discard_arrays();
+    pub fn discard_vecs(&mut self) {
+        self.evolution.discard_vecs();
+    }
+
+    /// Stores the integration caches in the particle. Should be called after every integration routine.
+    pub(crate) fn store_caches(&mut self, caches: IntegrationCaches) {
+        self.caches = caches
+    }
+
+    /// Returns the Accelerator's magnetic flux cache hits.
+    #[must_use]
+    pub fn flux_cache_hits(&self) -> usize {
+        self.caches.clone().flux_acc().hits()
+    }
+
+    /// Returns the Accelerator's magnetic flux cache misses.
+    #[must_use]
+    pub fn flux_cache_misses(&self) -> usize {
+        self.caches.clone().flux_acc().misses()
+    }
+
+    /// Returns the Accelerator's theta angle cache hits.
+    #[must_use]
+    pub fn theta_cache_hits(&self) -> usize {
+        self.caches.clone().theta_acc().hits()
+    }
+
+    /// Returns the Accelerator's theta angle cache misses.
+    #[must_use]
+    pub fn theta_cache_misses(&self) -> usize {
+        self.caches.clone().theta_acc().misses()
+    }
+
+    /// Returns the mode cache's hits.
+    #[must_use]
+    pub fn mode_cache_hits(&self) -> usize {
+        self.caches
+            .mode_caches
+            .iter()
+            .fold(0, |acc, cache| acc + cache.hits())
+    }
+
+    /// Returns the mode cache's misses.
+    #[must_use]
+    pub fn mode_cache_misses(&self) -> usize {
+        self.caches
+            .mode_caches
+            .iter()
+            .fold(0, |acc, cache| acc + cache.misses())
     }
 
     export_array1D_getter_impl!(t_array, evolution, t);
@@ -615,18 +656,6 @@ impl std::fmt::Debug for Particle {
             .field("initial energy", &self.initial_energy.unwrap_or(f64::NAN))
             .field("final energy  ", &self.final_energy.unwrap_or(f64::NAN))
             .field("energy variance", &self.energy_var().unwrap_or(f64::NAN))
-            .finish()
-    }
-}
-
-impl std::fmt::Display for ParticleCacheStats {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Particle Interpolation Caching stats")
-            .field("ψ Accelerator", &self.psi_acc)
-            .field("ψp Accelerator", &self.psip_acc)
-            .field("θ Accelerator", &self.theta_acc)
-            .field("total mode cache hits", &self.mode_cache_hits)
-            .field("total mode cache misses", &self.mode_cache_misses)
             .finish()
     }
 }

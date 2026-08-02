@@ -1,6 +1,6 @@
 //! Stores the time evolution of a Particle.
 
-use dexter_common::vec_to_array1D_getter_impl;
+use dexter_common::array1D_getter_impl;
 use ndarray::Array1;
 use std::time::Duration;
 
@@ -86,28 +86,37 @@ impl Evolution {
     }
 
     /// Discards the vecs, keeping all the other fields.
-    pub(crate) fn discard_arrays(&mut self) {
-        *self = Self {
-            duration: self.duration,
-            steps_taken: self.steps_taken,
-            energy_var: self.energy_var,
-            ..Default::default()
+    pub(crate) fn discard_vecs(&mut self) {
+        let vectors = [
+            &mut self.t,
+            &mut self.psi,
+            &mut self.psip,
+            &mut self.theta,
+            &mut self.zeta,
+            &mut self.rho,
+            &mut self.mu,
+            &mut self.ptheta,
+            &mut self.pzeta,
+            &mut self.energy,
+        ];
+        for vector in vectors {
+            *vector = Vec::new();
         }
     }
 }
 
 /// Getters.
 impl Evolution {
-    vec_to_array1D_getter_impl!(t_array, t, time);
-    vec_to_array1D_getter_impl!(psi_array, psi, psi);
-    vec_to_array1D_getter_impl!(psip_array, psip, psip);
-    vec_to_array1D_getter_impl!(theta_array, theta, theta);
-    vec_to_array1D_getter_impl!(zeta_array, zeta, zeta);
-    vec_to_array1D_getter_impl!(rho_array, rho, rho);
-    vec_to_array1D_getter_impl!(mu_array, mu, mu);
-    vec_to_array1D_getter_impl!(ptheta_array, ptheta, Ptheta);
-    vec_to_array1D_getter_impl!(pzeta_array, pzeta, Pzeta);
-    vec_to_array1D_getter_impl!(energy_array, energy, E);
+    array1D_getter_impl!(t_array, t, time);
+    array1D_getter_impl!(psi_array, psi, psi);
+    array1D_getter_impl!(psip_array, psip, psip);
+    array1D_getter_impl!(theta_array, theta, theta);
+    array1D_getter_impl!(zeta_array, zeta, zeta);
+    array1D_getter_impl!(rho_array, rho, rho);
+    array1D_getter_impl!(mu_array, mu, mu);
+    array1D_getter_impl!(ptheta_array, ptheta, Ptheta);
+    array1D_getter_impl!(pzeta_array, pzeta, Pzeta);
+    array1D_getter_impl!(energy_array, energy, E);
 
     /// Returns the final time (last entry on the time array), if it exists.
     pub(crate) fn tf(&self) -> Option<f64> {

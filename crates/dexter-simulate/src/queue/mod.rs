@@ -146,17 +146,18 @@ impl Queue {
     /// # Example
     /// ```
     /// # use dexter_equilibrium::*;
+    /// # use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let path = PathBuf::from("./netcdf.nc");
-    /// let qfactor = NcQfactorBuilder::new(&path, "steffen").build()?;
+    /// let qfactor = NcQfactorBuilder::new(&path, Akima).build()?;
     /// let lcfs = LastClosedFluxSurface::Toroidal(qfactor.psi_last());
     /// let equilibrium = Equilibrium {
     ///     geometry: None,
     ///     qfactor: Box::new(qfactor),
-    ///     current: Box::new(NcCurrentBuilder::new(&path, "steffen").build()?),
-    ///     bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build()?),
+    ///     current: Box::new(NcCurrentBuilder::new(&path, Akima).build()?),
+    ///     bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build()?),
     ///     perturbation: Perturbation::new(&[
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -310,7 +311,7 @@ impl Queue {
             particle.close(equilibrium, periods, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
-            particle.discard_arrays();
+            particle.discard_vecs();
         });
         pbar.finish();
 

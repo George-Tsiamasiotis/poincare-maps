@@ -5,7 +5,7 @@
 use dexter_equilibrium::Equilibrium;
 use ndarray::Array1;
 use parabola::Parabola;
-use rsl_interpolation::{Accelerator, Cache};
+use rsl_interpolation::Accelerator2d;
 
 use crate::{COMError, COMs, TrappedPassingBoundary};
 
@@ -53,24 +53,25 @@ impl EnergyPzetaPlane {
     /// where all values are evaluated at `(ψ/ψp, θ) = (0, 0)`.
     #[must_use]
     fn build_magnetic_axis_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
-        let acc1 = &mut Accelerator::new();
-        let acc2 = &mut Accelerator::new();
-        let cache = &mut Cache::<f64>::new();
+        let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let gaxis = equilibrium.current.g_of_psi(0.0, acc1).unwrap_or_else(|_| {
-            equilibrium
-                .current
-                .g_of_psip(0.0, acc1)
-                .expect("At least one of the evaluations will always succeed")
-        });
+        let gaxis = equilibrium
+            .current
+            .g_of_psi(0.0, acc.xacc())
+            .unwrap_or_else(|_| {
+                equilibrium
+                    .current
+                    .g_of_psip(0.0, acc.xacc())
+                    .expect("At least one of the evaluations will always succeed")
+            });
         let baxis = equilibrium
             .bfield // This might be redundant
-            .b_of_psi(0.0, 0.0, acc1, acc2, cache)
+            .b_of_psi(0.0, 0.0, acc)
             .unwrap_or_else(|_| {
                 equilibrium
                     .bfield
-                    .b_of_psip(0.0, 0.0, acc1, acc2, cache)
+                    .b_of_psip(0.0, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 
@@ -91,27 +92,25 @@ impl EnergyPzetaPlane {
         use std::f64::consts::PI;
         let psi_last = equilibrium.qfactor.psi_last();
         let psip_last = equilibrium.qfactor.psip_last();
-        let acc1 = &mut Accelerator::new();
-        let acc2 = &mut Accelerator::new();
-        let cache = &mut Cache::<f64>::new();
+        let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
         let glast = equilibrium
             .current
-            .g_of_psi(psi_last, acc1)
+            .g_of_psi(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
                 equilibrium
                     .current
-                    .g_of_psip(psip_last, acc1)
+                    .g_of_psip(psip_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
         let blast = equilibrium
             .bfield
-            .b_of_psi(psi_last, PI, acc1, acc2, cache)
+            .b_of_psi(psi_last, PI, acc)
             .unwrap_or_else(|_| {
                 equilibrium
                     .bfield
-                    .b_of_psip(psip_last, PI, acc1, acc2, cache)
+                    .b_of_psip(psip_last, PI, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 
@@ -130,27 +129,25 @@ impl EnergyPzetaPlane {
     fn build_right_wall_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
         let psi_last = equilibrium.qfactor.psi_last();
         let psip_last = equilibrium.qfactor.psip_last();
-        let acc1 = &mut Accelerator::new();
-        let acc2 = &mut Accelerator::new();
-        let cache = &mut Cache::<f64>::new();
+        let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
         let glast = equilibrium
             .current
-            .g_of_psi(psi_last, acc1)
+            .g_of_psi(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
                 equilibrium
                     .current
-                    .g_of_psip(psip_last, acc1)
+                    .g_of_psip(psip_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
         let blast = equilibrium
             .bfield
-            .b_of_psi(psi_last, 0.0, acc1, acc2, cache)
+            .b_of_psi(psi_last, 0.0, acc)
             .unwrap_or_else(|_| {
                 equilibrium
                     .bfield
-                    .b_of_psip(psip_last, 0.0, acc1, acc2, cache)
+                    .b_of_psip(psip_last, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 

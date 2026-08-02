@@ -7,7 +7,7 @@ use approx::abs_diff_eq;
 use dexter_equilibrium::Equilibrium;
 
 use crate::constants::ANGLE_INTERSECTION_THRESHOLD;
-use crate::particle::{Evolution, IntegrationCaches, Particle, ParticleCacheStats};
+use crate::particle::{Evolution, IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
 use crate::{FluxCoordinate, SimulationError};
@@ -167,13 +167,7 @@ pub(super) fn intersect(
     particle.evolution.duration = start.elapsed();
     particle.final_energy = Some(state1.energy());
     particle.evolution.finish();
-    particle.stats = ParticleCacheStats {
-        psi_acc: caches.psi_acc,
-        psip_acc: caches.psip_acc,
-        theta_acc: caches.theta_acc,
-        mode_cache_hits: caches.mode_caches.iter().map(|mode| mode.hits()).sum(),
-        mode_cache_misses: caches.mode_caches.iter().map(|mode| mode.misses()).sum(),
-    };
+    particle.store_caches(caches);
 
     if (particle.integration_status == IntegrationStatus::Escaped)
         || (particle.integration_status == IntegrationStatus::ModStateEscaped)

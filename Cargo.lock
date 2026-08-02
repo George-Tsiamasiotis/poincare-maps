@@ -349,14 +349,13 @@ dependencies = [
 
 [[package]]
 name = "dexter-simulate"
-version = "0.1.5-pre.15"
+version = "0.1.5"
 dependencies = [
  "approx",
  "dexter-common",
  "dexter-equilibrium",
  "indicatif",
  "ndarray",
- "ndarray-stats",
  "parabola",
  "rayon",
  "rsl-interpolation",
@@ -828,21 +827,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndarray-stats"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b6e54a8b65764f71827a90ca1d56965ec0c67f069f996477bd493402a901d1f"
-dependencies = [
- "indexmap",
- "itertools",
- "ndarray",
- "noisy_float",
- "num-integer",
- "num-traits",
- "rand",
-]
-
-[[package]]
 name = "netcdf"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -879,15 +863,6 @@ dependencies = [
  "netcdf-src",
  "parking_lot",
  "semver",
-]
-
-[[package]]
-name = "noisy_float"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c16843be85dd410c6a12251c4eca0dd1d3ee8c5725f746c4d5e0fdcec0a864b2"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]

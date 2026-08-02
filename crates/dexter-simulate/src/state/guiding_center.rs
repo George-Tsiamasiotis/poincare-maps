@@ -186,13 +186,13 @@ impl GCState {
     ) -> Result<(), SimulationError> {
         let qfactor = equilibrium.qfactor.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.psip = match qfactor.psip_of_psi(self.psi, &mut caches.psi_acc) {
+            self.psip = match qfactor.psip_of_psi(self.psi, caches.flux_acc()) {
                 Ok(psip) => psip,
                 Err(EvalError::UndefinedEvaluation(..)) => f64::NAN,
                 Err(err) => return Err(err.into()),
             }
         } else {
-            self.psi = match qfactor.psi_of_psip(self.psip, &mut caches.psip_acc) {
+            self.psi = match qfactor.psi_of_psip(self.psip, caches.flux_acc()) {
                 Ok(psi) => psi,
                 Err(EvalError::UndefinedEvaluation(..)) => f64::NAN,
                 Err(err) => return Err(err.into()),
@@ -208,9 +208,9 @@ impl GCState {
     ) -> Result<(), SimulationError> {
         let qfactor = equilibrium.qfactor.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.q = qfactor.q_of_psi(self.psi, &mut caches.psi_acc)?;
+            self.q = qfactor.q_of_psi(self.psi, caches.flux_acc())?;
         } else {
-            self.q = qfactor.q_of_psip(self.psip, &mut caches.psip_acc)?;
+            self.q = qfactor.q_of_psip(self.psip, caches.flux_acc())?;
         };
         Ok(())
     }
@@ -222,15 +222,15 @@ impl GCState {
     ) -> Result<(), SimulationError> {
         let current = equilibrium.current.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.g = current.g_of_psi(self.psi, &mut caches.psi_acc)?;
-            self.i = current.i_of_psi(self.psi, &mut caches.psi_acc)?;
-            self.dg_dflux = current.dg_dpsi(self.psi, &mut caches.psi_acc)?;
-            self.di_dflux = current.di_dpsi(self.psi, &mut caches.psi_acc)?;
+            self.g = current.g_of_psi(self.psi, caches.flux_acc())?;
+            self.i = current.i_of_psi(self.psi, caches.flux_acc())?;
+            self.dg_dflux = current.dg_dpsi(self.psi, caches.flux_acc())?;
+            self.di_dflux = current.di_dpsi(self.psi, caches.flux_acc())?;
         } else {
-            self.g = current.g_of_psip(self.psip, &mut caches.psip_acc)?;
-            self.i = current.i_of_psip(self.psip, &mut caches.psip_acc)?;
-            self.dg_dflux = current.dg_dpsip(self.psip, &mut caches.psip_acc)?;
-            self.di_dflux = current.di_dpsip(self.psip, &mut caches.psip_acc)?;
+            self.g = current.g_of_psip(self.psip, caches.flux_acc())?;
+            self.i = current.i_of_psip(self.psip, caches.flux_acc())?;
+            self.dg_dflux = current.dg_dpsip(self.psip, caches.flux_acc())?;
+            self.di_dflux = current.di_dpsip(self.psip, caches.flux_acc())?;
         }
         Ok(())
     }
@@ -244,13 +244,13 @@ impl GCState {
     {
         let bfield = equilibrium.bfield.as_ref();
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.b          = bfield.b_of_psi           (self.psi, self.mod_theta, &mut caches.psi_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
-            self.db_dflux   = bfield.db_dpsi            (self.psi, self.mod_theta, &mut caches.psi_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
-            self.db_dtheta  = bfield.db_of_psi_dtheta   (self.psi, self.mod_theta, &mut caches.psi_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
+            self.b          = bfield.b_of_psi           (self.psi, self.mod_theta,caches.acc())?;
+            self.db_dflux   = bfield.db_dpsi            (self.psi, self.mod_theta,caches.acc())?;
+            self.db_dtheta  = bfield.db_of_psi_dtheta   (self.psi, self.mod_theta,caches.acc())?;
         } else {
-            self.b          = bfield.b_of_psip          (self.psip, self.mod_theta, &mut caches.psip_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
-            self.db_dflux   = bfield.db_dpsip           (self.psip, self.mod_theta, &mut caches.psip_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
-            self.db_dtheta  = bfield.db_of_psip_dtheta  (self.psip, self.mod_theta, &mut caches.psip_acc, &mut caches.theta_acc, &mut caches.spline_cache)?;
+            self.b          = bfield.b_of_psip          (self.psip, self.mod_theta, caches.acc())?;
+            self.db_dflux   = bfield.db_dpsip           (self.psip, self.mod_theta, caches.acc())?;
+            self.db_dtheta  = bfield.db_of_psip_dtheta  (self.psip, self.mod_theta, caches.acc())?;
         }
         self.db_dzeta = 0.0; // Axisymmetric configuration for now
         Ok(())
@@ -264,18 +264,19 @@ impl GCState {
     ) -> Result<(), SimulationError>
     {
         let perturbation = &equilibrium.perturbation;
+        let mode_caches = caches.mode_caches();
         if self.coordinate == FluxCoordinate::Toroidal {
-            self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsi          (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psi_dtheta (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psi_dzeta  (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dt      = perturbation.dp_of_psi_dt     (self.psi, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dflux   = perturbation.dp_dpsi          (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dtheta  = perturbation.dp_of_psi_dtheta (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dzeta   = perturbation.dp_of_psi_dzeta  (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dt      = perturbation.dp_of_psi_dt     (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
         } else {
-            self.p          = perturbation.p_of_psip        (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsip         (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psip_dtheta(self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psip_dzeta (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
-            self.dp_dt      = perturbation.dp_of_psip_dt    (self.psip, self.mod_theta, self.mod_zeta, self.t, &mut caches.mode_caches)?;
+            self.p          = perturbation.p_of_psip        (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dflux   = perturbation.dp_dpsip         (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dtheta  = perturbation.dp_of_psip_dtheta(self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dzeta   = perturbation.dp_of_psip_dzeta (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
+            self.dp_dt      = perturbation.dp_of_psip_dt    (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
         }
         Ok(())
     }

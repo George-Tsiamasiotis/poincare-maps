@@ -8,8 +8,8 @@ use crate::common::check_integrated_particle_arrays;
 use approx::*;
 use dexter_equilibrium::extract::{POLOIDAL_TEST_NETCDF_PATH, TEST_NETCDF_PATH};
 use dexter_equilibrium::*;
+use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
 use dexter_simulate::*;
-use rsl_interpolation::Accelerator;
 use std::path::PathBuf;
 
 #[test]
@@ -68,9 +68,9 @@ fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::zero(),
     };
 
@@ -120,12 +120,12 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::new(&[
-            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
     };
 
@@ -179,12 +179,12 @@ fn gc_toroidal_poloidal_equivalence_const_zeta() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::new(&[
-            Box::new(NcFluteModeBuilder::new(&path, "steffen", 2, 1).with_phase_method(Interpolation).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, "steffen", 3, 2).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
+            Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
     };
 

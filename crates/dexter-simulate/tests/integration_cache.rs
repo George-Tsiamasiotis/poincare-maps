@@ -2,7 +2,9 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::{extract::TOROIDAL_TEST_NETCDF_PATH, *};
+use dexter_equilibrium::{
+    Interpolation1dType::Akima, Interpolation2dType::Bicubic, extract::TOROIDAL_TEST_NETCDF_PATH, *,
+};
 use dexter_simulate::*;
 
 #[test]
@@ -36,19 +38,17 @@ fn integration_cache_analytical_eq_flute_mode() {
     ));
     let steps = particle.steps_taken();
     assert!(steps > 1000);
-    let stats = particle.cache_stats().clone();
 
     // Per mode:
     //     6 evaluations in rkf45
     //          `h`, `dh_dflux` `dh_dtheta`, `dh_dzeta` -> 1 miss, 3 hits
     //
     // Also add 1 miss and 3 hits to account for the state created on setup.
-
-    assert_eq!(stats.mode_cache_misses, 7 * (steps * 6 * 1 + 1));
-    assert_eq!(stats.mode_cache_hits, 7 * (steps * 6 * 3 + 3));
+    assert_eq!(particle.mode_cache_misses(), 7 * (steps * 6 * 1 + 1));
+    assert_eq!(particle.mode_cache_hits(), 7 * (steps * 6 * 3 + 3));
     //
     // Each flute mode results in 2 hits and 1 miss for each evaluation
-    assert_eq!(stats.mode_cache_hits, 3 * stats.mode_cache_misses);
+    assert_eq!(particle.mode_cache_hits(), 3 * particle.mode_cache_misses());
 }
 
 #[test]
@@ -57,18 +57,18 @@ fn integration_cache_nc_eq_nc_flute_mode() {
     let path = PathBuf::from(TOROIDAL_TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::new(&[
             Box::new(
-                NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+                NcFluteModeBuilder::new(&path, Akima, 2, 1)
                     .with_phase_method(PhaseMethod::Interpolation)
                     .build()
                     .unwrap(),
             ),
             Box::new(
-                NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+                NcFluteModeBuilder::new(&path, Akima, 3, 2)
                     .with_phase_method(PhaseMethod::Interpolation)
                     .build()
                     .unwrap(),
@@ -87,14 +87,12 @@ fn integration_cache_nc_eq_nc_flute_mode() {
             ..Default::default()
         },
     );
-    particle.print_cache_stats();
     assert!(matches!(
         particle.integration_status(),
         IntegrationStatus::Integrated
     ));
     let steps = particle.steps_taken();
     assert!(steps > 1000);
-    let stats = particle.cache_stats().clone();
 
     // `ψ` Accelerator
     // We chose a very low energetic particle, so it will follow the same flux surface, so
@@ -104,11 +102,8 @@ fn integration_cache_nc_eq_nc_flute_mode() {
     //          `other_flux`, `q`, `g`, `i`, `dg`, `di`, `b`, `db_dflux`, `db_dtheta`-> 0 misses 9 hits
     //
     // Also add 1 miss and 8+9 hits (2nd mode is a hit) to account for the state created on setup.
-    assert_eq!(stats.psi_acc.misses(), 1);
-    assert_eq!(stats.psi_acc.hits(), (8 + 9) + 2 * steps * 6 * 9);
-
-    assert_eq!(stats.psip_acc.hits(), 0);
-    assert_eq!(stats.psip_acc.misses(), 0);
+    assert_eq!(particle.flux_cache_misses(), 1);
+    assert_eq!(particle.flux_cache_hits(), (8 + 9) + 2 * steps * 6 * 9);
 
     // `θ` Accelerator
     //      2 modes
@@ -121,7 +116,7 @@ fn integration_cache_nc_eq_nc_flute_mode() {
     // Also add 6 evaluations to account for the state created on setup.
     //
     assert_eq!(
-        stats.theta_acc.hits() + stats.theta_acc.misses(),
+        particle.theta_cache_hits() + particle.theta_cache_misses(),
         6 + 2 * steps * 6 * 3
     );
 
@@ -130,7 +125,8 @@ fn integration_cache_nc_eq_nc_flute_mode() {
     //          `h`, `dh_dflux`, `dh_dtheta`, `dh_dzeta` -> 1 miss, 3 hits
     //
     // Also add 1 miss and 3 hits to account for the state created on setup.
-    assert_eq!(stats.mode_cache_misses, 2 * (steps * 6 * 1 + 1));
-    assert_eq!(stats.mode_cache_hits, 2 * (steps * 6 * 3 + 3));
-    assert_eq!(stats.mode_cache_hits, 3 * stats.mode_cache_misses);
+
+    assert_eq!(particle.mode_cache_misses(), 2 * (steps * 6 * 1 + 1));
+    assert_eq!(particle.mode_cache_hits(), 2 * (steps * 6 * 3 + 3));
+    assert_eq!(particle.mode_cache_hits(), 3 * particle.mode_cache_misses());
 }

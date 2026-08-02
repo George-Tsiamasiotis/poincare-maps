@@ -86,6 +86,7 @@ impl COMs {
     ///
     /// ```
     /// # use dexter_equilibrium::*;
+    /// # use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// # use ndarray::{Array1, Array2};
@@ -93,10 +94,10 @@ impl COMs {
     /// #
     /// let path = PathBuf::from("./netcdf.nc");
     /// let equilibrium = Equilibrium {
-    ///     geometry: Some(Box::new(NcGeometryBuilder::new(&path, "steffen", "bicubic").build()?)),
-    ///     qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build()?),
-    ///     current: Box::new(NcCurrentBuilder::new(&path, "steffen").build()?),
-    ///     bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build()?),
+    ///     geometry: Some(Box::new(NcGeometryBuilder::new(&path, Akima, Bicubic).build()?)),
+    ///     qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build()?),
+    ///     current: Box::new(NcCurrentBuilder::new(&path, Akima).build()?),
+    ///     bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build()?),
     ///     perturbation: Perturbation::zero(),
     /// };
     ///

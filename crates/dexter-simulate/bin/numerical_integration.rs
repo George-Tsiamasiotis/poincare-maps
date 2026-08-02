@@ -4,8 +4,8 @@
 
 use dexter_equilibrium::extract::TOROIDAL_TEST_NETCDF_PATH;
 use dexter_equilibrium::{
-    Equilibrium, NcBfieldBuilder, NcCurrentBuilder, NcFluteModeBuilder, NcQfactorBuilder,
-    Perturbation, PhaseMethod,
+    Equilibrium, Interpolation1dType::Steffen, Interpolation2dType::Bicubic, NcBfieldBuilder,
+    NcCurrentBuilder, NcFluteModeBuilder, NcQfactorBuilder, Perturbation, PhaseMethod,
 };
 use dexter_simulate::{InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams};
 use std::path::Path;
@@ -13,18 +13,18 @@ use std::path::Path;
 fn main() {
     // Equilibrium setup
     let path = Path::new("crates/dexter-simulate").join(TOROIDAL_TEST_NETCDF_PATH);
-    let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-    let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-    let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+    let qfactor = NcQfactorBuilder::new(&path, Steffen).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Steffen).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
     let perturbation = Perturbation::new(&[
         Box::new(
-            NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+            NcFluteModeBuilder::new(&path, Steffen, 2, 1)
                 .with_phase_method(PhaseMethod::Interpolation)
                 .build()
                 .unwrap(),
         ),
         Box::new(
-            NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+            NcFluteModeBuilder::new(&path, Steffen, 3, 2)
                 .with_phase_method(PhaseMethod::Interpolation)
                 .build()
                 .unwrap(),
@@ -46,8 +46,8 @@ fn main() {
     // Integrate
     let teval = (0.0, 1e10);
     particle.integrate(&equilibrium, teval, &SolverParams::default());
+    particle.print_caches();
     dbg!(&particle);
-    particle.print_cache_stats();
     assert!(
         matches!(
             particle.integration_status(),

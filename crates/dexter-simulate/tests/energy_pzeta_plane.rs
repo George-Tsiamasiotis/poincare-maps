@@ -4,6 +4,7 @@
 
 use dexter_equilibrium::extract::{POLOIDAL_TEST_NETCDF_PATH, TEST_NETCDF_PATH};
 use dexter_equilibrium::*;
+use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
 use dexter_simulate::*;
 use parabola::Parabola;
 use std::path::PathBuf;
@@ -39,9 +40,9 @@ fn toroidal_nc_energy_pzeta_parabola() {
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::zero(),
     };
 
@@ -65,9 +66,9 @@ fn poloidal_nc_energy_pzeta_parabola() {
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::zero(),
     };
 

@@ -1,6 +1,6 @@
 [package]
 name = "dexter-simulate"
-version = "0.1.5-pre.15"
+version = "0.1.5"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -22,7 +22,6 @@ parabola.workspace = true
 rsl-interpolation.workspace = true
 rayon = "1.11.0"
 indicatif = "0.18.4"
-ndarray-stats = "0.7.0"
 
 [lints]
 workspace = true

@@ -4,7 +4,7 @@
 
 use dexter_equilibrium::Equilibrium;
 use ndarray::{Array1, Array2};
-use rsl_interpolation::{Accelerator, Cache};
+use rsl_interpolation::Accelerator2d;
 use std::f64::consts::TAU;
 
 use crate::COMError;
@@ -33,9 +33,7 @@ pub(crate) fn energy_of_psi_grid(
 
     let mut grid = Array2::from_elem((psi_array.len(), theta_array.len()), f64::NAN);
 
-    let mut psi_acc = Accelerator::new();
-    let mut theta_acc = Accelerator::new();
-    let mut cache = Cache::new();
+    let acc = &mut Accelerator2d::new();
 
     let mod_theta_array = theta_array.mapv(|theta| theta.rem_euclid(TAU));
 
@@ -43,18 +41,12 @@ pub(crate) fn energy_of_psi_grid(
     // Use `<>_of_psi` evaluation methods to avoid error propagation through double interpolations.
     for i in 0..psi_array.len() {
         let psi = psi_array[i];
-        let psip = equilibrium.qfactor.psip_of_psi(psi, &mut psi_acc)?;
-        let g = equilibrium.current.g_of_psi(psi, &mut psi_acc)?;
+        let psip = equilibrium.qfactor.psip_of_psi(psi, acc.xacc())?;
+        let g = equilibrium.current.g_of_psi(psi, acc.xacc())?;
         let rho = (pzeta + psip) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = equilibrium.bfield.b_of_psi(
-                psi,
-                theta,
-                &mut psi_acc,
-                &mut theta_acc,
-                &mut cache,
-            )?;
+            let b = equilibrium.bfield.b_of_psi(psi, theta, acc)?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -87,26 +79,18 @@ pub(crate) fn energy_of_psip_grid(
 
     let mut grid = Array2::from_elem((psip_array.len(), theta_array.len()), f64::NAN);
 
-    let mut psip_acc = Accelerator::new();
-    let mut theta_acc = Accelerator::new();
-    let mut cache = Cache::new();
+    let acc = &mut Accelerator2d::new();
 
     let mod_theta_array = theta_array.mapv(|theta| theta.rem_euclid(TAU));
 
     // Iterate though `psi_array` first to avoid unnecessarily recalculating `rho`.
     for i in 0..psip_array.len() {
         let psip = psip_array[i];
-        let g = equilibrium.current.g_of_psip(psip, &mut psip_acc)?;
+        let g = equilibrium.current.g_of_psip(psip, acc.xacc())?;
         let rho = (pzeta + psip) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = equilibrium.bfield.b_of_psip(
-                psip,
-                theta,
-                &mut psip_acc,
-                &mut theta_acc,
-                &mut cache,
-            )?;
+            let b = equilibrium.bfield.b_of_psip(psip, theta, acc)?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -120,6 +104,7 @@ mod test {
     use dexter_equilibrium::extract::TEST_NETCDF_PATH;
     use dexter_equilibrium::*;
     use ndarray::{arr1, arr2};
+    use rsl_interpolation::{Interpolation1dType::Steffen, Interpolation2dType::Bicubic};
 
     #[test]
     fn gcmotion_check() {
@@ -156,9 +141,9 @@ mod test {
     #[test]
     fn toroidal_poloidal_equivalence() {
         let path = std::path::PathBuf::from(TEST_NETCDF_PATH);
-        let qfactor = NcQfactorBuilder::new(&path, "steffen").build().unwrap();
-        let current = NcCurrentBuilder::new(&path, "steffen").build().unwrap();
-        let bfield = NcBfieldBuilder::new(&path, "bicubic").build().unwrap();
+        let qfactor = NcQfactorBuilder::new(&path, Steffen).build().unwrap();
+        let current = NcCurrentBuilder::new(&path, Steffen).build().unwrap();
+        let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
 
         let equilibrium = Equilibrium {
             geometry: None,

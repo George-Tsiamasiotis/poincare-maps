@@ -4,6 +4,7 @@
 
 use dexter_equilibrium::extract::POLOIDAL_TEST_NETCDF_PATH;
 use dexter_equilibrium::*;
+use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
 use dexter_simulate::*;
 use ndarray::Array1;
 use std::path::PathBuf;
@@ -72,18 +73,18 @@ fn queue_poloidal_intersect_const_zeta_ncdQ_ncdC_ncdB_ncdP() -> Result<(), Simul
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
     let equilibrium = Equilibrium {
         geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, "steffen").build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, "steffen").build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, "bicubic").build().unwrap()),
+        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
+        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
+        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
         perturbation: Perturbation::new(&[
             Box::new(
-                NcFluteModeBuilder::new(&path, "steffen", 2, 1)
+                NcFluteModeBuilder::new(&path, Akima, 2, 1)
                     .with_phase_method(Interpolation)
                     .build()
                     .unwrap(),
             ),
             Box::new(
-                NcFluteModeBuilder::new(&path, "steffen", 3, 2)
+                NcFluteModeBuilder::new(&path, Akima, 3, 2)
                     .with_phase_method(Interpolation)
                     .build()
                     .unwrap(),
