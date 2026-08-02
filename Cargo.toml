@@ -14,9 +14,9 @@ default-members = [
 [workspace.dependencies]
 approx = "0.5.1"
 ndarray = "0.17.2"
-thiserror = "2.0.18"
+thiserror = "2.0.19"
 criterion = "0.8.2"
-parabola = "0.1.1"
+parabola = "0.1.2"
 rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpolation", branch = "refactor", features = ["openblas-system"] }
 
 dexter = { path = "crates/dexter" }
@@ -27,7 +27,7 @@ dexter-simulate = { path = "crates/dexter-simulate" }
 [workspace.package]
 authors = ["George Tsiamasiotis"]
 edition = "2024"
-rust-version = "1.91.1"
+rust-version = "1.97.1"
 license = "GPL-3.0-only"
 homepage = "https://github.com/George-Tsiamasiotis/DEXTER"
 repository = "https://github.com/George-Tsiamasiotis/DEXTER"

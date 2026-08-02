@@ -9,8 +9,9 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "alpha-shapes>=1.1.1",
-    "matplotlib>=3.10.8",
-    "numpy>=2.4.4",
+    "matplotlib>=3.11.1",
+    "maturin>=1.14.1",
+    "numpy==2.5.1", # maturin MSRV
     "pint>=0.25.3",
     "semver>=3.0.4",
 ]
@@ -31,48 +32,26 @@ build-backend = "maturin"
 
 [dependency-groups]
 dev = [
-    "ipython>=9.12.0",
+    "ipython>=9.16.0",
     "maturin-import-hook>=0.3.0",
     "patchelf>=0.17.2.4",
-    "xarray>=2026.2.0",
+    "xarray>=2026.7.0",
     "netcdf4>=1.7.4",
 ]
 plot = [
-    "pygobject>=3.56.2",
+    "pygobject>=3.56.3",
 ]
 test = [
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
-docs = [
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.7.6",
-    "mkdocstrings-python>=2.0.3",
-]
+docs = [ ]
 
 [tool.pytest.ini_options]
-testpaths = [
-    "./py-dexter/pytests",
-    "./py-dexter/dexter/equilibrium/*",
-    "./py-dexter/dexter/simulate/*",
-    "./py-dexter/dexter/common.py",
-    "./docs/docs/",
-] # Run from workspace root
+testpaths = [ ] # Run from workspace root
 addopts = """
     --durations 2
-    --doctest-glob='*.md'
-    --doctest-glob='*.pyi'
-    --doctest-glob='*.py'
-    --doctest-modules
-     --cov=dexter --cov-report term --cov-report html
 """
 filterwarnings = [
     "ignore:.*Figure.*", # matplotlib non-interactive
-    "ignore:.*unix_signal_add_full.*" # matplotlib-pygobject deprecation warning
 ]
-
-[project.scripts]
-dexter-bfield-plot = "scripts:bfield_plot"
-dexter-flux-surface-plot = "scripts:flux_surface_plot "
-dexter-boozer-theta-plot = "scripts:boozer_theta_plot "
-dexter-midplane-plot = "scripts:midplane_plot "
