@@ -133,7 +133,6 @@ missing_errors_doc = "deny"
 missing_panics_doc = "deny"
 module_name_repetitions = "deny"
 modulo_arithmetic = "deny" # use `rem_euclid()`
-multiple_crate_versions = "deny"
 must_use_candidate = "deny"
 needless_bitwise_bool = "deny"
 needless_collect = "deny"

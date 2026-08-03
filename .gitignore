@@ -3,6 +3,7 @@
 *.so
 
 # Docs
+site
 docs/site
 
 # Appears in doctests

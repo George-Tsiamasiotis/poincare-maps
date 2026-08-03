@@ -45,10 +45,15 @@ test = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
-docs = [ ]
+docs = [
+    "mkdocstrings-python>=2.0.5",
+    "zensical>=0.0.52",
+]
 
 [tool.pytest.ini_options]
-testpaths = [ ] # Run from workspace root
+testpaths = [ # Run from workspace root
+    "py-dexter/pytests"
+]
 addopts = """
     --durations 2
 """

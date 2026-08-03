@@ -1,0 +1,90 @@
+[project]
+site_name = "DEXTER"
+site_description = "A code for performing calculations and simulations of particles and magnetic field lines, with reconstructed equilibria from experimental data."
+site_author = "Giorgos Tsiamasiotis"
+site_url = "https://dexter.tsiamasiotis.gr/"
+repo_url = "https://github.com/George-Tsiamasiotis/DEXTER"
+repo_name = "DEXTER"
+docs_dir = "docs"
+
+nav = [
+   {"Home" = "index.md"},
+   {"NetCDF" = "netcdf.md"},
+   {"API Reference" = [
+        "reference/types.md",
+        "reference/equilibrium.md",
+    ]}
+]
+
+extra_javascript = [
+    "javascripts/katex.js",
+    "https://unpkg.com/katex@0/dist/katex.min.js",
+    "https://unpkg.com/katex@0/dist/contrib/auto-render.min.js"
+]
+
+extra_css = [
+    "https://unpkg.com/katex@0/dist/katex.min.css"
+]
+
+[project.theme.palette]
+scheme = "slate"
+primary = "blue"
+accent = "amber"
+
+[project.theme.icon]
+repo = "fontawesome/brands/git-alt"
+
+[project.theme]
+font.code = "Roboto Mono"
+features = [
+    "header.autohide",
+    "navigation.footer",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.instant.progress",
+    "navigation.tracking",
+    "navigation.tabs",
+    "navigation.tabs.sticky",
+    "navigation.sections",
+    "navigation.path",
+    "navigation.top",
+    "toc.follow",
+    "content.action.view",  # View source of page
+    "content.code.copy",
+    "content.code.select",
+    "content.code.annotate",
+]
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.snippets]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.toc]
+toc_depth = 2
+
+# mkdocstrings
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = ["py-dexter/dexter"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+show_bases = false
+show_root_heading = true
+show_symbol_type_heading = true
+type_parameter_headings = true
+members_order = "source"
+show_labels = true
+docstring_style = "numpy"
+docstring_section_style = "list"
+merge_init_into_class = true
+show_signature_annotations = true
+signature_crossrefs = true
+inherited_members = true
+show_source = false
