@@ -4,12 +4,12 @@ use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
 
 use crate::{
-    DynModeCache, EquilibriumType, EvalError, FluxCoordinateState, LastClosedFluxSurface, Mode,
-    ModeCache,
+    DynModeCache, EquilibriumObject, EvalError, FluxCoordinateState, LastClosedFluxSurface, Mode,
+    ModeCache, ObjectType,
 };
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    equilibrium_type_getter_impl, flute_mode_number_getter_impl, mode_cache_getters_impl,
+    flute_mode_number_getter_impl, mode_cache_getters_impl,
 };
 
 // ===============================================================================================
@@ -27,8 +27,6 @@ use crate::{
 #[non_exhaustive]
 #[derive(Clone)]
 pub struct FluteMode {
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// The modes's "amplitude" `ε`. Corresponds the value of the amplitude at the last closed
     /// flux surface.
     epsilon: f64,
@@ -73,12 +71,11 @@ impl FluteMode {
         }
 
         Self {
-            equilibrium_type: EquilibriumType::Analytical,
-            lcfs,
             epsilon,
             m,
             n,
             phase,
+            lcfs,
             psi_last,
             psip_last,
         }
@@ -115,13 +112,31 @@ impl FluteMode {
     }
 
     flute_mode_number_getter_impl!();
-    equilibrium_type_getter_impl!();
+}
+
+impl EquilibriumObject for FluteMode {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Analytical
+    }
+
+    fn psi_state(&self) -> FluxCoordinateState {
+        match self.psi_last {
+            Some(_) => FluxCoordinateState::Good,
+            None => FluxCoordinateState::Bad,
+        }
+    }
+
+    fn psip_state(&self) -> FluxCoordinateState {
+        match self.psip_last {
+            Some(_) => FluxCoordinateState::Good,
+            None => FluxCoordinateState::Bad,
+        }
+    }
 }
 
 impl std::fmt::Debug for FluteMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FluteMode")
-            .field("equilibrium_type", &self.equilibrium_type)
             .field("epsilon", &self.epsilon)
             .field("LCFS", &self.lcfs())
             .field("poloidal number `m`", &self.m)
@@ -206,20 +221,6 @@ impl ModeCache for FluteModeCache {
 }
 
 impl Mode for FluteMode {
-    fn psi_state(&self) -> FluxCoordinateState {
-        match self.psi_last {
-            Some(_) => FluxCoordinateState::Good,
-            None => FluxCoordinateState::Bad,
-        }
-    }
-
-    fn psip_state(&self) -> FluxCoordinateState {
-        match self.psip_last {
-            Some(_) => FluxCoordinateState::Good,
-            None => FluxCoordinateState::Bad,
-        }
-    }
-
     fn generate_cache(&self) -> DynModeCache {
         let lcfs_root = match self.lcfs {
             LastClosedFluxSurface::Toroidal(last) | LastClosedFluxSurface::Poloidal(last) => {

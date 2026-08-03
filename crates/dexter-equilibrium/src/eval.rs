@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, Accelerator2d};
 
-use crate::{EvalError, FluxCoordinateState};
+use crate::{EvalError, FluxCoordinateState, ObjectType};
 
 /// Reference to a dynamically dispatched [`Mode`] object.
 pub type DynMode = Box<dyn Mode>;
@@ -16,13 +16,34 @@ pub type DynMode = Box<dyn Mode>;
 /// Reference to a dynamically dispatched [`ModeCache`] object.
 pub type DynModeCache = Box<dyn ModeCache + Send + Sync + 'static>;
 
-/// Equilibrium geometry related quantities computation.
-pub trait Geometry: Debug + Send + Sync {
+/// Common equilibrium object methods.
+pub trait EquilibriumObject: Debug + Send + Sync {
+    /// Returns the object's equilibrium type.
+    fn object_type(&self) -> ObjectType;
+
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
 
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
     fn psip_state(&self) -> FluxCoordinateState;
+}
+
+/// Equilibrium geometry related quantities computation.
+pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
+    /// Returns the magnetic field strength on the axis `B0` in **\[T\]**.
+    fn baxis(&self) -> f64;
+
+    /// Returns the horizontal position of the magnetic axis `R0` in **\[m\]**.
+    fn raxis(&self) -> f64;
+
+    /// Returns the vertical position of the magnetic axis in **\[m\]**.
+    fn zaxis(&self) -> f64;
+
+    /// Returns the geometrical axis (device major radius) **in \[m\]**.
+    fn rgeo(&self) -> f64;
+
+    /// Returns the `r` coordinate's value at the last closed flux surface **in \[m\]**.
+    fn rlast(&self) -> f64;
 
     /// Calculates the radial coordinate `r(ψ)` in **\[m\]**.
     ///
@@ -340,13 +361,7 @@ pub trait FluxCommute {
 }
 
 /// q-factor related quantities computation.
-pub trait Qfactor: FluxCommute + Debug + Send + Sync {
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
-    fn psi_state(&self) -> FluxCoordinateState;
-
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
-    fn psip_state(&self) -> FluxCoordinateState;
-
+pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// Returns the value of the last closed toroidal flux `ψ_last`.
     fn psi_last(&self) -> f64;
 
@@ -547,13 +562,7 @@ pub trait Qfactor: FluxCommute + Debug + Send + Sync {
 }
 
 /// Plasma current related quantities computation.
-pub trait Current: Debug + Send + Sync {
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
-    fn psi_state(&self) -> FluxCoordinateState;
-
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
-    fn psip_state(&self) -> FluxCoordinateState;
-
+pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// Calculates `g(ψ)`.
     ///
     /// # Example
@@ -732,13 +741,7 @@ pub trait Current: Debug + Send + Sync {
 }
 
 /// Magnetic field related quantities computation.
-pub trait Bfield: Debug + Send + Sync {
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
-    fn psi_state(&self) -> FluxCoordinateState;
-
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
-    fn psip_state(&self) -> FluxCoordinateState;
-
+pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// Calculates `B(ψ, θ)`.
     ///
     /// # Example
@@ -924,13 +927,7 @@ pub trait ModeCache: DynModeCacheClone + Debug {
     private_bounds,
     reason = "only used internally for creating Perturbation"
 )]
-pub trait Mode: DynModeClone + Debug + Send + Sync {
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
-    fn psi_state(&self) -> FluxCoordinateState;
-
-    /// Returns the [`FluxCoordinateState`] of the toroidal `ψp` flux coordinate.
-    fn psip_state(&self) -> FluxCoordinateState;
-
+pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// Returns a default instance of the Mode's corresponding caching object.
     ///
     /// # Example

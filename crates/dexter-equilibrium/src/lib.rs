@@ -86,12 +86,12 @@ pub mod extract;
 
 pub use error::{EqError, EvalError, NcError};
 
-pub use objects::{EquilibriumType, LastClosedFluxSurface};
+pub use objects::{LastClosedFluxSurface, ObjectType};
 
 pub use objects::nc_flux::FluxCoordinateState;
 
 pub use eval::ModeCache;
-pub use eval::{Bfield, Current, FluxCommute, Geometry, Mode, Qfactor};
+pub use eval::{Bfield, Current, EquilibriumObject, FluxCommute, Geometry, Mode, Qfactor};
 pub use eval::{DynMode, DynModeCache};
 
 pub use equilibrium::Equilibrium;

@@ -1,8 +1,8 @@
 //! Representation of an equilibrium's general geometry.
 
 use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    debug_assert_non_negative_r, equilibrium_type_getter_impl, fluxes_values_array_getter_impl,
+    EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
+    debug_assert_non_negative_psip, debug_assert_non_negative_r, fluxes_values_array_getter_impl,
     fortran_vec_to_carray2d_impl, lcfs_getter_impl, netcdf_path_getter_impl,
     netcdf_version_getter_impl, shape2d_getter_impl,
 };
@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{EqError, EvalError};
-use crate::{EquilibriumType, FluxCommute, Geometry};
+use crate::{FluxCommute, Geometry, ObjectType};
 
 // ===============================================================================================
 
@@ -32,8 +32,6 @@ use crate::{EquilibriumType, FluxCommute, Geometry};
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct LarGeometry {
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// Magnetic field strength on the axis `B0` in [T].
     baxis: f64,
     /// The horizontal position of the magnetic axis `R0` in [m].
@@ -61,22 +59,53 @@ impl LarGeometry {
         let psi_last_si = baxis * rlast.powi(2) / 2.0;
         let psi_last = psi_last_si / (baxis * raxis.powi(2));
         Self {
-            equilibrium_type: EquilibriumType::Analytical,
             baxis,
             raxis,
             rlast,
             psi_last,
         }
     }
+
+    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
+    #[must_use]
+    pub fn psi_last(&self) -> f64 {
+        self.psi_last
+    }
 }
 
-impl Geometry for LarGeometry {
+impl EquilibriumObject for LarGeometry {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Analytical
+    }
+
     fn psi_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Good
     }
 
     fn psip_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Bad
+    }
+}
+
+impl Geometry for LarGeometry {
+    fn baxis(&self) -> f64 {
+        self.baxis
+    }
+
+    fn raxis(&self) -> f64 {
+        self.raxis
+    }
+
+    fn zaxis(&self) -> f64 {
+        0.0
+    }
+
+    fn rlast(&self) -> f64 {
+        self.rlast
+    }
+
+    fn rgeo(&self) -> f64 {
+        self.raxis
     }
 
     fn r_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
@@ -158,46 +187,6 @@ impl Geometry for LarGeometry {
     }
 }
 
-impl LarGeometry {
-    equilibrium_type_getter_impl!();
-
-    /// Returns the magnetic field strength on the axis `B0` in **\[T\]**.
-    #[must_use]
-    pub fn baxis(&self) -> f64 {
-        self.baxis
-    }
-
-    /// Returns the horizontal position of the magnetic axis `R0` in **\[m\]**.
-    #[must_use]
-    pub fn raxis(&self) -> f64 {
-        self.raxis
-    }
-
-    /// Returns the vertical position of the magnetic axis **in \[m\]**.
-    #[must_use]
-    pub fn zaxis(&self) -> f64 {
-        0.0
-    }
-
-    /// Returns the geometrical axis (device major radius) **in \[m\]**.
-    #[must_use]
-    pub fn rgeo(&self) -> f64 {
-        self.raxis
-    }
-
-    /// Returns the `r` coordinate's value at the last closed flux surface **in \[m\]**.
-    #[must_use]
-    pub fn rlast(&self) -> f64 {
-        self.rlast
-    }
-
-    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
-    #[must_use]
-    pub fn psi_last(&self) -> f64 {
-        self.psi_last
-    }
-}
-
 // ===============================================================================================
 
 /// Used to create an [`NcGeometry`].
@@ -276,8 +265,6 @@ pub struct NcGeometry {
     /// netCDF's [`semver::Version`].
     netcdf_version: semver::Version,
 
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// The 1D interpolation type.
     interp1d_type: Interpolation1dType,
     /// The 2D interpolation type.
@@ -486,7 +473,6 @@ impl NcGeometry {
         };
 
         Ok(Self {
-            equilibrium_type: EquilibriumType::Numerical,
             netcdf_version,
             path,
             interp1d_type: builder.interp1d_type,
@@ -515,6 +501,20 @@ impl NcGeometry {
             jacobian_of_psi_interp,
             jacobian_of_psip_interp,
         })
+    }
+}
+
+impl EquilibriumObject for NcGeometry {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Numerical
+    }
+
+    fn psi_state(&self) -> FluxCoordinateState {
+        self.psi.state()
+    }
+
+    fn psip_state(&self) -> FluxCoordinateState {
+        self.psip.state()
     }
 }
 
@@ -547,12 +547,27 @@ impl FluxCommute for NcGeometry {
 }
 
 impl Geometry for NcGeometry {
-    fn psi_state(&self) -> FluxCoordinateState {
-        self.psi.state()
+    fn baxis(&self) -> f64 {
+        self.baxis
     }
 
-    fn psip_state(&self) -> FluxCoordinateState {
-        self.psip.state()
+    fn raxis(&self) -> f64 {
+        self.raxis
+    }
+
+    fn zaxis(&self) -> f64 {
+        self.zaxis
+    }
+
+    fn rgeo(&self) -> f64 {
+        self.rgeo
+    }
+
+    fn rlast(&self) -> f64 {
+        match self.r_values.last().copied() {
+            Some(rlast) => rlast,
+            None => unreachable!("NcGeometry cannot be created if `r_values` dont exist"),
+        }
     }
 
     fn r_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
@@ -732,7 +747,6 @@ impl Geometry for NcGeometry {
 impl NcGeometry {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
-    equilibrium_type_getter_impl!();
 
     /// Returns the 1D interpolation type.
     #[must_use]
@@ -744,39 +758,6 @@ impl NcGeometry {
     #[must_use]
     pub fn interp2d_type(&self) -> Interpolation2dType {
         self.interp2d_type
-    }
-
-    /// Returns the magnetic field strength on the axis `B0` **in \[T\]**.
-    #[must_use]
-    pub fn baxis(&self) -> f64 {
-        self.baxis
-    }
-
-    /// Returns the horizontal position of the magnetic axis `R0` **in \[m\]**.
-    #[must_use]
-    pub fn raxis(&self) -> f64 {
-        self.raxis
-    }
-
-    /// Returns the vertical position of the magnetic axis **in \[m\]**.
-    #[must_use]
-    pub fn zaxis(&self) -> f64 {
-        self.zaxis
-    }
-
-    /// Returns the geometrical axis (device major radius) **in \[m\]**.
-    #[must_use]
-    pub fn rgeo(&self) -> f64 {
-        self.rgeo
-    }
-
-    /// Returns the `r` coordinate's value at the last closed flux surface **in \[m\]**.
-    #[must_use]
-    pub fn rlast(&self) -> f64 {
-        match self.r_values.last().copied() {
-            Some(rlast) => rlast,
-            None => unreachable!("NcGeometry cannot be created if `r_values` dont exist"),
-        }
     }
 
     shape2d_getter_impl!();
@@ -794,7 +775,7 @@ impl std::fmt::Debug for NcGeometry {
         f.debug_struct("NcGeometry")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
-            .field("equilibrium type", &self.equilibrium_type())
+            .field("equilibrium type", &self.object_type())
             .field("1D interpolation type", &self.interp1d_type())
             .field("2D interpolation type", &self.interp2d_type())
             .field("baxis [T]", &self.baxis)

@@ -12,8 +12,8 @@ pub(crate) mod perturbation;
 pub(crate) mod qfactors;
 
 /// Describes the type of equilibrium the object represents.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum EquilibriumType {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectType {
     /// Equilibrium reconstructed from numerical data.
     ///
     /// Evaluations are calculated by interpolation.

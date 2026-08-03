@@ -1,8 +1,8 @@
 //! Representation of an equilibrium's magnetic field.
 
 use crate::{
-    debug_assert_is_2pi_modulo, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, equilibrium_type_getter_impl, fluxes_values_array_getter_impl,
+    EquilibriumObject, debug_assert_is_2pi_modulo, debug_assert_is_finite,
+    debug_assert_non_negative_psi, debug_assert_non_negative_psip, fluxes_values_array_getter_impl,
     interp_type_getter_impl, lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
     shape2d_getter_impl,
 };
@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::constants::DEFAULT_THETA_PADDING_WIDTH;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{Bfield, EquilibriumType};
+use crate::{Bfield, ObjectType};
 use crate::{EqError, EvalError, NcError};
 
 // ===============================================================================================
@@ -29,10 +29,7 @@ use crate::{EqError, EvalError, NcError};
 /// No ψ/ψp bounds checks are performed in evaluations.
 #[non_exhaustive]
 #[derive(Clone)]
-pub struct LarBfield {
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
-}
+pub struct LarBfield;
 
 impl LarBfield {
     /// Creates a new `LarBfield`.
@@ -44,15 +41,15 @@ impl LarBfield {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            equilibrium_type: EquilibriumType::Analytical,
-        }
+        Self
     }
-
-    equilibrium_type_getter_impl!();
 }
 
-impl Bfield for LarBfield {
+impl EquilibriumObject for LarBfield {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Analytical
+    }
+
     fn psi_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Good
     }
@@ -60,7 +57,9 @@ impl Bfield for LarBfield {
     fn psip_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Bad
     }
+}
 
+impl Bfield for LarBfield {
     fn b_of_psi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(debug_assert_is_finite!(
@@ -207,9 +206,6 @@ pub struct NcBfield {
     path: PathBuf,
     /// netCDF's [`semver::Version`].
     netcdf_version: semver::Version,
-
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// The interpolation type.
     interp_type: Interpolation2dType,
 
@@ -286,7 +282,6 @@ impl NcBfield {
         };
 
         Ok(Self {
-            equilibrium_type: EquilibriumType::Numerical,
             netcdf_version,
             path,
             interp_type: builder.interp_type,
@@ -343,7 +338,11 @@ impl NcBfield {
     }
 }
 
-impl Bfield for NcBfield {
+impl EquilibriumObject for NcBfield {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Numerical
+    }
+
     fn psi_state(&self) -> FluxCoordinateState {
         self.psi.state()
     }
@@ -351,7 +350,9 @@ impl Bfield for NcBfield {
     fn psip_state(&self) -> FluxCoordinateState {
         self.psip.state()
     }
+}
 
+impl Bfield for NcBfield {
     fn b_of_psi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         debug_assert_is_2pi_modulo!(theta);
@@ -463,7 +464,6 @@ impl Bfield for NcBfield {
 impl NcBfield {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
-    equilibrium_type_getter_impl!();
     interp_type_getter_impl!(2);
 
     /// Returns the magnetic field strength on the axis `B0` **in \[T\]**.
@@ -529,7 +529,6 @@ impl std::fmt::Debug for NcBfield {
         f.debug_struct("NcBfield")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
-            .field("equilibrium type", &self.equilibrium_type())
             .field("interpolation type", &self.interp_type())
             .field("baxis [T]", &self.baxis)
             .field("shape (ψ/ψp, θ)", &self.shape())

@@ -35,7 +35,7 @@ fn nc_current() {
     assert_eq!(current.psi_state(), FluxCoordinateState::Good);
     assert_eq!(current.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: EquilibriumType = current.equilibrium_type();
+    let equilibrium_type: ObjectType = current.object_type();
     let netcdf_version: semver::Version = current.netcdf_version();
     let path: PathBuf = current.path();
     let interp_type: Interpolation1dType = current.interp_type();

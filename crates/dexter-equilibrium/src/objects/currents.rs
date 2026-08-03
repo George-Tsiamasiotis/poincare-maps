@@ -1,8 +1,8 @@
 //! Representation of an equilibrium's plasma current.
 
 use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    equilibrium_type_getter_impl, fluxes_values_array_getter_impl, interp_type_getter_impl,
+    EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
+    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
     lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 use dexter_common::array1D_getter_impl;
@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{Current, EquilibriumType};
+use crate::{Current, ObjectType};
 use crate::{EqError, EvalError};
 
 // ===============================================================================================
@@ -24,10 +24,7 @@ use crate::{EqError, EvalError};
 /// No ψ/ψp bounds checks are performed in evaluations.
 #[non_exhaustive]
 #[derive(Clone)]
-pub struct LarCurrent {
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
-}
+pub struct LarCurrent;
 
 impl LarCurrent {
     /// Creates a new `LarCurrent`.
@@ -39,15 +36,15 @@ impl LarCurrent {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            equilibrium_type: EquilibriumType::Analytical,
-        }
+        Self
     }
-
-    equilibrium_type_getter_impl!();
 }
 
-impl Current for LarCurrent {
+impl EquilibriumObject for LarCurrent {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Analytical
+    }
+
     fn psi_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Good
     }
@@ -55,7 +52,9 @@ impl Current for LarCurrent {
     fn psip_state(&self) -> FluxCoordinateState {
         FluxCoordinateState::Good
     }
+}
 
+impl Current for LarCurrent {
     fn g_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Ok(1.0)
@@ -170,9 +169,6 @@ pub struct NcCurrent {
     path: PathBuf,
     /// netCDF's [`semver::Version`].
     netcdf_version: semver::Version,
-
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// The interpolation type.
     interp_type: Interpolation1dType,
 
@@ -253,7 +249,6 @@ impl NcCurrent {
         };
 
         Ok(Self {
-            equilibrium_type: EquilibriumType::Numerical,
             netcdf_version,
             path,
             interp_type: builder.interp_type,
@@ -269,7 +264,11 @@ impl NcCurrent {
     }
 }
 
-impl Current for NcCurrent {
+impl EquilibriumObject for NcCurrent {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Numerical
+    }
+
     fn psi_state(&self) -> FluxCoordinateState {
         self.psi.state()
     }
@@ -277,7 +276,9 @@ impl Current for NcCurrent {
     fn psip_state(&self) -> FluxCoordinateState {
         self.psip.state()
     }
+}
 
+impl Current for NcCurrent {
     fn g_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         match self.g_of_psi_interp.as_ref() {
@@ -387,7 +388,6 @@ impl Current for NcCurrent {
 impl NcCurrent {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
-    equilibrium_type_getter_impl!();
     interp_type_getter_impl!(1);
     lcfs_getter_impl!();
     fluxes_values_array_getter_impl!();
@@ -400,7 +400,6 @@ impl std::fmt::Debug for NcCurrent {
         f.debug_struct("NcCurrent")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
-            .field("equilibrium type", &self.equilibrium_type())
             .field("interpolation type", &self.interp_type())
             .field("psi", &self.psi)
             .field("psip", &self.psip)

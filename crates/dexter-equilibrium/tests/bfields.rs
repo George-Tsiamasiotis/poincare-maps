@@ -46,7 +46,7 @@ fn nc_bfield_no_pad() {
     assert_eq!(bfield.psi_state(), FluxCoordinateState::Good);
     assert_eq!(bfield.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: EquilibriumType = bfield.equilibrium_type();
+    let equilibrium_type: ObjectType = bfield.object_type();
     let netcdf_version: semver::Version = bfield.netcdf_version();
     let path: PathBuf = bfield.path();
     let interp_type: Interpolation2dType = bfield.interp_type();

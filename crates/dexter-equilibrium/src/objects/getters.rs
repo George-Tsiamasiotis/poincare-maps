@@ -106,19 +106,6 @@ macro_rules! mode_cache_getters_impl {
     };
 }
 
-/// Generates a getter for the object's equilibrium type.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! equilibrium_type_getter_impl {
-    () => {
-        /// Returns the object's [`EquilibriumType`].
-        #[must_use]
-        pub fn equilibrium_type(&self) -> EquilibriumType {
-            self.equilibrium_type.clone()
-        }
-    };
-}
-
 /// Generates a getter for the object's path to netCDF file.
 #[doc(hidden)]
 #[macro_export]

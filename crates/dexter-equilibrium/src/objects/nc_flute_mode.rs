@@ -8,12 +8,12 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::constants::NC_ANALYTICAL_THRESHOLD_INDEX;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{DynModeCache, EquilibriumType, Mode, ModeCache};
+use crate::{DynModeCache, EquilibriumObject, Mode, ModeCache, ObjectType};
 use crate::{EqError, EvalError};
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    equilibrium_type_getter_impl, flute_mode_number_getter_impl, interp_type_getter_impl,
-    mode_cache_getters_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
+    flute_mode_number_getter_impl, interp_type_getter_impl, mode_cache_getters_impl,
+    netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 
 /// Defines the calculation method of the phase `φ` in an [`NcFluteMode`].
@@ -176,9 +176,6 @@ pub struct NcFluteMode {
     path: PathBuf,
     /// netCDF's [`semver::Version`].
     netcdf_version: semver::Version,
-
-    /// The object's equilibrium type.
-    equilibrium_type: EquilibriumType,
     /// The interpolation type.
     interp_type: Interpolation1dType,
 
@@ -211,7 +208,6 @@ impl NcFluteMode {
         let psip_single = SingleNcFluteMode::build(&file, &builder, psip)?;
 
         Ok(Self {
-            equilibrium_type: EquilibriumType::Numerical,
             netcdf_version,
             path,
             interp_type: builder.interp_type,
@@ -232,12 +228,25 @@ impl NcFluteMode {
     }
 }
 
+impl EquilibriumObject for NcFluteMode {
+    fn object_type(&self) -> ObjectType {
+        ObjectType::Numerical
+    }
+
+    fn psi_state(&self) -> FluxCoordinateState {
+        self.psi_single.flux.state()
+    }
+
+    fn psip_state(&self) -> FluxCoordinateState {
+        self.psip_single.flux.state()
+    }
+}
+
 impl std::fmt::Debug for NcFluteMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NcFluteMode")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
-            .field("equilibrium type", &self.equilibrium_type())
             .field("interpolation type", &self.interp_type())
             .field("m", &self.m)
             .field("n", &self.n)
@@ -331,14 +340,6 @@ impl ModeCache for NcFluteModeCache {
 
 // Perform psi/psip debug assertions here since he have the extra information about the flux.
 impl Mode for NcFluteMode {
-    fn psi_state(&self) -> FluxCoordinateState {
-        self.psi_single.flux.state()
-    }
-
-    fn psip_state(&self) -> FluxCoordinateState {
-        self.psip_single.flux.state()
-    }
-
     fn generate_cache(&self) -> DynModeCache {
         Box::new(NcFluteModeCache {
             params: [self.m as f64, self.n as f64],
@@ -532,7 +533,6 @@ impl Mode for NcFluteMode {
 impl NcFluteMode {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
-    equilibrium_type_getter_impl!();
     interp_type_getter_impl!(1);
     flute_mode_number_getter_impl!();
 

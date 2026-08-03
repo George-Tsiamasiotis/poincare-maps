@@ -72,7 +72,7 @@ fn nc_qfactor() {
     assert_eq!(qfactor.psi_state(), FluxCoordinateState::Good);
     assert_eq!(qfactor.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: EquilibriumType = qfactor.equilibrium_type();
+    let equilibrium_type: ObjectType = qfactor.object_type();
     let netcdf_version: semver::Version = qfactor.netcdf_version();
     let path: PathBuf = qfactor.path();
     let interp_type: Interpolation1dType = qfactor.interp_type();
