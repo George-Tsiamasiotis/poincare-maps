@@ -20,7 +20,7 @@ from dexter.types import (
 
 class LarBfield(EquilibriumObject, Bfield):
     r"""Analytical Large Aspect Ratio magnetic field with
-    $B(\psi,\theta) = 1-\sqrt{2\psi}\cos\theta$
+    $B(\psi,\theta) = 1-\sqrt{2\psi}\cos\theta$.
 
     Example
     -------
@@ -98,12 +98,12 @@ class NcBfield(EquilibriumObject, Bfield):
 
     @property
     def baxis(self) -> float:
-        """The magnetic field strength on the axis $B0$ in $[T]$"""
+        """The magnetic field strength on the axis $B_0$ in $[T]$"""
         return self._r.baxis
 
     @property
     def padding(self) -> int:
-        """The magnetic field strength on the axis $B0$ in $[T]$"""
+        """The magnetic field strength on the axis $B_0$ in $[T]$"""
         return self._r.padding
 
     @property

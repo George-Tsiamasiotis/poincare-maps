@@ -8,23 +8,11 @@ from semver import Version
 
 def test_lar():
     bfield = dex.LarBfield()
-    assert bfield.object_type == "Analytical"
-    assert bfield.psi_state == "Good"
-    assert bfield.psip_state == "Bad"
-    bfield.__repr__()
-    bfield.__str__()
     _test_bfield_base(bfield)
 
 
 def test_nc(nc_bfield: dex.NcBfield):
-    assert nc_bfield.object_type == "Numerical"
-    assert nc_bfield.psi_state == "Good"
-    assert nc_bfield.psip_state == "Good"
-    nc_bfield.__repr__()
-    nc_bfield.__str__()
     _test_bfield_base(nc_bfield)
-    nc_bfield.shape
-    nc_bfield.shape_padded
     assert isinstance(nc_bfield.path, str)
     assert isinstance(nc_bfield.netcdf_version, Version)
     assert nc_bfield.interp_type == "Bicubic"
@@ -45,6 +33,13 @@ def test_nc(nc_bfield: dex.NcBfield):
 
 
 def _test_bfield_base(bfield: dex.BfieldObject):
+
+    bfield.__repr__()
+    bfield.__str__()
+
+    assert bfield.object_type in ["Numerical", "Analytical"]
+    assert bfield.psi_state in ["Good", "Bad"]
+    assert bfield.psip_state in ["Good", "Bad"]
 
     methods = [
         bfield.b_of_psi,

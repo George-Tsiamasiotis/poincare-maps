@@ -13,9 +13,9 @@ from dexter.types import Array1, FluxCoordinateState, Interpolation1dType, NetCD
 class LarCurrent(EquilibriumObject, Current):
     r"""Analytical Large Aspect Ratio Current with $g=1$ and $I=0$.
 
-    !!! note
-
-        No $\psi/\psi_p$ bounds checks are performed in evaluations.
+    Notes
+    -----
+    No $\psi/\psi_p$ bounds checks are performed in evaluations.
 
     Example
     -------

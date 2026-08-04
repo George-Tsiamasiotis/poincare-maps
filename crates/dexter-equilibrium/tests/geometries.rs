@@ -18,7 +18,8 @@ fn lar_geometry() {
     let baxis: f64 = geometry.baxis();
     let raxis: f64 = geometry.raxis();
     let rlast: f64 = geometry.rlast();
-    let psi_last: f64 = geometry.psi_last();
+    let psi_last: f64 = geometry.psi_last().unwrap();
+    assert!(geometry.psip_last().is_none());
     let rlab_last: Array1<f64> = geometry.rlab_last();
     let zlab_last: Array1<f64> = geometry.zlab_last();
 

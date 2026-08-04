@@ -65,12 +65,6 @@ impl LarGeometry {
             psi_last,
         }
     }
-
-    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
-    #[must_use]
-    pub fn psi_last(&self) -> f64 {
-        self.psi_last
-    }
 }
 
 impl EquilibriumObject for LarGeometry {
@@ -106,6 +100,14 @@ impl Geometry for LarGeometry {
 
     fn rgeo(&self) -> f64 {
         self.raxis
+    }
+
+    fn psi_last(&self) -> Option<f64> {
+        Some(self.psi_last)
+    }
+
+    fn psip_last(&self) -> Option<f64> {
+        None
     }
 
     fn r_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
@@ -252,7 +254,7 @@ impl NcGeometryBuilder {
 
 // ===============================================================================================
 
-/// Describes the general geometry of the equilibrium.
+/// Geometry of a realistic configuration.
 ///
 /// Stores fluxes, angles and lab variables' data, and provides interpolation methods between them.
 ///
@@ -568,6 +570,14 @@ impl Geometry for NcGeometry {
             Some(rlast) => rlast,
             None => unreachable!("NcGeometry cannot be created if `r_values` dont exist"),
         }
+    }
+
+    fn psi_last(&self) -> Option<f64> {
+        self.psi.last_value()
+    }
+
+    fn psip_last(&self) -> Option<f64> {
+        self.psip.last_value()
     }
 
     fn r_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {

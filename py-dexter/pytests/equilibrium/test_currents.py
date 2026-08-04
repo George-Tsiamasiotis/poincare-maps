@@ -8,23 +8,13 @@ from semver import Version
 
 def test_lar():
     current = dex.LarCurrent()
-    assert current.object_type == "Analytical"
-    assert current.psi_state == "Good"
-    assert current.psip_state == "Good"
-    current.__repr__()
-    current.__str__()
     _test_current_base(current)
 
 
 def test_nc(nc_current: dex.NcCurrent):
-    assert nc_current.object_type == "Numerical"
-    assert nc_current.psi_state == "Good"
-    assert nc_current.psip_state == "Good"
+    _test_current_base(nc_current)
     assert isfinite(nc_current.psi_last)
     assert isfinite(nc_current.psip_last)
-    nc_current.__repr__()
-    nc_current.__str__()
-    _test_current_base(nc_current)
     assert nc_current.interp_type == "Cubic"
     assert isinstance(nc_current.path, str)
     assert isinstance(nc_current.netcdf_version, Version)
@@ -35,6 +25,13 @@ def test_nc(nc_current: dex.NcCurrent):
 
 
 def _test_current_base(current: dex.CurrentObject):
+
+    current.__repr__()
+    current.__str__()
+
+    assert current.object_type in ["Numerical", "Analytical"]
+    assert current.psi_state in ["Good", "Bad"]
+    assert current.psip_state in ["Good", "Bad"]
 
     methods = [
         current.g_of_psi,

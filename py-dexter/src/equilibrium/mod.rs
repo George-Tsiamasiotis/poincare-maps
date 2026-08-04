@@ -2,10 +2,12 @@
 
 mod bfield;
 mod current;
+mod geometry;
 mod qfactor;
 
 pub use bfield::*;
 pub use current::*;
+pub use geometry::*;
 pub use qfactor::*;
 
 use crate::*;

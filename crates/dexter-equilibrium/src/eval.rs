@@ -39,11 +39,17 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// Returns the vertical position of the magnetic axis in **\[m\]**.
     fn zaxis(&self) -> f64;
 
-    /// Returns the geometrical axis (device major radius) **in \[m\]**.
+    /// Returns the horizontal positinon of the geometrical axis (device major radius) **in \[m\]**.
     fn rgeo(&self) -> f64;
 
     /// Returns the `r` coordinate's value at the last closed flux surface **in \[m\]**.
     fn rlast(&self) -> f64;
+
+    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
+    fn psi_last(&self) -> Option<f64>;
+
+    /// Returns the value of the last closed poloidal flux surface `ψp_last`.
+    fn psip_last(&self) -> Option<f64>;
 
     /// Calculates the radial coordinate `r(ψ)` in **\[m\]**.
     ///

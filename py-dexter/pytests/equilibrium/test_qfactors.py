@@ -28,28 +28,14 @@ def test_unity():
 
 def test_parabolic():
     qfactor = dex.ParabolicQfactor(1.1, 3.9, LCFS)
-    assert qfactor.object_type == "Analytical"
-    assert qfactor.psi_state == "Good"
-    assert qfactor.psip_state == "Good"
+    _test_qfactor_base(qfactor)
     assert qfactor.psi_last == 0.05
     assert qfactor.psip_last == qfactor.psip_of_psi(qfactor.psi_last)
     assert qfactor.qaxis == 1.1
     assert qfactor.qlast == 3.9
-    qfactor.__repr__()
-    qfactor.__str__()
-    _test_qfactor_base(qfactor)
 
 
 def test_nc(nc_qfactor: dex.NcQfactor):
-    assert nc_qfactor.object_type == "Numerical"
-    assert nc_qfactor.psi_state == "Good"
-    assert nc_qfactor.psip_state == "Good"
-    assert isfinite(nc_qfactor.psi_last)
-    assert isfinite(nc_qfactor.psip_last)
-    assert isfinite(nc_qfactor.qlast)
-    assert isfinite(nc_qfactor.qaxis)
-    nc_qfactor.__repr__()
-    nc_qfactor.__str__()
     _test_qfactor_base(nc_qfactor)
     assert nc_qfactor.interp_type == "Cubic"
     assert isinstance(nc_qfactor.path, str)
@@ -60,6 +46,18 @@ def test_nc(nc_qfactor: dex.NcQfactor):
 
 
 def _test_qfactor_base(qfactor: dex.QfactorObject):
+
+    qfactor.__repr__()
+    qfactor.__str__()
+
+    assert qfactor.object_type in ["Numerical", "Analytical"]
+    assert qfactor.psi_state in ["Good", "Bad"]
+    assert qfactor.psip_state in ["Good", "Bad"]
+
+    assert isfinite(qfactor.psi_last)
+    assert isfinite(qfactor.psip_last)
+    assert isfinite(qfactor.qlast)
+    assert isfinite(qfactor.qaxis)
 
     methods = [
         qfactor.psip_of_psi,

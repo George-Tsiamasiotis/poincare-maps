@@ -13,6 +13,7 @@ nav = [
     {"Types" = "reference/types.md"},
     {"Equilibrium" = [
         "reference/equilibrium/base.md",
+        "reference/equilibrium/geometries.md",
         "reference/equilibrium/qfactors.md",
         "reference/equilibrium/currents.md",
         "reference/equilibrium/bfields.md",

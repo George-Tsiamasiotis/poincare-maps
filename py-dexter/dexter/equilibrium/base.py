@@ -18,15 +18,17 @@ Current
     Plasma current related evaluation methods.
 Bfield
     Magnetic field related evaluation methods.
+Geometry
+    Device geometry related evaluation methods.
 
 """
 
 import numpy as np
 from typing import Any
 
-from dexter._core import _PyQfactor, _PyCurrent, _PyBfield
+from dexter._core import _PyQfactor, _PyCurrent, _PyBfield, _PyGeometry
 from dexter._utils import _ReprStrImpl
-from dexter.types import ArrayLike, Array, FluxCoordinateState, ObjectType
+from dexter.types import ArrayLike, Array, Array1, FluxCoordinateState, ObjectType
 
 
 class EquilibriumObject(_ReprStrImpl):
@@ -220,3 +222,106 @@ class Bfield(_ReprStrImpl):
     def db_of_psip_dtheta(self, psip: ArrayLike, theta: ArrayLike) -> Array:
         r"""Calculates $dB(\psi_p, \theta)/d\theta$, in Normalized Units."""
         return self._db_of_psip_dtheta(psip, theta)[()]
+
+
+class Geometry(_ReprStrImpl):
+    """Geometry related evaluation methods."""
+
+    _r: _PyGeometry
+
+    def __init__(self) -> None:
+        self._r_of_psi = np.vectorize(self._r.r_of_psi)
+        self._r_of_psip = np.vectorize(self._r.r_of_psip)
+        self._psi_of_r = np.vectorize(self._r.psi_of_r)
+        self._psip_of_r = np.vectorize(self._r.psip_of_r)
+        self._rlab_of_psi = np.vectorize(self._r.rlab_of_psi)
+        self._rlab_of_psip = np.vectorize(self._r.rlab_of_psip)
+        self._zlab_of_psi = np.vectorize(self._r.rlab_of_psi)
+        self._zlab_of_psip = np.vectorize(self._r.rlab_of_psip)
+        self._jacobian_of_psi = np.vectorize(self._r.rlab_of_psi)
+        self._jacobian_of_psip = np.vectorize(self._r.rlab_of_psip)
+
+    @property
+    def baxis(self) -> float:
+        r"""The magnetic field strength on the axis $B_0$ in $[T]$."""
+        return self._r.baxis
+
+    @property
+    def raxis(self) -> float:
+        r"""The horizontal position of the magnetic axis $R_0$ in $[m]$."""
+        return self._r.raxis
+
+    @property
+    def zaxis(self) -> float:
+        r"""The vertical position of the magnetic axis in $[m]$."""
+        return self._r.zaxis
+
+    @property
+    def rgeo(self) -> float:
+        r"""The horizontal position of the geometric axis (device major radius) in $[m]$."""
+        return self._r.rgeo
+
+    @property
+    def rlast(self) -> float:
+        r"""The $r$ coordinate's value at the last closed flux surface in $[m]$."""
+        return self._r.rgeo
+
+    @property
+    def psi_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{LCFS}$."""
+        return self._r.psi_last
+
+    @property
+    def psip_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{p,LCFS}$."""
+        return self._r.psip_last
+
+    @property
+    def rlab_last(self) -> Array1:
+        r"""The last $R$ values that correspond to the device's last closed flux surface, in $[m]$."""
+        return self._r.rlab_last
+
+    @property
+    def zlab_last(self) -> Array1:
+        r"""The last $Z$ values that correspond to the device's last closed flux surface, in $[m]$."""
+        return self._r.zlab_last
+
+    def r_of_psi(self, psi: ArrayLike) -> Array:
+        r"""Calculates $r(\psi)$, where $\psi$ in Normalized Units and $r$ in $[m]$."""
+        return self._r_of_psi(psi)[()]
+
+    def r_of_psip(self, psip: ArrayLike) -> Array:
+        r"""Calculates $r(\psi_p)$, where $\psi_p$ in Normalized Units and $r$ in $[m]$."""
+        return self._r_of_psip(psip)[()]
+
+    def psi_of_r(self, r: ArrayLike) -> Array:
+        r"""Calculates $\psi(r)$, where $\psi$ in Normalized Units and $r$ in $[m]$."""
+        return self._psi_of_r(r)[()]
+
+    def psip_of_r(self, r: ArrayLike) -> Array:
+        r"""Calculates $\psi_p(r)$, where $\psi_p$ in Normalized Units and $r$ in $[m]$."""
+        return self._psip_of_r(r)[()]
+
+    def rlab_of_psi(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $R(\psi, \theta)$, where $\psi$ in Normalized Units and $R$ in $[m]$."""
+        return self._rlab_of_psi(psi, theta)[()]
+
+    def rlab_of_psip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $R(\psi_p, \theta)$, where $\psi_p$ in Normalized Units and $R$ in $[m]$."""
+        return self._rlab_of_psip(psip, theta)[()]
+
+    def zlab_of_psi(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $Z(\psi, \theta)$, where $\psi$ in Normalized Units and $R$ in $[m]$."""
+        return self._zlab_of_psi(psi, theta)[()]
+
+    def zlab_of_psip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $Z(\psi_p, \theta)$, where $\psi_p$ in Normalized Units and $R$ in $[m]$."""
+        return self._zlab_of_psip(psip, theta)[()]
+
+    def jacobian_of_psi(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates the Jacobian $J(\psi, \theta)$, where $\psi$ in Normalized Units and $R$ in $[m]$."""
+        return self._jacobian_of_psi(psi, theta)[()]
+
+    def jacobian_of_psip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates the Jacobian $R(\psi_p, \theta)$, where $\psi_p$ in Normalized Units and $R$ in $[m]$."""
+        return self._jacobian_of_psip(psip, theta)[()]

@@ -1,9 +1,17 @@
 # q-factor Objects
 
++ [`UnityQfactor`](#dexter.UnityQfactor): Analytical q-factor profile of $q=1$ and $\psi=\psi_p$.
++ [`ParabolicQfactor`](#dexter.ParabolicQfactor): Analytical parabolic q-factor profile.
++ [`NcQfactor`](#dexter.NcQfactor): Numerical q-factor profile reconstructed from a netCDF file.
+
+---
+
 ::: dexter.UnityQfactor
     options:
         show_bases: true
         inherited_members: false
+
+---
 
 ::: dexter.ParabolicQfactor
     options:
@@ -46,6 +54,8 @@ q(\psi_p) = q_{axis} + q_{axis} \tan^2
 $$
 
 $^*$ Identity: $\dfrac{1}{\cos^2\theta} = 1 + \tan^2\theta$
+
+---
 
 ::: dexter.NcQfactor
     options:

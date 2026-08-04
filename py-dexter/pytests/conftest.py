@@ -32,3 +32,9 @@ def nc_current() -> dex.NcCurrent:
 def nc_bfield() -> dex.NcBfield:
     """Creates an NcBfield object from the test NetCDF file."""
     return dex.NcBfield(TEST_NETCDF_PATH, "Bicubic")
+
+
+@pytest.fixture(scope="session")
+def nc_geometry() -> dex.NcGeometry:
+    """Creates an NcGeometry object from the test NetCDF file."""
+    return dex.NcGeometry(TEST_NETCDF_PATH, "Cubic", "Bicubic")
