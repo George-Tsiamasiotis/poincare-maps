@@ -17,3 +17,14 @@ macro_rules! impl_py_repr {
         }
     };
 }
+
+#[macro_export]
+macro_rules! wrapper_debug_export {
+    ($obj: ident) => {
+        impl std::fmt::Debug for $obj {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+    };
+}

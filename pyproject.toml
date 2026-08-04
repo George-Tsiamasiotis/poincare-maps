@@ -1,6 +1,6 @@
 [project]
 name = "dexter"
-version = "0.1.7-pre.22"
+version = "0.2.0-pre.2"
 description = "Calculations and simulations in analytical and reconstructed equilibria of toroidal fusion devices."
 readme = "README.md"
 authors = [
@@ -52,10 +52,16 @@ docs = [
 
 [tool.pytest.ini_options]
 testpaths = [ # Run from workspace root
-    "py-dexter/pytests"
+    "./py-dexter/pytests",
+    "./py-dexter/dexter/equilibrium/*",
 ]
 addopts = """
     --durations 2
+    --doctest-glob='*.md'
+    --doctest-glob='*.pyi'
+    --doctest-glob='*.py'
+    --doctest-modules
+    --cov=dexter --cov-report term --cov-report html
 """
 filterwarnings = [
     "ignore:.*Figure.*", # matplotlib non-interactive

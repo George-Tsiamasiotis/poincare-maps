@@ -1,8 +1,39 @@
-from dexter.types import FluxCoordinate
+from typing import TypeAlias
+
+from dexter.types import (
+    Array,
+    Array1,
+    Array2,
+    ArrayLike,
+    ArrayShape,
+    ObjectType,
+    NetCDFVersion,
+    FluxCoordinate,
+    FluxCoordinateState,
+    Interpolation1dType,
+)
+
 
 from dexter.equilibrium.utils import LastClosedFluxSurface
 
+from dexter.equilibrium.qfactors import UnityQfactor
+
+QfactorObject: TypeAlias = UnityQfactor
+
 __all__ = [
-    "LastClosedFluxSurface",
+    # Type Aliases
+    "Array",
+    "Array1",
+    "Array2",
+    "ArrayLike",
+    "ArrayShape",
+    "ObjectType",
+    "NetCDFVersion",
     "FluxCoordinate",
+    "FluxCoordinateState",
+    "Interpolation1dType",
+    # Equilibrium
+    "QfactorObject",
+    "LastClosedFluxSurface",
+    "UnityQfactor",
 ]

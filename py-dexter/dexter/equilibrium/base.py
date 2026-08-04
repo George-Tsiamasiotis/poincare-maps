@@ -1,0 +1,120 @@
+"""Equilibrium objects' base classes.
+
+Equilibrium objects define evaluations over equilibrium quantities, provide information about the
+[`state`][dexter.types.FluxCoordinateState] of each magnetic flux coordinate, as well as useful
+scalar quantities and data arrays.
+
+Each parent class corresponds to an evaluation Trait on the Rust API.
+"""
+
+import numpy as np
+
+from dexter._core import _PyQfactor
+from dexter.types import ArrayLike, Array, FluxCoordinateState, ObjectType
+
+
+class EquilibriumObject:
+    """Common attributes in all equilibrium objects."""
+
+    _r: _PyQfactor
+
+    @property
+    def object_type(self) -> ObjectType:
+        """The object’s equilibrium type."""
+        return self._r.object_type
+
+    @property
+    def psi_state(self) -> FluxCoordinateState:
+        r"""The state of the toroidal flux coordinate $\psi$."""
+        return self._r.psi_state
+
+    @property
+    def psip_state(self) -> FluxCoordinateState:
+        r"""The state of the toroidal flux coordinate $\psi_p$."""
+        return self._r.psip_state
+
+
+class FluxCommute:
+    """Methods for converting from one magnetic flux to the other."""
+
+    _r: _PyQfactor
+
+    def __init__(self) -> None:
+        self._psi_of_psip = np.vectorize(self._r.psi_of_psip)
+        self._psip_of_psi = np.vectorize(self._r.psip_of_psi)
+
+    def psip_of_psi(self, psi: ArrayLike) -> Array:
+        r"""Calculates $\psi_p(\psi)$, in Normalized Units."""
+        return self._psip_of_psi(psi)[()]
+
+    def psi_of_psip(self, psip: ArrayLike) -> Array:
+        r"""Calculates $\psi(\psi_p)$, in Normalized Units."""
+        return self._psi_of_psip(psip)[()]
+
+
+class Qfactor:
+    """q-factor related quantities and evaluation methods."""
+
+    _r: _PyQfactor
+
+    def __init__(self) -> None:
+        self._q_of_psi = np.vectorize(self._r.q_of_psi)
+        self._q_of_psip = np.vectorize(self._r.q_of_psip)
+        self._dpsip_dpsi = np.vectorize(self._r.dpsip_dpsi)
+        self._dpsi_dpsip = np.vectorize(self._r.dpsi_dpsip)
+        self._psi_of_q = np.vectorize(self._r.psi_of_q)
+        self._psip_of_q = np.vectorize(self._r.psip_of_q)
+        self._iota_of_psi = np.vectorize(self._r.iota_of_psi)
+        self._iota_of_psip = np.vectorize(self._r.iota_of_psip)
+
+    @property
+    def psi_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{LCFS}$."""
+        return self._r.psi_last
+
+    @property
+    def psip_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{p,LCFS}$."""
+        return self._r.psip_last
+
+    @property
+    def qlast(self) -> float:
+        r"""The q-factor's value at the last closed flux surface, $q_{LCFS}$."""
+        return self._r.qlast
+
+    @property
+    def qaxis(self) -> float:
+        r"""The q-factor's value at the magnetic axis, $q_{axis}$."""
+        return self._r.qaxis
+
+    def q_of_psi(self, psi: ArrayLike) -> Array:
+        r"""Calculates $q(\psi)$, in Normalized Units."""
+        return self._q_of_psi(psi)[()]
+
+    def q_of_psip(self, psip: ArrayLike) -> Array:
+        r"""Calculates $q(\psi_p)$, in Normalized Units."""
+        return self._q_of_psi(psip)[()]
+
+    def dpsip_dpsi(self, psi: ArrayLike) -> Array:
+        r"""Calculates $d\psi_p/d\psi$, in Normalized Units."""
+        return self._dpsip_dpsi(psi)[()]
+
+    def dpsi_dpsip(self, psip: ArrayLike) -> Array:
+        r"""Calculates $d\psi/d\psi_p$, in Normalized Units."""
+        return self._dpsi_dpsip(psip)[()]
+
+    def psi_of_q(self, q: ArrayLike) -> Array:
+        r"""Calculates $\psi(q)$, in Normalized Units."""
+        return self._psi_of_q(q)[()]
+
+    def psip_of_q(self, q: ArrayLike) -> Array:
+        r"""Calculates $\psi_p(q)$, in Normalized Units."""
+        return self._psip_of_q(q)[()]
+
+    def iota_of_psi(self, psi: ArrayLike) -> Array:
+        r"""Calculates $\iota(\psi)$, in Normalized Units."""
+        return self._iota_of_psi(psi)[()]
+
+    def iota_of_psip(self, psip: ArrayLike) -> Array:
+        r"""Calculates $\iota(\psi_p)$, in Normalized Units."""
+        return self._iota_of_psip(psip)[()]

@@ -1,9 +1,11 @@
 //! Defines `dexter-equilibrium` helper objects and exports equilibrium objects.
 
-use dexter::dexter_equilibrium::*;
-use pyo3::{prelude::*, types::PyType};
+mod qfactor;
 
-use crate::impl_py_repr;
+pub use qfactor::*;
+
+use crate::*;
+use pyo3::{prelude::*, types::PyType};
 
 #[pyclass(name = "_PyLastClosedFluxSurface", frozen, immutable_type)]
 pub struct PyLastClosedFluxSurface(pub LastClosedFluxSurface);
@@ -11,13 +13,11 @@ pub struct PyLastClosedFluxSurface(pub LastClosedFluxSurface);
 #[pymethods]
 impl PyLastClosedFluxSurface {
     #[classmethod]
-    #[pyo3(signature = (value))]
     pub fn toroidal(_: &Bound<'_, PyType>, value: f64) -> PyResult<Self> {
         Ok(Self(LastClosedFluxSurface::Toroidal(value)))
     }
 
     #[classmethod]
-    #[pyo3(signature = (value))]
     pub fn poloidal(_: &Bound<'_, PyType>, value: f64) -> PyResult<Self> {
         Ok(Self(LastClosedFluxSurface::Poloidal(value)))
     }
