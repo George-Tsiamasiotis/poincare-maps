@@ -26,3 +26,9 @@ def nc_qfactor() -> dex.NcQfactor:
 def nc_current() -> dex.NcCurrent:
     """Creates an NcCurrent object from the test NetCDF file."""
     return dex.NcCurrent(TEST_NETCDF_PATH, "Cubic")
+
+
+@pytest.fixture(scope="session")
+def nc_bfield() -> dex.NcBfield:
+    """Creates an NcBfield object from the test NetCDF file."""
+    return dex.NcBfield(TEST_NETCDF_PATH, "Bicubic")

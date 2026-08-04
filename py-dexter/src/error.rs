@@ -15,6 +15,7 @@ pub enum DexterError {
         attr: String,
     },
     InvalidInterpolation1dType,
+    InvalidInterpolation2dType,
     EqError(String),
     EvalError(String),
 }
@@ -36,6 +37,13 @@ impl std::fmt::Display for DexterError {
                 concat!(
                     "[D] Supported 1D interpolation types are ",
                     "'Linear', 'Cubic', 'CubicPeriodic', 'Akima', 'AkimaPeriodic' and 'Steffen'",
+                )
+            ),
+            Self::InvalidInterpolation2dType => write!(
+                f,
+                concat!(
+                    "[D] Supported 2D interpolation types are ",
+                    "'Bilinear' and 'Bicubic'",
                 )
             ),
             Self::EqError(err) => write!(f, "[D] EqError: '{err}'"),

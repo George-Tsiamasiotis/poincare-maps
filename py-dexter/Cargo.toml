@@ -1,6 +1,6 @@
 [package]
 name = "py-dexter"
-version = "0.2.0-pre.4"
+version = "0.2.0-pre.5"
 license.workspace = true
 edition.workspace = true
 authors.workspace = true

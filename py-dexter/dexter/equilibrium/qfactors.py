@@ -27,6 +27,8 @@ class UnityQfactor(EquilibriumObject, FluxCommute, Qfactor):
     ```
     """
 
+    _r: _PyQfactor
+
     def __init__(self, lcfs: LastClosedFluxSurface) -> None:
         self._r = _PyQfactor.build_unity(lcfs._r)
         super(EquilibriumObject, self).__init__()
@@ -52,6 +54,8 @@ class ParabolicQfactor(EquilibriumObject, FluxCommute, Qfactor):
 
     ```
     """
+
+    _r: _PyQfactor
 
     def __init__(self, qaxis: float, qwall: float, lcfs: LastClosedFluxSurface) -> None:
         self._r = _PyQfactor.build_parabolic(qaxis, qwall, lcfs._r)
@@ -83,6 +87,8 @@ class NcQfactor(EquilibriumObject, FluxCommute, Qfactor):
 
     ```
     """
+
+    _r: _PyQfactor
 
     def __init__(self, path: str, interp_type: Interpolation1dType) -> None:
         self._r = _PyQfactor.build_nc(path, interp_type)

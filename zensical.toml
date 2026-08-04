@@ -15,6 +15,7 @@ nav = [
         "reference/equilibrium/base.md",
         "reference/equilibrium/qfactors.md",
         "reference/equilibrium/currents.md",
+        "reference/equilibrium/bfields.md",
     ]}
 ]
 

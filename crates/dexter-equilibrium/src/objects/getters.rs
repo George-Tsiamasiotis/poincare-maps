@@ -153,29 +153,3 @@ macro_rules! netcdf_version_getter_impl {
         }
     };
 }
-
-/// Generates a getter of the shape of 2D numerical objects.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! shape2d_getter_impl {
-    () => {
-        /// Returns the the (ψ/ψp, θ) shape of the 2D arrays, depending on the state of each
-        /// flux coordinate. If both coordinates are "good", they are guaranteed to be of the same
-        /// length.
-        #[must_use]
-        pub fn shape(&self) -> (usize, usize) {
-            // One of the 2 is guaranteed to be non-zero.
-            let psi_len = match self.psi_state() {
-                FluxCoordinateState::NoValues => 0,
-                _ => self.psi.uvalues().len(),
-            };
-            let psip_len = match self.psip_state() {
-                FluxCoordinateState::NoValues => 0,
-                _ => self.psip.uvalues().len(),
-            };
-            // If they both exist, they are guaranteed to have the same length.
-            let xlen = psi_len.max(psip_len);
-            (xlen, self.theta_values.len())
-        }
-    };
-}

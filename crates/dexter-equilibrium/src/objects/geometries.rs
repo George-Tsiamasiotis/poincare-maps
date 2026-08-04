@@ -4,7 +4,7 @@ use crate::{
     EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
     debug_assert_non_negative_psip, debug_assert_non_negative_r, fluxes_values_array_getter_impl,
     fortran_vec_to_carray2d_impl, lcfs_getter_impl, netcdf_path_getter_impl,
-    netcdf_version_getter_impl, shape2d_getter_impl,
+    netcdf_version_getter_impl,
 };
 use core::f64::consts::PI;
 use dexter_common::array1D_getter_impl;
@@ -760,7 +760,21 @@ impl NcGeometry {
         self.interp2d_type
     }
 
-    shape2d_getter_impl!();
+    /// Returns the (ψ/ψp, θ) shape of the 2D arrays.
+    #[must_use]
+    pub fn shape(&self) -> (usize, usize) {
+        let psi_len = match self.psi_state() {
+            FluxCoordinateState::NoValues => 0,
+            _ => self.psi.uvalues().len(),
+        };
+        let psip_len = match self.psip_state() {
+            FluxCoordinateState::NoValues => 0,
+            _ => self.psip.uvalues().len(),
+        };
+        let xlen = psi_len.max(psip_len);
+        (xlen, self.theta_values.len())
+    }
+
     lcfs_getter_impl!();
     fluxes_values_array_getter_impl!();
     array1D_getter_impl!(theta_array, theta_values, theta);

@@ -5,11 +5,26 @@ Equilibrium objects define evaluations over equilibrium quantities, provide info
 scalar quantities and data arrays.
 
 Each parent class corresponds to an evaluation Trait on the Rust API.
+
+Classes
+-------
+EquilibriumObject
+    Common attributes in all equilibrium objects.
+FluxCommute
+    Methods for converting from one magnetic flux to the other.
+Qfactor
+    q-factor related quantities and evaluation methods.
+Current
+    Plasma current related evaluation methods.
+Bfield
+    Magnetic field related evaluation methods.
+
 """
 
 import numpy as np
+from typing import Any
 
-from dexter._core import _PyQfactor, _PyCurrent
+from dexter._core import _PyQfactor, _PyCurrent, _PyBfield
 from dexter._utils import _ReprStrImpl
 from dexter.types import ArrayLike, Array, FluxCoordinateState, ObjectType
 
@@ -17,7 +32,7 @@ from dexter.types import ArrayLike, Array, FluxCoordinateState, ObjectType
 class EquilibriumObject(_ReprStrImpl):
     """Common attributes in all equilibrium objects."""
 
-    _r: _PyQfactor | _PyCurrent
+    _r: Any
 
     @property
     def object_type(self) -> ObjectType:
@@ -167,3 +182,41 @@ class Current(_ReprStrImpl):
     def di_dpsip(self, psip: ArrayLike) -> Array:
         r"""Calculates $dI/d\psi_p$, in Normalized Units."""
         return self._di_dpsip(psip)[()]
+
+
+class Bfield(_ReprStrImpl):
+    """Magnetic field related evaluation methods."""
+
+    _r: _PyBfield
+
+    def __init__(self) -> None:
+        self._b_of_psi = np.vectorize(self._r.b_of_psi)
+        self._b_of_psip = np.vectorize(self._r.b_of_psip)
+        self._db_dpsi = np.vectorize(self._r.db_dpsi)
+        self._db_dpsip = np.vectorize(self._r.db_dpsip)
+        self._db_of_psi_dtheta = np.vectorize(self._r.db_of_psi_dtheta)
+        self._db_of_psip_dtheta = np.vectorize(self._r.db_of_psip_dtheta)
+
+    def b_of_psi(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $B(\psi, \theta)$, in Normalized Units."""
+        return self._b_of_psi(psi, theta)[()]
+
+    def b_of_psip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $B(\psi_p, \theta)$, in Normalized Units."""
+        return self._b_of_psip(psip, theta)[()]
+
+    def db_dpsi(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $dB(\psi, \theta)/d\psi$, in Normalized Units."""
+        return self._db_dpsi(psi, theta)[()]
+
+    def db_dpsip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $dB(\psi_p, \theta)/d\psi_p$, in Normalized Units."""
+        return self._db_dpsip(psip, theta)[()]
+
+    def db_of_psi_dtheta(self, psi: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $dB(\psi, \theta)/d\theta$, in Normalized Units."""
+        return self._db_of_psi_dtheta(psi, theta)[()]
+
+    def db_of_psip_dtheta(self, psip: ArrayLike, theta: ArrayLike) -> Array:
+        r"""Calculates $dB(\psi_p, \theta)/d\theta$, in Normalized Units."""
+        return self._db_of_psip_dtheta(psip, theta)[()]

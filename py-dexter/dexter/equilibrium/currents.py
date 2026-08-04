@@ -1,4 +1,4 @@
-"""Defines the different q-factor objects as wrappers over `_PyCurrent`."""
+"""Defines the different plasma current objects as wrappers over `_PyCurrent`."""
 
 import numpy as np
 from semver import Version
@@ -25,6 +25,8 @@ class LarCurrent(EquilibriumObject, Current):
     ```
     """
 
+    _r: _PyCurrent
+
     def __init__(self) -> None:
         self._r = _PyCurrent.build_lar()
         super(EquilibriumObject, self).__init__()
@@ -50,6 +52,8 @@ class NcCurrent(EquilibriumObject, Current):
 
     ```
     """
+
+    _r: _PyCurrent
 
     def __init__(self, path: str, interp_type: Interpolation1dType) -> None:
         self._r = _PyCurrent.build_nc(path, interp_type)

@@ -180,7 +180,7 @@ impl PyCurrent {
             _ => (),
         }
         Err(DexterError::AttributeError {
-            obj: "NcQfactor".into(),
+            obj: "NcCurrent".into(),
             attr: name.into(),
         })
     }

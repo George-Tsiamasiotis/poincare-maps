@@ -91,3 +91,13 @@ points, and there can never be spurious oscillations between data points. The in
 is piecewise cubic in each interval. The resulting curve and its first derivative are guaranteed
 to be continuous, but the second derivative may be discontinuous.
 """
+
+Interpolation2dType: TypeAlias = Literal["Bilinear", "Bicubic"]
+"""Available 2D Interpolation Types.
+
+# Bilinear
+Simple bilinear interpolation.
+
+# Bicubic
+Bicubic Interpolation.
+"""

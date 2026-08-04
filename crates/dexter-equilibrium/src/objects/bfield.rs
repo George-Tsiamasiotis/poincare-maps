@@ -4,7 +4,6 @@ use crate::{
     EquilibriumObject, debug_assert_is_2pi_modulo, debug_assert_is_finite,
     debug_assert_non_negative_psi, debug_assert_non_negative_psip, fluxes_values_array_getter_impl,
     interp_type_getter_impl, lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
-    shape2d_getter_impl,
 };
 use ndarray::{Array1, Array2, Axis, Order::ColumnMajor};
 use ndarray::{concatenate, s};
@@ -139,7 +138,7 @@ impl NcBfieldBuilder {
     /// Sets the left-right `θ` padding width.
     ///
     /// At the grid edges, the interpolator's higher derivatives are not well defined. By
-    /// left-right padding the `B` array with extra `θ=const` columns, we force the interpolator
+    /// left-right padding the `B` array with extra `ψ=const` columns, we force the interpolator
     /// to take `θ`'s periodicity into account and therefore calculate the correct derivative
     /// values.
     ///
@@ -148,7 +147,7 @@ impl NcBfieldBuilder {
     /// values of the whole array.
     ///
     /// According to [`this`] stack overflow thread, the effect of the `i`-th column at the `j`-th
-    /// column of the spline goes as `r^|i-j|`, where `r=sqrt(3)-2 = -0.26`. Therefore, with a
+    /// column of the spline scales as `r^|i-j|`, where `r = sqrt(3)-2 ≈ -0.26`. Therefore, with a
     /// padding of 10, the effect at the `θ=0` boundary would be of the order of 1e-6.
     ///
     /// # Default
@@ -510,8 +509,7 @@ impl NcBfield {
             .reversed_axes()
     }
 
-    /// Returns the the (ψ/ψp, θ) shape of the *padded* 2D arrays, depending on the state of each flux
-    /// coordinate. If both coordinates are "good", they are guaranteed to be of the same length.
+    /// Returns the (ψ/ψp, θ) shape of the **padded** arrays that were used to create the interpolator.
     #[must_use]
     pub fn shape_padded(&self) -> (usize, usize) {
         let mut actual_shape = self.shape();
@@ -519,7 +517,21 @@ impl NcBfield {
         actual_shape
     }
 
-    shape2d_getter_impl!();
+    /// Returns the (ψ/ψp, θ) shape of the initial 1D arrays (before the padding).
+    #[must_use]
+    pub fn shape(&self) -> (usize, usize) {
+        let psi_len = match self.psi_state() {
+            FluxCoordinateState::NoValues => 0,
+            _ => self.psi.uvalues().len(),
+        };
+        let psip_len = match self.psip_state() {
+            FluxCoordinateState::NoValues => 0,
+            _ => self.psip.uvalues().len(),
+        };
+        let xlen = psi_len.max(psip_len);
+        (xlen, self.theta_values.len())
+    }
+
     lcfs_getter_impl!();
     fluxes_values_array_getter_impl!();
 }

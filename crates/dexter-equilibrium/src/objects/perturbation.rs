@@ -125,7 +125,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn p_of_psi(
         &self,
         psi: f64,
@@ -161,7 +161,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn p_of_psip(
         &self,
         psip: f64,
@@ -197,7 +197,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_dpsi(
         &self,
         psi: f64,
@@ -233,7 +233,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_dpsip(
         &self,
         psip: f64,
@@ -269,7 +269,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psi_dtheta(
         &self,
         psi: f64,
@@ -305,7 +305,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psip_dtheta(
         &self,
         psip: f64,
@@ -341,7 +341,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psi_dzeta(
         &self,
         psi: f64,
@@ -377,7 +377,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psip_dzeta(
         &self,
         psip: f64,
@@ -413,7 +413,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psi_dt(
         &self,
         psi: f64,
@@ -449,7 +449,7 @@ impl Perturbation {
     ///
     /// # Errors
     ///
-    /// Returns an [`EvalError`] if any of the the evaluations fail for any reason.
+    /// Returns an [`EvalError`] if any of the evaluations fail for any reason.
     pub fn dp_of_psip_dt(
         &self,
         psip: f64,

@@ -17,5 +17,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<equilibrium::PyLastClosedFluxSurface>()?;
     m.add_class::<equilibrium::PyQfactor>()?;
     m.add_class::<equilibrium::PyCurrent>()?;
+    m.add_class::<equilibrium::PyBfield>()?;
     Ok(())
 }
