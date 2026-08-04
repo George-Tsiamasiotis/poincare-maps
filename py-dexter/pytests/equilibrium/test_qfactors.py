@@ -40,23 +40,23 @@ def test_parabolic():
     _test_qfactor_base(qfactor)
 
 
-def test_nc(ncqfactor: dex.NcQfactor):
-    assert ncqfactor.object_type == "Numerical"
-    assert ncqfactor.psi_state == "Good"
-    assert ncqfactor.psip_state == "Good"
-    assert isfinite(ncqfactor.psi_last)
-    assert isfinite(ncqfactor.psip_last)
-    assert isfinite(ncqfactor.qlast)
-    assert isfinite(ncqfactor.qaxis)
-    ncqfactor.__repr__()
-    ncqfactor.__str__()
-    _test_qfactor_base(ncqfactor)
-    assert ncqfactor.interp_type == "Cubic"
-    assert isinstance(ncqfactor.path, str)
-    assert isinstance(ncqfactor.netcdf_version, Version)
-    assert isinstance(ncqfactor.psi_array, np.ndarray)
-    assert isinstance(ncqfactor.psip_array, np.ndarray)
-    assert isinstance(ncqfactor.q_array, np.ndarray)
+def test_nc(nc_qfactor: dex.NcQfactor):
+    assert nc_qfactor.object_type == "Numerical"
+    assert nc_qfactor.psi_state == "Good"
+    assert nc_qfactor.psip_state == "Good"
+    assert isfinite(nc_qfactor.psi_last)
+    assert isfinite(nc_qfactor.psip_last)
+    assert isfinite(nc_qfactor.qlast)
+    assert isfinite(nc_qfactor.qaxis)
+    nc_qfactor.__repr__()
+    nc_qfactor.__str__()
+    _test_qfactor_base(nc_qfactor)
+    assert nc_qfactor.interp_type == "Cubic"
+    assert isinstance(nc_qfactor.path, str)
+    assert isinstance(nc_qfactor.netcdf_version, Version)
+    assert isinstance(nc_qfactor.psi_array, np.ndarray)
+    assert isinstance(nc_qfactor.psip_array, np.ndarray)
+    assert isinstance(nc_qfactor.q_array, np.ndarray)
 
 
 def _test_qfactor_base(qfactor: dex.QfactorObject):

@@ -17,6 +17,12 @@ def add_imports(doctest_namespace):
 
 
 @pytest.fixture(scope="session")
-def ncqfactor() -> dex.NcQfactor:
-    """Creates an NcQfactor object from the test netCDF file."""
+def nc_qfactor() -> dex.NcQfactor:
+    """Creates an NcQfactor object from the test NetCDF file."""
     return dex.NcQfactor(TEST_NETCDF_PATH, "Cubic")
+
+
+@pytest.fixture(scope="session")
+def nc_current() -> dex.NcCurrent:
+    """Creates an NcCurrent object from the test NetCDF file."""
+    return dex.NcCurrent(TEST_NETCDF_PATH, "Cubic")

@@ -1,7 +1,9 @@
 //! Defines `dexter-equilibrium` helper objects and exports equilibrium objects.
 
+mod current;
 mod qfactor;
 
+pub use current::*;
 pub use qfactor::*;
 
 use crate::*;

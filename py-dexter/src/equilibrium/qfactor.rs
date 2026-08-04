@@ -187,11 +187,11 @@ impl PyQfactor {
 
 // ===============================================================================================
 
-#[pymethods] // Unity
-impl PyQfactor {}
-
-#[pymethods] // Parabolic
-impl PyQfactor {}
+// #[pymethods] // Unity
+// impl PyQfactor {}
+//
+// #[pymethods] // Parabolic
+// impl PyQfactor {}
 
 #[pymethods] // Nc
 impl PyQfactor {
@@ -212,17 +212,21 @@ impl PyQfactor {
 
     pub fn get_array<'py>(&self, py: Python<'py>, name: &str) -> Result<Bound<'py, PyArray1<f64>>> {
         let qfactor = self.nc()?;
-        Ok(match name {
-            "q_array" => qfactor.q_array().into_pyarray(py),
+        match name {
+            "q_array" => return Ok(qfactor.q_array().into_pyarray(py)),
             "psi_array" => match qfactor.psi_array() {
-                Some(array) => array.into_pyarray(py),
-                None => todo!(),
+                Some(array) => return Ok(array.into_pyarray(py)),
+                None => (),
             },
             "psip_array" => match qfactor.psip_array() {
-                Some(array) => array.into_pyarray(py),
-                None => todo!(),
+                Some(array) => return Ok(array.into_pyarray(py)),
+                None => (),
             },
-            _ => todo!(),
+            _ => (),
+        }
+        Err(DexterError::AttributeError {
+            obj: "NcQfactor".into(),
+            attr: name.into(),
         })
     }
 }

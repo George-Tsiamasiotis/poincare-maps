@@ -9,7 +9,12 @@ pub enum DexterError {
         wrapper: String,
         inner: String,
     },
-    InvalidInterpolationType(String),
+    /// Raised when wrapper tries to extract an Option<T> from the wrapped type.
+    AttributeError {
+        obj: String,
+        attr: String,
+    },
+    InvalidInterpolation1dType,
     EqError(String),
     EvalError(String),
 }
@@ -17,11 +22,24 @@ pub enum DexterError {
 impl std::fmt::Display for DexterError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::PyErr(err) => write!(f, "[D] PyO3 PyErr: '{err}'"),
             Self::InvalidVariant { wrapper, inner } => write!(
                 f,
-                "InvalidVariant: '{wrapper}' tried to access non-existent '{inner}' inner type"
+                "[D] InvalidVariant: '{wrapper}' tried to access non-existent '{inner}' inner type"
             ),
-            _ => write!(f, "{:?}", self),
+            Self::AttributeError { obj, attr } => write!(
+                f,
+                "[D] AttributeError: '{obj}' object has no attribute '{attr}'"
+            ),
+            Self::InvalidInterpolation1dType => write!(
+                f,
+                concat!(
+                    "[D] Supported 1D interpolation types are ",
+                    "'Linear', 'Cubic', 'CubicPeriodic', 'Akima', 'AkimaPeriodic' and 'Steffen'",
+                )
+            ),
+            Self::EqError(err) => write!(f, "[D] EqError: '{err}'"),
+            Self::EvalError(err) => write!(f, "[D] EvalError: '{err}'"),
         }
     }
 }

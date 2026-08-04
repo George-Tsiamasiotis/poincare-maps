@@ -16,5 +16,6 @@ use pyo3::prelude::*;
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<equilibrium::PyLastClosedFluxSurface>()?;
     m.add_class::<equilibrium::PyQfactor>()?;
+    m.add_class::<equilibrium::PyCurrent>()?;
     Ok(())
 }
