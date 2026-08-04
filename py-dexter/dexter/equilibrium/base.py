@@ -10,10 +10,11 @@ Each parent class corresponds to an evaluation Trait on the Rust API.
 import numpy as np
 
 from dexter._core import _PyQfactor
+from dexter._utils import _ReprStrImpl
 from dexter.types import ArrayLike, Array, FluxCoordinateState, ObjectType
 
 
-class EquilibriumObject:
+class EquilibriumObject(_ReprStrImpl):
     """Common attributes in all equilibrium objects."""
 
     _r: _PyQfactor
@@ -34,7 +35,7 @@ class EquilibriumObject:
         return self._r.psip_state
 
 
-class FluxCommute:
+class FluxCommute(_ReprStrImpl):
     """Methods for converting from one magnetic flux to the other."""
 
     _r: _PyQfactor
@@ -52,7 +53,7 @@ class FluxCommute:
         return self._psi_of_psip(psip)[()]
 
 
-class Qfactor:
+class Qfactor(_ReprStrImpl):
     """q-factor related quantities and evaluation methods."""
 
     _r: _PyQfactor

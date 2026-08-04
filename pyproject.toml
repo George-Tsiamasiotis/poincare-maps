@@ -1,6 +1,6 @@
 [project]
 name = "dexter"
-version = "0.2.0-pre.2"
+version = "0.2.0-pre.3"
 description = "Calculations and simulations in analytical and reconstructed equilibria of toroidal fusion devices."
 readme = "README.md"
 authors = [
@@ -47,7 +47,7 @@ test = [
 ]
 docs = [
     "mkdocstrings-python>=2.0.5",
-    "zensical>=0.0.52",
+    "zensical==0.0.53",
 ]
 
 [tool.pytest.ini_options]

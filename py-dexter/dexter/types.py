@@ -4,6 +4,8 @@ import numpy as np
 from typing import TypeAlias, Literal
 from collections.abc import Sequence
 
+from semver import Version
+
 # =================== Common
 
 
@@ -35,7 +37,7 @@ Equilibrium described by analytical formulas. Evaluations are calculated by simp
 the formulas.
 """
 
-NetCDFVersion: TypeAlias = str
+NetCDFVersion: TypeAlias = Version
 """The netCDF convention version (SemVer)."""
 
 FluxCoordinate: TypeAlias = Literal["Toroidal", "Poloidal"]

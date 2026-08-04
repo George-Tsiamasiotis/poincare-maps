@@ -30,7 +30,7 @@ class _PyQfactor:  # Trait
     qaxis: float
     path: str
     netcdf_version: str
-    interp_type: str
+    interp_type: Interpolation1dType
 
     @classmethod
     def build_unity(cls, lcfs: _PyLastClosedFluxSurface) -> _PyQfactor: ...

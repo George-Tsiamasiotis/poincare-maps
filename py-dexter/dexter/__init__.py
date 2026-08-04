@@ -16,9 +16,9 @@ from dexter.types import (
 
 from dexter.equilibrium.utils import LastClosedFluxSurface
 
-from dexter.equilibrium.qfactors import UnityQfactor
+from dexter.equilibrium.qfactors import UnityQfactor, ParabolicQfactor, NcQfactor
 
-QfactorObject: TypeAlias = UnityQfactor
+QfactorObject: TypeAlias = UnityQfactor | ParabolicQfactor | NcQfactor
 
 __all__ = [
     # Type Aliases
@@ -36,4 +36,6 @@ __all__ = [
     "QfactorObject",
     "LastClosedFluxSurface",
     "UnityQfactor",
+    "ParabolicQfactor",
+    "NcQfactor",
 ]
