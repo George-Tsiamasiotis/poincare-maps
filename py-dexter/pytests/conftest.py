@@ -38,3 +38,9 @@ def nc_bfield() -> dex.NcBfield:
 def nc_geometry() -> dex.NcGeometry:
     """Creates an NcGeometry object from the test NetCDF file."""
     return dex.NcGeometry(TEST_NETCDF_PATH, "Cubic", "Bicubic")
+
+
+@pytest.fixture(scope="session")
+def nc_flute_mode() -> dex.NcFluteMode:
+    """Creates an NcFluteMode object from the test NetCDF file."""
+    return dex.NcFluteMode(TEST_NETCDF_PATH, "Cubic", 3, 2)

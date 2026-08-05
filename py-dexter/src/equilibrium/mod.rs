@@ -3,11 +3,13 @@
 mod bfield;
 mod current;
 mod geometry;
+mod mode;
 mod qfactor;
 
 pub use bfield::*;
 pub use current::*;
 pub use geometry::*;
+pub use mode::*;
 pub use qfactor::*;
 
 use crate::*;

@@ -20,13 +20,15 @@ Bfield
     Magnetic field related evaluation methods.
 Geometry
     Device geometry related evaluation methods.
+Mode
+    Single perturbation mode related evaluation methods.
 
 """
 
 import numpy as np
 from typing import Any
 
-from dexter._core import _PyQfactor, _PyCurrent, _PyBfield, _PyGeometry
+from dexter._core import _PyQfactor, _PyCurrent, _PyBfield, _PyGeometry, _PyMode
 from dexter._utils import _ReprStrImpl
 from dexter.types import ArrayLike, Array, Array1, FluxCoordinateState, ObjectType
 
@@ -325,3 +327,185 @@ class Geometry(_ReprStrImpl):
     def jacobian_of_psip(self, psip: ArrayLike, theta: ArrayLike) -> Array:
         r"""Calculates the Jacobian $R(\psi_p, \theta)$, where $\psi_p$ in Normalized Units and $R$ in $[m]$."""
         return self._jacobian_of_psip(psip, theta)[()]
+
+
+class Mode(_ReprStrImpl):
+    r"""Single perturbation mode related evaluation methods."""
+
+    _r: _PyMode
+
+    def __init__(self) -> None:
+        self._ampl_of_psi = np.vectorize(self._r.ampl_of_psi)
+        self._ampl_of_psip = np.vectorize(self._r.ampl_of_psip)
+        self._phase_of_psi = np.vectorize(self._r.phase_of_psi)
+        self._phase_of_psip = np.vectorize(self._r.phase_of_psip)
+        self._m_of_psi = np.vectorize(self._r.m_of_psi)
+        self._m_of_psip = np.vectorize(self._r.m_of_psi)
+        self._dm_dpsi = np.vectorize(self._r.dm_dpsi)
+        self._dm_dpsip = np.vectorize(self._r.dm_dpsip)
+        self._dm_of_psi_dtheta = np.vectorize(self._r.dm_of_psi_dtheta)
+        self._dm_of_psip_dtheta = np.vectorize(self._r.dm_of_psip_dtheta)
+        self._dm_of_psi_dzeta = np.vectorize(self._r.dm_of_psi_dzeta)
+        self._dm_of_psip_dzeta = np.vectorize(self._r.dm_of_psip_dzeta)
+        self._dm_of_psi_dt = np.vectorize(self._r.dm_of_psi_dt)
+        self._dm_of_psip_dt = np.vectorize(self._r.dm_of_psip_dt)
+
+    @property
+    def psi_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{LCFS}$."""
+        return self._r.psi_last
+
+    @property
+    def psip_last(self) -> float:
+        r"""The value of the last closed toroidal flux $\psi_{p,LCFS}$."""
+        return self._r.psip_last
+
+    @property
+    def m(self) -> int:
+        r"""The poloidal mode number $m$."""
+        return self._r.m
+
+    @property
+    def n(self) -> int:
+        r"""The toroidal mode number $n$."""
+        return self._r.n
+
+    def ampl_of_psi(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates **the amplitude** $\alpha(\psi, \theta, \zeta, t)$, in Normalized Units."""
+        return self._ampl_of_psi(psi, theta, zeta, t)[()]
+
+    def ampl_of_psip(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates **the amplitude** $\alpha(\psi_p, \theta, \zeta, t)$, in Normalized Units."""
+        return self._ampl_of_psip(psip, theta, zeta, t)[()]
+
+    def phase_of_psi(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates $\phi(\psi, \theta, \zeta, t)$, in Normalized Units."""
+        return self._phase_of_psi(psi, theta, zeta, t)[()]
+
+    def phase_of_psip(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates $\phi(\psi_p, \theta, \zeta, t)$, in Normalized Units."""
+        return self._phase_of_psip(psip, theta, zeta, t)[()]
+
+    def m_of_psi(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's value $m(\psi, \theta, \zeta, t)$, in Normalized Units."""
+        return self._m_of_psi(psi, theta, zeta, t)[()]
+
+    def m_of_psip(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's value $m(\psi_p, \theta, \zeta, t)$, in Normalized Units."""
+        return self._m_of_psip(psip, theta, zeta, t)[()]
+
+    def dm_dpsi(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi, \theta, \zeta, t)/d\psi$, in Normalized Units."""
+        return self._dm_dpsi(psi, theta, zeta, t)[()]
+
+    def dm_dpsip(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi_p, \theta, \zeta, t)/d\psi_p$, in Normalized Units."""
+        return self._dm_dpsip(psip, theta, zeta, t)[()]
+
+    def dm_of_psi_dtheta(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi, \theta, \zeta, t)/d\theta$, in Normalized Units."""
+        return self._dm_of_psi_dtheta(psi, theta, zeta, t)[()]
+
+    def dm_of_psip_dtheta(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi_p, \theta, \zeta, t)/d\theta$, in Normalized Units."""
+        return self._dm_of_psip_dtheta(psip, theta, zeta, t)[()]
+
+    def dm_of_psi_dzeta(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi, \theta, \zeta, t)/d\zeta$, in Normalized Units."""
+        return self._dm_of_psi_dzeta(psi, theta, zeta, t)[()]
+
+    def dm_of_psip_dzeta(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi_p, \theta, \zeta, t)/d\zeta$, in Normalized Units."""
+        return self._dm_of_psip_dzeta(psip, theta, zeta, t)[()]
+
+    def dm_of_psi_dt(
+        self,
+        psi: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi, \theta, \zeta, t)/dt$, in Normalized Units."""
+        return self._dm_of_psi_dt(psi, theta, zeta, t)[()]
+
+    def dm_of_psip_dt(
+        self,
+        psip: ArrayLike,
+        theta: ArrayLike,
+        zeta: ArrayLike,
+        t: ArrayLike,
+    ) -> Array:
+        r"""Calculates the mode's derivative $dm(\psi_p, \theta, \zeta, t)/dt$, in Normalized Units."""
+        return self._dm_of_psip_dt(psip, theta, zeta, t)[()]

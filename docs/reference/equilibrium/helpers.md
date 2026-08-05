@@ -1,0 +1,3 @@
+# Helper types
+
+::: dexter.LastClosedFluxSurface

@@ -50,16 +50,21 @@ class NcBfield(EquilibriumObject, Bfield):
     interp_type
         The 2D interpolation type.
     padding
-        Sets the left-right $\theta$ padding width. At the grid edges, the interpolator’s higher
-        derivatives are not well defined. By left-right padding the $B$ array with extra
-        $\psi=const$ columns, we force the interpolator to take $\theta$’s periodicity into
-        account and therefore calculate the correct derivative values. Note that in contrast to
-        the one-dimensional cubic spline, in a bicubic interpolation 3 columns are not enough
-        to ensure periodicity, since the spline coefficients depend on the values of the whole
-        array. According to [this](https://stackoverflow.com/a/25106574/32596387) stack overflow
-        thread, the effect of the $i$-th column at the $j$-th column of the spline scales as
-        $r^{|i-j|}$, where $r=\sqrt{3}-2 \approx -0.26$. Therefore, with a padding of 10, the effect
-        at the $\theta=0$ boundary would be of the order of $10^{-6}$.
+        Sets the left-right $\theta$ padding width.
+
+        !!! note "Magnetic field $\theta$ padding"
+
+            At the grid edges, the interpolator’s higher derivatives are not well defined. By
+            left-right padding the $B$ array with extra $\psi=const$ columns, we force the
+            interpolator to take $\theta$’s periodicity into account and therefore calculate the
+            correct derivative values. Note that in contrast to the one-dimensional cubic spline,
+            in a bicubic interpolation 3 columns are not enough to ensure periodicity, since the
+            spline coefficients depend on the values of the whole array.
+
+            According to [this](https://stackoverflow.com/a/25106574/32596387) stack overflow
+            thread, the effect of the $i$-th column at the $j$-th column of the spline scales as
+            $r^{|i-j|}$, where $r=\sqrt{3}-2 \approx -0.26$. Therefore, with a padding of 10, the
+            effect at the $\theta=0$ boundary would be of the order of $10^{-6}$.
 
     Example
     -------
@@ -92,7 +97,7 @@ class NcBfield(EquilibriumObject, Bfield):
         return Version.parse(self._r.netcdf_version)
 
     @property
-    def interp_type(self) -> Interpolation1dType:
+    def interp_type(self) -> Interpolation2dType:
         """The 1D interpolation type."""
         return self._r.interp_type
 

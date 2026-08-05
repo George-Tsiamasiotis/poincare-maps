@@ -934,6 +934,18 @@ pub trait ModeCache: DynModeCacheClone + Debug {
     reason = "only used internally for creating Perturbation"
 )]
 pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
+    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
+    fn psi_last(&self) -> Option<f64>;
+
+    /// Returns the value of the last closed poloidal flux surface `ψp_last`.
+    fn psip_last(&self) -> Option<f64>;
+
+    /// Returns the poloidal mode number `m`.
+    fn m(&self) -> i64;
+
+    /// Returns the toroidal mode number `n`.
+    fn n(&self) -> i64;
+
     /// Returns a default instance of the Mode's corresponding caching object.
     ///
     /// # Example
@@ -956,14 +968,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let a = mode.alpha_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let a = mode.ampl_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn alpha_of_psi(
+    fn ampl_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -981,14 +993,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let a = mode.alpha_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let a = mode.ampl_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn alpha_of_psip(
+    fn ampl_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -1047,7 +1059,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the full mode's value `h(ψ, θ, ζ, t)`.
+    /// Calculates the full mode's value `m(ψ, θ, ζ, t)`.
     ///
     /// # Example
     ///
@@ -1056,14 +1068,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let h = mode.h_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let m = mode.m_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn h_of_psi(
+    fn m_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -1072,7 +1084,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the full mode's value `h(ψp, θ, ζ, t)`.
+    /// Calculates the full mode's value `m(ψp, θ, ζ, t)`.
     ///
     /// # Example
     ///
@@ -1081,14 +1093,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let h = mode.h_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let m = mode.m_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn h_of_psip(
+    fn m_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -1097,7 +1109,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to ψ, `dh(ψ, θ, ζ, t)/dψ`.
+    /// Calculates the mode's derivative with respect to ψ, `dm(ψ, θ, ζ, t)/dψ`.
     ///
     /// # Example
     ///
@@ -1106,14 +1118,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_dpsi = mode.dh_dpsi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_dpsi = mode.dm_dpsi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_dpsi(
+    fn dm_dpsi(
         &self,
         psi: f64,
         theta: f64,
@@ -1122,7 +1134,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to ψp, `dh(ψp, θ, ζ, t)/dψp`.
+    /// Calculates the mode's derivative with respect to ψp, `dm(ψp, θ, ζ, t)/dψp`.
     ///
     /// # Example
     ///
@@ -1131,14 +1143,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_dpsip = mode.dh_dpsip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_dpsip = mode.dm_dpsip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_dpsip(
+    fn dm_dpsip(
         &self,
         psip: f64,
         theta: f64,
@@ -1147,7 +1159,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to θ, `dh(ψ, θ, ζ, t)/dθ`.
+    /// Calculates the mode's derivative with respect to θ, `dm(ψ, θ, ζ, t)/dθ`.
     ///
     /// # Example
     ///
@@ -1156,14 +1168,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psi_dtheta = mode.dh_of_psi_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psi_dtheta = mode.dm_of_psi_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psi_dtheta(
+    fn dm_of_psi_dtheta(
         &self,
         psi: f64,
         theta: f64,
@@ -1172,7 +1184,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to θ, `dh(ψp, θ, ζ, t)/dθ`.
+    /// Calculates the mode's derivative with respect to θ, `dm(ψp, θ, ζ, t)/dθ`.
     ///
     /// # Example
     ///
@@ -1181,14 +1193,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psip_dtheta = mode.dh_of_psip_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psip_dtheta = mode.dm_of_psip_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psip_dtheta(
+    fn dm_of_psip_dtheta(
         &self,
         psip: f64,
         theta: f64,
@@ -1197,7 +1209,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to ζ, `dh(ψ, θ, ζ, t)/dζ`.
+    /// Calculates the mode's derivative with respect to ζ, `dm(ψ, θ, ζ, t)/dζ`.
     ///
     /// # Example
     ///
@@ -1206,14 +1218,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psi_dzeta = mode.dh_of_psi_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psi_dzeta = mode.dm_of_psi_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psi_dzeta(
+    fn dm_of_psi_dzeta(
         &self,
         psi: f64,
         theta: f64,
@@ -1222,7 +1234,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to ζ, `dh(ψp, θ, ζ, t)/dζ`.
+    /// Calculates the mode's derivative with respect to ζ, `dm(ψp, θ, ζ, t)/dζ`.
     ///
     /// # Example
     ///
@@ -1231,14 +1243,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psip_dzeta = mode.dh_of_psip_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psip_dzeta = mode.dm_of_psip_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psip_dzeta(
+    fn dm_of_psip_dzeta(
         &self,
         psip: f64,
         theta: f64,
@@ -1247,7 +1259,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to t, `dh(ψ, θ, ζ, t)/dt`.
+    /// Calculates the mode's derivative with respect to t, `dm(ψ, θ, ζ, t)/dt`.
     ///
     /// # Example
     ///
@@ -1256,14 +1268,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psi_dt = mode.dh_of_psi_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psi_dt = mode.dm_of_psi_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psi_dt(
+    fn dm_of_psi_dt(
         &self,
         psi: f64,
         theta: f64,
@@ -1272,7 +1284,7 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError>;
 
-    /// Calculates the mode's derivative with respect to t, `dh(ψp, θ, ζ, t)/dt`.
+    /// Calculates the mode's derivative with respect to t, `dm(ψp, θ, ζ, t)/dt`.
     ///
     /// # Example
     ///
@@ -1281,14 +1293,14 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
-    /// let dh_of_psip_dt = mode.dh_of_psip_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
+    /// let dm_of_psip_dt = mode.dm_of_psip_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
     /// # Ok::<_, EqError>(())
     /// ```
     ///
     /// # Errors
     ///
     /// Returns an [`EvalError`] if the evaluation fails for any reason.
-    fn dh_of_psip_dt(
+    fn dm_of_psip_dt(
         &self,
         psip: f64,
         theta: f64,

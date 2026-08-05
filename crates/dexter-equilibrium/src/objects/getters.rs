@@ -64,25 +64,6 @@ macro_rules! lcfs_getter_impl {
     };
 }
 
-/// Generates getters for a flute mode's `m` and `n` mode numbers.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! flute_mode_number_getter_impl {
-    () => {
-        /// Returns the poloidal mode number `m`.
-        #[must_use]
-        pub fn m(&self) -> i64 {
-            self.m
-        }
-
-        /// Returns the toroidal mode number `n`.
-        #[must_use]
-        pub fn n(&self) -> i64 {
-            self.n
-        }
-    };
-}
-
 /// Generates getters for a [`crate::ModeCache`] implementor's hits and misses
 #[doc(hidden)]
 #[macro_export]

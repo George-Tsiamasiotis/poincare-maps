@@ -16,7 +16,7 @@ class UnityQfactor(EquilibriumObject, FluxCommute, Qfactor):
     Parameters
     ----------
     lcfs
-        The Last Closed Flux Surfaces. Only used for bounds checking.
+        The Last Closed Flux Surface. Only used for bounds checking.
 
     Example
     -------

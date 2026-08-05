@@ -9,7 +9,7 @@ use crate::{
 };
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    flute_mode_number_getter_impl, mode_cache_getters_impl,
+    mode_cache_getters_impl,
 };
 
 // ===============================================================================================
@@ -22,8 +22,6 @@ use crate::{
 /// magnetic flux close to the axis.
 ///
 /// Used in pair with [`FluteModeCache`].
-///
-/// TODO: add `ωt` term.
 #[non_exhaustive]
 #[derive(Clone)]
 pub struct FluteMode {
@@ -98,20 +96,6 @@ impl FluteMode {
     pub fn phase(&self) -> f64 {
         self.phase
     }
-
-    /// Returns the value of the last closed toroidal flux `ψ_last`.
-    #[must_use]
-    pub fn psi_last(&self) -> Option<f64> {
-        self.psi_last
-    }
-
-    /// Returns the value of the last closed poloidal flux `ψp_last`.
-    #[must_use]
-    pub fn psip_last(&self) -> Option<f64> {
-        self.psip_last
-    }
-
-    flute_mode_number_getter_impl!();
 }
 
 impl EquilibriumObject for FluteMode {
@@ -221,6 +205,22 @@ impl ModeCache for FluteModeCache {
 }
 
 impl Mode for FluteMode {
+    fn psi_last(&self) -> Option<f64> {
+        self.psi_last
+    }
+
+    fn psip_last(&self) -> Option<f64> {
+        self.psip_last
+    }
+
+    fn m(&self) -> i64 {
+        self.m
+    }
+
+    fn n(&self) -> i64 {
+        self.n
+    }
+
     fn generate_cache(&self) -> DynModeCache {
         let lcfs_root = match self.lcfs {
             LastClosedFluxSurface::Toroidal(last) | LastClosedFluxSurface::Poloidal(last) => {
@@ -239,7 +239,7 @@ impl Mode for FluteMode {
         })
     }
 
-    fn alpha_of_psi(
+    fn ampl_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -260,7 +260,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn alpha_of_psip(
+    fn ampl_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -305,7 +305,7 @@ impl Mode for FluteMode {
         Ok(debug_assert_is_finite!(self.phase))
     }
 
-    fn h_of_psi(
+    fn m_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -326,7 +326,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn h_of_psip(
+    fn m_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -347,7 +347,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_dpsi(
+    fn dm_dpsi(
         &self,
         psi: f64,
         theta: f64,
@@ -368,7 +368,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_dpsip(
+    fn dm_dpsip(
         &self,
         psip: f64,
         theta: f64,
@@ -389,7 +389,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_of_psi_dtheta(
+    fn dm_of_psi_dtheta(
         &self,
         psi: f64,
         theta: f64,
@@ -411,7 +411,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_of_psip_dtheta(
+    fn dm_of_psip_dtheta(
         &self,
         psip: f64,
         theta: f64,
@@ -433,7 +433,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_of_psi_dzeta(
+    fn dm_of_psi_dzeta(
         &self,
         psi: f64,
         theta: f64,
@@ -455,7 +455,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_of_psip_dzeta(
+    fn dm_of_psip_dzeta(
         &self,
         psip: f64,
         theta: f64,
@@ -477,7 +477,7 @@ impl Mode for FluteMode {
         }
     }
 
-    fn dh_of_psi_dt(
+    fn dm_of_psi_dt(
         &self,
         psi: f64,
         _: f64,
@@ -489,7 +489,7 @@ impl Mode for FluteMode {
         Ok(debug_assert_is_finite!(0.0_f64))
     }
 
-    fn dh_of_psip_dt(
+    fn dm_of_psip_dt(
         &self,
         psip: f64,
         _: f64,
@@ -523,18 +523,18 @@ mod flute_mode_values {
         let t = 0.0; // not used
 
         let eps = 1e-10;
-        assert_relative_eq!(har.alpha_of_psi(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
+        assert_relative_eq!(har.ampl_of_psi(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
         assert_relative_eq!(har.phase_of_psi(p, theta, zeta, t, c)?, 1.0, epsilon = eps);
-        assert_relative_eq!(har.h_of_psi(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
-        assert_relative_eq!(har.dh_dpsi(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
-        assert_relative_eq!(har.dh_of_psi_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
-        assert_relative_eq!(har.dh_of_psi_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
+        assert_relative_eq!(har.m_of_psi(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
+        assert_relative_eq!(har.dm_dpsi(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
+        assert_relative_eq!(har.dm_of_psi_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
+        assert_relative_eq!(har.dm_of_psi_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
 
-        assert!(har.alpha_of_psip(p, theta, zeta, t,c).is_err());
-        assert!(har.h_of_psip(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_dpsip(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_of_psip_dtheta(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_of_psip_dzeta(p, theta, zeta, t,c).is_err());
+        assert!(har.ampl_of_psip(p, theta, zeta, t,c).is_err());
+        assert!(har.m_of_psip(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_dpsip(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_of_psip_dtheta(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_of_psip_dzeta(p, theta, zeta, t,c).is_err());
 
         assert_eq!(c.misses(), 1);
         assert_eq!(c.hits(), 4);
@@ -558,18 +558,18 @@ mod flute_mode_values {
         let t = 0.0; // not used
 
         let eps = 1e-10;
-        assert_relative_eq!(har.alpha_of_psip(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
+        assert_relative_eq!(har.ampl_of_psip(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
         assert_relative_eq!(har.phase_of_psip(p, theta, zeta, t, c)?, 1.0, epsilon = eps);
-        assert_relative_eq!(har.h_of_psip(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
-        assert_relative_eq!(har.dh_dpsip(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
-        assert_relative_eq!(har.dh_of_psip_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
-        assert_relative_eq!(har.dh_of_psip_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
+        assert_relative_eq!(har.m_of_psip(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
+        assert_relative_eq!(har.dm_dpsip(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
+        assert_relative_eq!(har.dm_of_psip_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
+        assert_relative_eq!(har.dm_of_psip_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
 
-        assert!(har.alpha_of_psi(p, theta, zeta, t,c).is_err());
-        assert!(har.h_of_psi(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_dpsi(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_of_psi_dtheta(p, theta, zeta, t,c).is_err());
-        assert!(har.dh_of_psi_dzeta(p, theta, zeta, t,c).is_err());
+        assert!(har.ampl_of_psi(p, theta, zeta, t,c).is_err());
+        assert!(har.m_of_psi(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_dpsi(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_of_psi_dtheta(p, theta, zeta, t,c).is_err());
+        assert!(har.dm_of_psi_dzeta(p, theta, zeta, t,c).is_err());
 
         assert_eq!(c.misses(), 1);
         assert_eq!(c.hits(), 4);
@@ -599,20 +599,20 @@ mod flute_mode_cache {
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        mode.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap(); // First check
+        mode.dm_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap(); // First check
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
         let theta = 3.14;
         let zeta = 1.0;
-        mode.h_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        mode.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.m_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.dm_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
+        mode.dm_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 2);
 
-        mode.dh_of_psi_dzeta(psi, theta / 2.0, zeta, t, c).unwrap();
+        mode.dm_of_psi_dzeta(psi, theta / 2.0, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 3);

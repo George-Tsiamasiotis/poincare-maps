@@ -12,8 +12,8 @@ use crate::{DynModeCache, EquilibriumObject, Mode, ModeCache, ObjectType};
 use crate::{EqError, EvalError};
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    flute_mode_number_getter_impl, interp_type_getter_impl, mode_cache_getters_impl,
-    netcdf_path_getter_impl, netcdf_version_getter_impl,
+    interp_type_getter_impl, mode_cache_getters_impl, netcdf_path_getter_impl,
+    netcdf_version_getter_impl,
 };
 
 /// Defines the calculation method of the phase `φ` in an [`NcFluteMode`].
@@ -24,22 +24,10 @@ pub enum PhaseMethod {
     Zero,
     /// Corresponds to `φ = const = the average of all the values of the phase array`.
     Average,
-    /// Corresponds to `φ = const = the value of φ at the resonance m/n`.
-    ///
-    /// In the case that the resonance falls outside the last closed flux surface, or does not
-    /// correspond to a valid q-factor value, it defaults to [`Zero`](PhaseMethod::Zero).
-    Resonance,
     /// Interpolation over the phase array.
     Interpolation,
     /// Use a custom value for `φ = const`.
     Custom(f64),
-}
-
-impl PhaseMethod {
-    /// The method to fall back to if a more complex method fails.
-    pub(crate) fn fallback() -> Self {
-        Self::Zero
-    }
 }
 
 /// Used to create an [`NcFluteMode`].
@@ -340,6 +328,22 @@ impl ModeCache for NcFluteModeCache {
 
 // Perform psi/psip debug assertions here since he have the extra information about the flux.
 impl Mode for NcFluteMode {
+    fn psi_last(&self) -> Option<f64> {
+        self.psi_single.flux.last_value()
+    }
+
+    fn psip_last(&self) -> Option<f64> {
+        self.psip_single.flux.last_value()
+    }
+
+    fn m(&self) -> i64 {
+        self.m
+    }
+
+    fn n(&self) -> i64 {
+        self.n
+    }
+
     fn generate_cache(&self) -> DynModeCache {
         Box::new(NcFluteModeCache {
             params: [self.m as f64, self.n as f64],
@@ -348,7 +352,7 @@ impl Mode for NcFluteMode {
         })
     }
 
-    fn alpha_of_psi(
+    fn ampl_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -361,7 +365,7 @@ impl Mode for NcFluteMode {
         self.psi_single.alpha(psi, theta, zeta, t, cache)
     }
 
-    fn alpha_of_psip(
+    fn ampl_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -400,7 +404,7 @@ impl Mode for NcFluteMode {
         self.psip_single.phase(psip, theta, zeta, t, cache)
     }
 
-    fn h_of_psi(
+    fn m_of_psi(
         &self,
         psi: f64,
         theta: f64,
@@ -410,10 +414,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "h(ψ)")?;
-        self.psi_single.h(psi, theta, zeta, t, cache)
+        self.psi_single.m(psi, theta, zeta, t, cache)
     }
 
-    fn h_of_psip(
+    fn m_of_psip(
         &self,
         psip: f64,
         theta: f64,
@@ -423,10 +427,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "h(ψp)")?;
-        self.psip_single.h(psip, theta, zeta, t, cache)
+        self.psip_single.m(psip, theta, zeta, t, cache)
     }
 
-    fn dh_dpsi(
+    fn dm_dpsi(
         &self,
         psi: f64,
         theta: f64,
@@ -436,10 +440,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dψ")?;
-        self.psi_single.dh_dflux(psi, theta, zeta, t, cache)
+        self.psi_single.dm_dflux(psi, theta, zeta, t, cache)
     }
 
-    fn dh_dpsip(
+    fn dm_dpsip(
         &self,
         psip: f64,
         theta: f64,
@@ -449,10 +453,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dψp")?;
-        self.psip_single.dh_dflux(psip, theta, zeta, t, cache)
+        self.psip_single.dm_dflux(psip, theta, zeta, t, cache)
     }
 
-    fn dh_of_psi_dtheta(
+    fn dm_of_psi_dtheta(
         &self,
         psi: f64,
         theta: f64,
@@ -462,10 +466,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dθ")?;
-        self.psi_single.dh_dtheta(psi, theta, zeta, t, cache)
+        self.psi_single.dm_dtheta(psi, theta, zeta, t, cache)
     }
 
-    fn dh_of_psip_dtheta(
+    fn dm_of_psip_dtheta(
         &self,
         psip: f64,
         theta: f64,
@@ -475,10 +479,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dθ")?;
-        self.psip_single.dh_dtheta(psip, theta, zeta, t, cache)
+        self.psip_single.dm_dtheta(psip, theta, zeta, t, cache)
     }
 
-    fn dh_of_psi_dzeta(
+    fn dm_of_psi_dzeta(
         &self,
         psi: f64,
         theta: f64,
@@ -488,10 +492,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psi!(psi);
         Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dζ")?;
-        self.psi_single.dh_dzeta(psi, theta, zeta, t, cache)
+        self.psi_single.dm_dzeta(psi, theta, zeta, t, cache)
     }
 
-    fn dh_of_psip_dzeta(
+    fn dm_of_psip_dzeta(
         &self,
         psip: f64,
         theta: f64,
@@ -501,10 +505,10 @@ impl Mode for NcFluteMode {
     ) -> Result<f64, EvalError> {
         debug_assert_non_negative_psip!(psip);
         Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dζ")?;
-        self.psip_single.dh_dzeta(psip, theta, zeta, t, cache)
+        self.psip_single.dm_dzeta(psip, theta, zeta, t, cache)
     }
 
-    fn dh_of_psi_dt(
+    fn dm_of_psi_dt(
         &self,
         psi: f64,
         _: f64,
@@ -516,7 +520,7 @@ impl Mode for NcFluteMode {
         Ok(0.0)
     }
 
-    fn dh_of_psip_dt(
+    fn dm_of_psip_dt(
         &self,
         psip: f64,
         _: f64,
@@ -534,7 +538,6 @@ impl NcFluteMode {
     netcdf_path_getter_impl!();
     netcdf_version_getter_impl!();
     interp_type_getter_impl!(1);
-    flute_mode_number_getter_impl!();
 
     /// Returns the mode's [`PhaseMethod`].
     ///
@@ -548,32 +551,6 @@ impl NcFluteMode {
     #[must_use]
     pub fn phase_average(&self) -> Option<f64> {
         self.psi_single.phase_average
-    }
-
-    /// Returns the toroidal flux's value where the resonance is met, if [`PhaseMethod`] is
-    /// `Resonance` and the resonance is in bounds.
-    #[must_use]
-    pub fn psi_phase_resonance(&self) -> Option<f64> {
-        self.psi_single.phase_resonance
-    }
-
-    /// Returns the poloidal flux's value where the resonance is met, if [`PhaseMethod`] is
-    /// `Resonance` and the resonance is in bounds.
-    #[must_use]
-    pub fn psip_phase_resonance(&self) -> Option<f64> {
-        self.psip_single.phase_resonance
-    }
-
-    /// Returns the value of the last closed toroidal flux surface `ψ_last`.
-    #[must_use]
-    pub fn psi_last(&self) -> Option<f64> {
-        self.psi_single.flux.last_value()
-    }
-
-    /// Returns the value of the last closed poloidal flux surface `ψp_last`.
-    #[must_use]
-    pub fn psip_last(&self) -> Option<f64> {
-        self.psip_single.flux.last_value()
     }
 
     /// Returns the toroidal flux's values as a 1D array, if they exist.
@@ -631,8 +608,6 @@ struct SingleNcFluteMode {
     phase_method: PhaseMethod,
     /// The phase values' average, if `phase_method` is `Average`.
     phase_average: Option<f64>,
-    /// The phase's value at the resonance, if `phase_method` is `Resonance`.
-    phase_resonance: Option<f64>,
     /// The index of the data point under witch to use the analytical formula.
     analytical_threshold_index: usize,
     /// The flux's value at the `analytical_threshold_index`.
@@ -699,7 +674,6 @@ impl SingleNcFluteMode {
             flux,
             phase_method: builder.phase_method.clone(),
             phase_average: None,
-            phase_resonance: None,
             analytical_threshold_index: builder.analytical_threshold_index,
             analytical_threshold_flux: None,
             patch_beta: None,
@@ -709,16 +683,15 @@ impl SingleNcFluteMode {
             alpha_interp,
             phase_interp,
         };
-        let self_state1 = self_state0.resolve_phase_method(file);
+        let self_state1 = self_state0.resolve_phase_method();
         let final_state = self_state1.patch_axis()?;
         Ok(final_state)
     }
 
     /// Calculates the phase method. Should only be used on initialization.
-    fn resolve_phase_method(self, file: &netcdf::File) -> Self {
+    fn resolve_phase_method(self) -> Self {
         let phase_method: PhaseMethod;
         let mut phase_average: Option<f64> = None;
-        let mut phase_resonance: Option<f64> = None;
 
         match self.phase_method {
             PhaseMethod::Zero => phase_method = PhaseMethod::Zero,
@@ -728,21 +701,11 @@ impl SingleNcFluteMode {
                 phase_method = PhaseMethod::Average;
                 phase_average = Array1::from(self.phase_values.clone()).mean();
             }
-            PhaseMethod::Resonance => match self.find_resonance_phase(file) {
-                Some(value) => {
-                    phase_method = PhaseMethod::Resonance;
-                    phase_resonance = Some(value);
-                }
-                None => {
-                    phase_method = PhaseMethod::fallback();
-                }
-            },
         }
 
         Self {
             phase_method,
             phase_average,
-            phase_resonance,
             ..self
         }
     }
@@ -778,11 +741,6 @@ impl SingleNcFluteMode {
         self.patch_gamma = Some(patch_gamma);
 
         Ok(self)
-    }
-
-    /// Calculates the phase's value at the resonance.
-    fn find_resonance_phase(&self, _: &netcdf::File) -> Option<f64> {
-        unimplemented!()
     }
 }
 
@@ -820,7 +778,6 @@ impl SingleNcFluteMode {
         cache.cache()[5] = match self.phase_method {
             PhaseMethod::Zero => 0.0,
             PhaseMethod::Average => self.phase_average.expect("Exists"),
-            PhaseMethod::Resonance => self.phase_resonance.expect("Exists"),
             PhaseMethod::Custom(custom_phase) => custom_phase,
             PhaseMethod::Interpolation => {
                 match self.phase_interp.as_ref() {
@@ -877,7 +834,7 @@ impl SingleNcFluteMode {
     }
 
     /// Calculates the single mode's value.
-    fn h(
+    fn m(
         &self,
         flux: f64,
         theta: f64,
@@ -893,7 +850,7 @@ impl SingleNcFluteMode {
     }
 
     /// Calculates the single mode's derivative with respect to the current flux coordinate.
-    fn dh_dflux(
+    fn dm_dflux(
         &self,
         flux: f64,
         theta: f64,
@@ -910,7 +867,7 @@ impl SingleNcFluteMode {
     }
 
     /// Calculates the single mode's derivative with respect to theta.
-    fn dh_dtheta(
+    fn dm_dtheta(
         &self,
         flux: f64,
         theta: f64,
@@ -928,7 +885,7 @@ impl SingleNcFluteMode {
     }
 
     /// Calculates the single mode's derivative with respect to zeta.
-    fn dh_dzeta(
+    fn dm_dzeta(
         &self,
         flux: f64,
         theta: f64,
@@ -1006,7 +963,6 @@ mod phase_methods {
 
         assert!(matches!(mode.phase_method(), Zero));
         assert!(mode.psi_single.phase_average.is_none());
-        assert!(mode.psi_single.phase_resonance.is_none());
 
         assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
         assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
@@ -1025,42 +981,11 @@ mod phase_methods {
 
         assert!(matches!(mode.phase_method(), Average));
         assert!(mode.psi_single.phase_average.is_some());
-        assert!(mode.psi_single.phase_resonance.is_none());
 
         assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), expected);
         assert_eq!(
             mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(),
             expected
-        );
-    }
-
-    #[test]
-    #[ignore = "re-write"]
-    fn resonance_phase_method() {
-        use PhaseMethod::Resonance;
-        let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-        let mode = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
-            .with_phase_method(Resonance)
-            .build()
-            .unwrap();
-        let c = &mut mode.generate_cache();
-
-        assert!(mode.psip_single.phase_average.is_none());
-
-        // m=3 and n=2, we expect a resonance at q=n/m=2/3=0.666, which is inbounds in our
-        // poloidal_test_netcdf. However, only ψp is a good coordinate.
-
-        // From the create_test_netcdf script:
-        let q_res = mode.n() as f64 / mode.m() as f64;
-        let psip_res = TAU * (TAU * q_res).cos(); // we defined ψ = sin(2πψp)
-        let expected = mode.phase_of_psip(psip_res, 0.1, 0.1, 0.1, c).unwrap();
-
-        assert!(matches!(mode.phase_method(), Resonance));
-        assert!(mode.psip_single.phase_average.is_none());
-        assert_relative_eq!(
-            mode.psip_single.phase_resonance.unwrap(),
-            expected,
-            epsilon = 1e-10
         );
     }
 
@@ -1078,7 +1003,6 @@ mod phase_methods {
 
         assert!(matches!(mode.phase_method(), Interpolation));
         assert!(mode.psi_single.phase_average.is_none());
-        assert!(mode.psi_single.phase_resonance.is_none());
 
         assert_relative_eq!(
             mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap(),
@@ -1098,27 +1022,9 @@ mod phase_methods {
 
         assert!(matches!(mode.phase_method(), Custom(10.0)));
         assert!(mode.psi_single.phase_average.is_none());
-        assert!(mode.psi_single.phase_resonance.is_none());
 
         assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
         assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
-    }
-
-    #[test]
-    #[ignore = "re-write"]
-    fn fallback_phase_method() {
-        let path = PathBuf::from(TEST_NETCDF_PATH);
-        let mode = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 2, 2)
-            .with_phase_method(PhaseMethod::Resonance)
-            .build()
-            .unwrap();
-        dbg!(&mode);
-
-        // q=1 on our test_netcdf, so no resonance should be found for m=3, n=2, since q_res = 2/3
-
-        assert!(mode.psip_single.phase_average.is_none());
-        assert!(mode.psip_single.phase_resonance.is_none());
-        assert!(matches!(mode.phase_method(), PhaseMethod::Zero));
     }
 }
 
@@ -1148,13 +1054,13 @@ mod test_toroidal_nc_evals {
     fn good_psi_evals() {
         let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
-        assert!(mode.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.ampl_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
         assert!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.h_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_dpsi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.m_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_dpsi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psi_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
@@ -1164,13 +1070,13 @@ mod test_toroidal_nc_evals {
         let c = &mut mode.generate_cache();
 
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(mode.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.ampl_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
         assert!(matches!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.h_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_dpsip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.m_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_dpsip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psip_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
@@ -1200,13 +1106,13 @@ mod test_poloidal_nc_evals {
     fn good_psip_evals() {
         let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
-        assert!(mode.alpha_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.ampl_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
         assert!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.h_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_dpsip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dh_of_psip_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.m_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_dpsip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.dm_of_psip_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
@@ -1216,13 +1122,13 @@ mod test_poloidal_nc_evals {
         let c = &mut mode.generate_cache();
 
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(mode.alpha_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.ampl_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
         assert!(matches!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.h_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_dpsi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dh_of_psi_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.m_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_dpsi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.dm_of_psi_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
@@ -1251,23 +1157,23 @@ mod nc_flute_mode_cache {
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
-        mode.dh_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap();
+        mode.dm_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap();
         assert_eq!(c.hits(), 1);
         assert_eq!(c.misses(), 1);
 
         let psi = 0.1;
         let theta = 3.14;
         let zeta = 1.0;
-        mode.alpha_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.ampl_of_psi(psi, theta, zeta, t, c).unwrap();
         mode.phase_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.h_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.dh_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        mode.dh_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.m_of_psi(psi, theta, zeta, t, c).unwrap();
+        mode.dm_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
+        mode.dm_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 2);
 
-        mode.dh_dpsi(psi / 2.0, theta, zeta, t, c).unwrap();
+        mode.dm_dpsi(psi / 2.0, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 3);
@@ -1295,7 +1201,7 @@ mod nc_flute_mode_analytical_threshold {
         assert_eq!(mode.analytical_threshold_index(), 5);
         // set cos=1 and make sure it does go to infinity
         assert!(
-            dbg!(mode.dh_dpsi(1e-20, 0.0, 0.0, 0.0, &mut cache))
+            dbg!(mode.dm_dpsi(1e-20, 0.0, 0.0, 0.0, &mut cache))
                 .is_ok_and(|value| value.abs() > 1000.0)
         )
     }
@@ -1313,7 +1219,7 @@ mod nc_flute_mode_analytical_threshold {
 
         let mut cache = mode.generate_cache();
         assert!(
-            mode.h_of_psi(1e-5, 0.0, 0.0, 0.0, &mut cache)
+            mode.m_of_psi(1e-5, 0.0, 0.0, 0.0, &mut cache)
                 .unwrap()
                 .is_finite()
         );

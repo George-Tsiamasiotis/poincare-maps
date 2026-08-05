@@ -81,23 +81,16 @@ def _test_geometry_base(geometry: dex.GeometryObject):
             assert method(fluxes).ndim == 4
             assert isinstance(method(fluxes), np.ndarray)
 
-    except Exception as e:
-        if not "[D] EvalError" in str(e):
-            raise RuntimeError(
-                f"only testing the vectorized functions here (error: {e})"
-            )
+        # 2 Parameter Evaluations
+        methods = [
+            geometry.rlab_of_psi,
+            geometry.rlab_of_psip,
+            geometry.zlab_of_psi,
+            geometry.zlab_of_psip,
+            geometry.jacobian_of_psi,
+            geometry.jacobian_of_psip,
+        ]
 
-    # 2 Parameter Evaluations
-    methods = [
-        geometry.rlab_of_psi,
-        geometry.rlab_of_psip,
-        geometry.zlab_of_psi,
-        geometry.zlab_of_psip,
-        geometry.jacobian_of_psi,
-        geometry.jacobian_of_psip,
-    ]
-
-    try:
         # 0D evaluations
         flux = 1e-5
         theta = 1.57

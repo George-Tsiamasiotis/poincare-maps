@@ -101,3 +101,27 @@ Simple bilinear interpolation.
 # Bicubic
 Bicubic Interpolation.
 """
+
+PhaseMethod: TypeAlias = (
+    Literal["Zero", "Average", "Resonance", "Interpolation"]
+    | tuple[Literal["Custom"], float]
+)
+r""" Defines the calculation method of the phase $\phi$ in a Numerical Harmonic.
+
+# Zero
+Corresponds to $\phi = 0$.
+
+# Average
+Corresponds to $\phi = const =$ the average of all the values of the `phase_array`.
+
+# Resonance
+Corresponds to $\phi = const =$ the value of $\phi$ at the resonance $m/n$. In the case that the
+resonance falls outside the last closed flux surface, or does not correspond to a valid q-factor
+value, it defaults to `Zero`.
+
+# Interpolation
+Interpolation over the `phase_array`.
+
+# Custom(float)
+Use a custom value for $\phi = const$.
+"""

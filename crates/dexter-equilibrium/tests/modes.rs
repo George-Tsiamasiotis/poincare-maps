@@ -27,21 +27,21 @@ fn flute_mode_toroidal_lcfs() {
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.alpha_of_psi(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.ampl_of_psi(p, theta, zeta, t, &mut c).unwrap();
     let _: f64 = mode.phase_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.h_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_dpsi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psi_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psi_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psi_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.m_of_psi(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_dpsi(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psi_dtheta(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psi_dzeta(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psi_dt(p, theta, zeta, t, &mut c).unwrap();
 
-    assert!(mode.alpha_of_psip(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.ampl_of_psip(p, theta, zeta, t, &mut c).is_err());
     assert!(mode.phase_of_psip(p, theta, zeta, t, &mut c).is_ok()); // returns a constant
-    assert!(mode.h_of_psip(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_dpsip(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psip_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psip_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psip_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    assert!(mode.m_of_psip(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_dpsip(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psip_dtheta(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psip_dzeta(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psip_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
 
     assert_eq!(c.misses(), 1);
     assert_eq!(c.hits(), 4);
@@ -67,21 +67,21 @@ fn flute_mode_poloidal_lcfs() {
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.alpha_of_psip(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.ampl_of_psip(p, theta, zeta, t, &mut c).unwrap();
     let _: f64 = mode.phase_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.h_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_dpsip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psip_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psip_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psip_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.m_of_psip(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_dpsip(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psip_dtheta(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psip_dzeta(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psip_dt(p, theta, zeta, t, &mut c).unwrap();
 
-    assert!(mode.alpha_of_psi(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.ampl_of_psi(p, theta, zeta, t, &mut c).is_err());
     assert!(mode.phase_of_psi(p, theta, zeta, t, &mut c).is_ok()); // returns a constant
-    assert!(mode.h_of_psi(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_dpsi(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psi_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psi_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dh_of_psi_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    assert!(mode.m_of_psi(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_dpsi(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psi_dtheta(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psi_dzeta(p, theta, zeta, t, &mut c).is_err());
+    assert!(mode.dm_of_psi_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
 
     assert_eq!(c.misses(), 1);
     assert_eq!(c.hits(), 4);
@@ -116,8 +116,6 @@ fn nc_flute_mode() {
     let phase_array: Array1<f64> = mode.phase_array();
 
     let phase_average: Option<f64> = mode.phase_average();
-    let psi_phase_resonance: Option<f64> = mode.psi_phase_resonance();
-    let psip_phase_resonance: Option<f64> = mode.psip_phase_resonance();
 
     let psi = 0.01;
     let psip = 0.015;
@@ -126,21 +124,21 @@ fn nc_flute_mode() {
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.alpha_of_psi(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.alpha_of_psip(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.ampl_of_psi(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.ampl_of_psip(psip, theta, zeta, t, &mut c).unwrap();
     let _: f64 = mode.phase_of_psi(psi, theta, zeta, t, &mut c).unwrap();
     let _: f64 = mode.phase_of_psip(psip, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.h_of_psi(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.h_of_psip(psip, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psi_dtheta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.m_of_psi(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.m_of_psip(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psi_dtheta(psi, theta, zeta, t, &mut c).unwrap();
     let _: f64 = mode
-        .dh_of_psip_dtheta(psip, theta, zeta, t, &mut c)
+        .dm_of_psip_dtheta(psip, theta, zeta, t, &mut c)
         .unwrap();
-    let _: f64 = mode.dh_of_psi_dzeta(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dh_of_psip_dzeta(psip, theta, zeta, t, &mut c).unwrap();
-    assert_eq!(mode.dh_of_psi_dt(psi, theta, zeta, t, &mut c).unwrap(), 0.0);
+    let _: f64 = mode.dm_of_psi_dzeta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.dm_of_psip_dzeta(psip, theta, zeta, t, &mut c).unwrap();
+    assert_eq!(mode.dm_of_psi_dt(psi, theta, zeta, t, &mut c).unwrap(), 0.0);
     assert_eq!(
-        mode.dh_of_psip_dt(psi, theta, zeta, t, &mut c).unwrap(),
+        mode.dm_of_psip_dt(psi, theta, zeta, t, &mut c).unwrap(),
         0.0
     );
 }

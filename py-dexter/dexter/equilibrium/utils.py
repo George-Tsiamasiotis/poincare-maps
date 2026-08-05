@@ -1,9 +1,10 @@
 from dexter._core import _PyLastClosedFluxSurface
 
 from dexter.types import FluxCoordinate
+from dexter._utils import _ReprStrImpl
 
 
-class LastClosedFluxSurface:
+class LastClosedFluxSurface(_ReprStrImpl):
     """Helper type to define the Last Closed Flux Surface (LCFS) with respect to one of the two fluxes."""
 
     _r: _PyLastClosedFluxSurface
@@ -61,8 +62,8 @@ class LastClosedFluxSurface:
         """Returns the kind of the magnetic flux."""
         return self._r.kind
 
-    def __repr__(self) -> str:
-        return self._r.__repr__()
-
-    def __str__(self) -> str:
-        return self._r.__repr__()
+    @classmethod
+    def _wrap(cls, _r: _PyLastClosedFluxSurface) -> LastClosedFluxSurface:
+        new = _PyLastClosedFluxSurface.__new__(cls)
+        new._r = _r
+        return new

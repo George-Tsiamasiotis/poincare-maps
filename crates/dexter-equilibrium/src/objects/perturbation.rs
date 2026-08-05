@@ -139,7 +139,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.h_of_psi(psi, theta, zeta, t, &mut caches[index])
+                mode.m_of_psi(psi, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -175,7 +175,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.h_of_psip(psip, theta, zeta, t, &mut caches[index])
+                mode.m_of_psip(psip, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -211,7 +211,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_dpsi(psi, theta, zeta, t, &mut caches[index])
+                mode.dm_dpsi(psi, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -247,7 +247,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_dpsip(psip, theta, zeta, t, &mut caches[index])
+                mode.dm_dpsip(psip, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -283,7 +283,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_of_psi_dtheta(psi, theta, zeta, t, &mut caches[index])
+                mode.dm_of_psi_dtheta(psi, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -319,7 +319,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_of_psip_dtheta(psip, theta, zeta, t, &mut caches[index])
+                mode.dm_of_psip_dtheta(psip, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -355,7 +355,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_of_psi_dzeta(psi, theta, zeta, t, &mut caches[index])
+                mode.dm_of_psi_dzeta(psi, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -391,7 +391,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_of_psip_dzeta(psip, theta, zeta, t, &mut caches[index])
+                mode.dm_of_psip_dzeta(psip, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -427,7 +427,7 @@ impl Perturbation {
             .enumerate()
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, mode) = tuple;
-                mode.dh_of_psi_dt(psi, theta, zeta, t, &mut caches[index])
+                mode.dm_of_psi_dt(psi, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }
@@ -464,7 +464,7 @@ impl Perturbation {
             .try_fold(0.0, |accumulator, tuple| {
                 let (index, modes) = tuple;
                 modes
-                    .dh_of_psip_dt(psip, theta, zeta, t, &mut caches[index])
+                    .dm_of_psip_dt(psip, theta, zeta, t, &mut caches[index])
                     .map(|val| accumulator + val)
             })
     }

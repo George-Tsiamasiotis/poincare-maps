@@ -86,14 +86,14 @@ fn evaluations_benchmark(c: &mut Criterion) {
         "Analytical flute mode",
         &(psi, theta, zeta, t),
         |b, &(psi, theta, zeta, t)| {
-            b.iter(|| flute_mode.h_of_psi(psi, theta, zeta, t, &mut flute_mode_cache));
+            b.iter(|| flute_mode.m_of_psi(psi, theta, zeta, t, &mut flute_mode_cache));
         },
     );
     group.bench_with_input(
         "Nc flute mode",
         &(psi, theta, zeta, t),
         |b, &(psi, theta, zeta, t)| {
-            b.iter(|| nc_flute_mode.h_of_psi(psi, theta, zeta, t, &mut nc_flute_mode_cache));
+            b.iter(|| nc_flute_mode.m_of_psi(psi, theta, zeta, t, &mut nc_flute_mode_cache));
         },
     );
     group.finish();
