@@ -23,6 +23,7 @@ from dexter.equilibrium.qfactors import UnityQfactor, ParabolicQfactor, NcQfacto
 from dexter.equilibrium.currents import LarCurrent, NcCurrent
 from dexter.equilibrium.bfields import LarBfield, NcBfield
 from dexter.equilibrium.modes import FluteMode, NcFluteMode
+from dexter.equilibrium.perturbation import Perturbation
 
 GeometryObject: TypeAlias = LarGeometry | NcGeometry
 QfactorObject: TypeAlias = UnityQfactor | ParabolicQfactor | NcQfactor
@@ -62,4 +63,5 @@ __all__ = [
     "NcBfield",
     "FluteMode",
     "NcFluteMode",
+    "Perturbation",
 ]

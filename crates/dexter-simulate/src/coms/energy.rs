@@ -103,8 +103,8 @@ mod test {
     use super::*;
     use dexter_equilibrium::extract::TEST_NETCDF_PATH;
     use dexter_equilibrium::*;
+    use dexter_equilibrium::{Interpolation1dType::Steffen, Interpolation2dType::Bicubic};
     use ndarray::{arr1, arr2};
-    use rsl_interpolation::{Interpolation1dType::Steffen, Interpolation2dType::Bicubic};
 
     #[test]
     fn gcmotion_check() {

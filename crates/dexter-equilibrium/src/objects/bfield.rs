@@ -7,15 +7,17 @@ use crate::{
 };
 use ndarray::{Array1, Array2, Axis, Order::ColumnMajor};
 use ndarray::{concatenate, s};
-use rsl_interpolation::{Accelerator2d, DynInterpolator2d, Interpolation2d, Interpolation2dType};
+use rsl_interpolation::Accelerator2d;
 use std::f64::consts::TAU;
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
+use crate::Interpolation2dType;
 use crate::constants::DEFAULT_THETA_PADDING_WIDTH;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{Bfield, ObjectType};
 use crate::{EqError, EvalError, NcError};
+use dexter_common::{DynInterpolator2d, make_interp2d};
 
 // ===============================================================================================
 
@@ -199,7 +201,6 @@ impl NcBfieldBuilder {
 ///
 /// Should be created with an [`NcBfieldBuilder`].
 #[non_exhaustive]
-#[derive(Clone)]
 pub struct NcBfield {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -262,7 +263,7 @@ impl NcBfield {
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let b_of_psi_interp = match psi.state() {
-            Good => Some(DynInterpolator2d::build(
+            Good => Some(make_interp2d(
                 builder.interp_type,
                 psi.uvalues(),
                 &theta_values_padded,
@@ -271,7 +272,7 @@ impl NcBfield {
             _ => None,
         };
         let b_of_psip_interp = match psip.state() {
-            Good => Some(DynInterpolator2d::build(
+            Good => Some(make_interp2d(
                 builder.interp_type,
                 psip.uvalues(),
                 &theta_values_padded,

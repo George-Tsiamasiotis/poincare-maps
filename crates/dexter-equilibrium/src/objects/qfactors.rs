@@ -5,15 +5,16 @@ use crate::{
     debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
     netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
-use dexter_common::array1D_getter_impl;
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
+use rsl_interpolation::Accelerator;
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
+use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{EqError, EvalError};
 use crate::{FluxCommute, LastClosedFluxSurface, ObjectType, Qfactor};
+use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
 
@@ -267,7 +268,6 @@ impl FluxCommute for ParabolicQfactor {
     }
 }
 
-// TODO: Cache reoccurring values when sure the formulas are correct.
 impl Qfactor for ParabolicQfactor {
     fn psi_last(&self) -> f64 {
         self.psi_last
@@ -417,7 +417,6 @@ impl NcQfactorBuilder {
 /// If either `psi_norm` or `psip_norm` is missing from the netCDF file, it is calculated from the
 /// other by integrating `q(ψp)` or `ι(ψ)` respectively. In the case that the calculated values are
 /// monotonic, the other flux can be used as a flux coordinate as well.
-#[derive(Clone)]
 pub struct NcQfactor {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -476,8 +475,7 @@ impl NcQfactor {
         if psi.state() == FluxCoordinateState::NoValues {
             let acc = &mut Accelerator::new();
             let psip_values = psip.values().expect("At least one of the fluxes exists");
-            let q_of_psip_interp =
-                DynInterpolator::build(builder.interp_type, psip_values, &q_values)?;
+            let q_of_psip_interp = make_interp(builder.interp_type, psip_values, &q_values)?;
             let psi_values: Vec<f64> = psip_values
                 .iter()
                 .map(|psip_value| {
@@ -498,8 +496,7 @@ impl NcQfactor {
             let acc = &mut Accelerator::new();
             let psi_values = psi.values().expect("At least one of the fluxes exists");
             let i_values: Vec<f64> = q_values.iter().map(|q| q.recip()).collect();
-            let i_of_psi_interp =
-                DynInterpolator::build(builder.interp_type, psi_values, &i_values)?;
+            let i_of_psi_interp = make_interp(builder.interp_type, psi_values, &i_values)?;
             let psip_values: Vec<f64> = psi_values
                 .iter()
                 .map(|psi_value| {
@@ -515,7 +512,7 @@ impl NcQfactor {
         use FluxCoordinateState::Good;
         let psip_of_psi_interp =
             if (psi.state() == Good) & (psip.state() != FluxCoordinateState::NoValues) {
-                Some(DynInterpolator::build(
+                Some(make_interp(
                     builder.interp_type,
                     psi.uvalues(),
                     psip.uvalues(),
@@ -525,7 +522,7 @@ impl NcQfactor {
             };
         let psi_of_psip_interp =
             if (psip.state() == Good) & (psi.state() != FluxCoordinateState::NoValues) {
-                Some(DynInterpolator::build(
+                Some(make_interp(
                     builder.interp_type,
                     psip.uvalues(),
                     psi.uvalues(),
@@ -535,30 +532,22 @@ impl NcQfactor {
             };
 
         let q_of_psi_interp = match psi.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psi.uvalues(),
-                &q_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psi.uvalues(), &q_values)?),
             _ => None,
         };
         let q_of_psip_interp = match psip.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psip.uvalues(),
-                &q_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psip.uvalues(), &q_values)?),
             _ => None,
         };
 
         // If flux values exist, we must also check if q is monotonic
         let psi_of_q_interp = match psi.state() {
             FluxCoordinateState::NoValues => None,
-            _ => DynInterpolator::build(builder.interp_type, &q_values, psi.uvalues()).ok(),
+            _ => make_interp(builder.interp_type, &q_values, psi.uvalues()).ok(),
         };
         let psip_of_q_interp = match psip.state() {
             FluxCoordinateState::NoValues => None,
-            _ => DynInterpolator::build(builder.interp_type, &q_values, psip.uvalues()).ok(),
+            _ => make_interp(builder.interp_type, &q_values, psip.uvalues()).ok(),
         };
 
         Ok(Self {

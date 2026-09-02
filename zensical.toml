@@ -19,6 +19,7 @@ nav = [
         "reference/equilibrium/currents.md",
         "reference/equilibrium/bfields.md",
         "reference/equilibrium/modes.md",
+        "reference/equilibrium/perturbation.md",
     ]}
 ]
 

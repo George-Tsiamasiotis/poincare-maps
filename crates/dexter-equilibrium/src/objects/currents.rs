@@ -5,15 +5,16 @@ use crate::{
     debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
     lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
-use dexter_common::array1D_getter_impl;
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
+use rsl_interpolation::Accelerator;
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
+use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{Current, ObjectType};
 use crate::{EqError, EvalError};
+use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
 
@@ -163,7 +164,6 @@ impl NcCurrentBuilder {
 ///
 /// Should be created with an [`NcCurrentBuilder`].
 #[non_exhaustive]
-#[derive(Clone)]
 pub struct NcCurrent {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -215,36 +215,20 @@ impl NcCurrent {
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let g_of_psi_interp = match psi.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psi.uvalues(),
-                &g_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psi.uvalues(), &g_values)?),
             _ => None,
         };
         let i_of_psi_interp = match psi.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psi.uvalues(),
-                &i_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psi.uvalues(), &i_values)?),
             _ => None,
         };
 
         let g_of_psip_interp = match psip.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psip.uvalues(),
-                &g_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psip.uvalues(), &g_values)?),
             _ => None,
         };
         let i_of_psip_interp = match psip.state() {
-            Good => Some(DynInterpolator::build(
-                builder.interp_type,
-                psip.uvalues(),
-                &i_values,
-            )?),
+            Good => Some(make_interp(builder.interp_type, psip.uvalues(), &i_values)?),
             _ => None,
         };
 

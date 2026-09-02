@@ -42,7 +42,7 @@ impl Perturbation {
     /// # use std::path::PathBuf;
     /// // from analytical flute modes
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -50,7 +50,7 @@ impl Perturbation {
     /// // from numerical flute modes
     /// let path = PathBuf::from("./netcdf.nc");
     /// let typ = Interpolation1dType::Cubic;
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build()?),
     ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 2).build()?),
     ///     Box::new(NcFluteModeBuilder::new(&path, typ, 3, 1).build()?),
@@ -58,21 +58,15 @@ impl Perturbation {
     /// ]);
     ///
     /// // Or any combination of the two
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build()?),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 19, 30, 0.0)),
     /// ]);
     /// # Ok::<_, EqError>(())
     /// ```
     #[must_use]
-    pub fn new(modes: &[DynMode]) -> Self {
-        Self(modes.to_vec())
-    }
-
-    /// Returns a [`Vec`] of the contained modes.
-    #[must_use]
-    pub fn modes(&self) -> DynModes {
-        self.0.clone()
+    pub fn new(modes: Vec<DynMode>) -> Self {
+        Self(modes)
     }
 
     /// Returns the number of the contained modes.
@@ -90,7 +84,7 @@ impl Perturbation {
     /// # use dexter_equilibrium::*;
     /// # use std::path::PathBuf;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -114,7 +108,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -150,7 +144,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -186,7 +180,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -222,7 +216,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -258,7 +252,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -294,7 +288,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -330,7 +324,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -366,7 +360,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -402,7 +396,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -438,7 +432,7 @@ impl Perturbation {
     /// ```
     /// # use dexter_equilibrium::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    /// let perturbation = Perturbation::new(&[
+    /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     /// ]);
@@ -501,7 +495,7 @@ mod perturbation_evals {
 
     fn create_flute_mode_perturbation() -> Perturbation {
         let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-        Perturbation::new(&[
+        Perturbation::new(vec![
             Box::new(FluteMode::new(1.0, lcfs, 2, 3, 4.0)),
             Box::new(FluteMode::new(5.0, lcfs, 6, 7, 8.0)),
             Box::new(FluteMode::new(9.0, lcfs, 1, 2, 3.0)),
@@ -512,7 +506,7 @@ mod perturbation_evals {
     fn create_nc_flute_mode_perturbation() -> Perturbation {
         let path = PathBuf::from(TEST_NETCDF_PATH);
         let typ = Interpolation1dType::Cubic;
-        Perturbation::new(&[
+        Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build().unwrap()),

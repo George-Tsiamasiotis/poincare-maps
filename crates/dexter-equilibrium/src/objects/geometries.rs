@@ -9,16 +9,15 @@ use crate::{
 use core::f64::consts::PI;
 use dexter_common::array1D_getter_impl;
 use ndarray::{Array1, Array2, Order::ColumnMajor};
-use rsl_interpolation::{
-    Accelerator, Accelerator2d, DynInterpolator, DynInterpolator2d, Interpolation,
-    Interpolation1dType, Interpolation2d, Interpolation2dType,
-};
+use rsl_interpolation::{Accelerator, Accelerator2d};
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{EqError, EvalError};
 use crate::{FluxCommute, Geometry, ObjectType};
+use crate::{Interpolation1dType, Interpolation2dType};
+use dexter_common::{DynInterpolator, DynInterpolator2d, make_interp, make_interp2d};
 
 // ===============================================================================================
 
@@ -260,7 +259,6 @@ impl NcGeometryBuilder {
 ///
 /// Should be created with an [`NcGeometryBuilder`].
 #[non_exhaustive]
-#[derive(Clone)]
 pub struct NcGeometry {
     /// Path to the netCDF file.
     path: PathBuf,
@@ -372,7 +370,7 @@ impl NcGeometry {
         use FluxCoordinateState::Good;
         let psip_of_psi_interp =
             if (psi.state() == Good) & (psip.state() != FluxCoordinateState::NoValues) {
-                Some(DynInterpolator::build(
+                Some(make_interp(
                     builder.interp1d_type,
                     psi.uvalues(),
                     psip.uvalues(),
@@ -382,7 +380,7 @@ impl NcGeometry {
             };
         let psi_of_psip_interp =
             if (psip.state() == Good) & (psi.state() != FluxCoordinateState::NoValues) {
-                Some(DynInterpolator::build(
+                Some(make_interp(
                     builder.interp1d_type,
                     psip.uvalues(),
                     psi.uvalues(),
@@ -392,11 +390,11 @@ impl NcGeometry {
             };
 
         let r_of_psi_interp = match psi.state() {
-            Good => DynInterpolator::build(builder.interp1d_type, psi.uvalues(), &r_values).ok(),
+            Good => make_interp(builder.interp1d_type, psi.uvalues(), &r_values).ok(),
             _ => None,
         };
         let r_of_psip_interp = match psip.state() {
-            Good => DynInterpolator::build(builder.interp1d_type, psip.uvalues(), &r_values).ok(),
+            Good => make_interp(builder.interp1d_type, psip.uvalues(), &r_values).ok(),
             _ => None,
         };
 
@@ -404,15 +402,15 @@ impl NcGeometry {
         // If `r` exists, then it is guaranteed it's in increasing order.
         let psi_of_r_interp = match psi.state() {
             FluxCoordinateState::NoValues => None,
-            _ => DynInterpolator::build(builder.interp1d_type, &r_values, psi.uvalues()).ok(),
+            _ => make_interp(builder.interp1d_type, &r_values, psi.uvalues()).ok(),
         };
         let psip_of_r_interp = match psip.state() {
             FluxCoordinateState::NoValues => None,
-            _ => DynInterpolator::build(builder.interp1d_type, &r_values, psip.uvalues()).ok(),
+            _ => make_interp(builder.interp1d_type, &r_values, psip.uvalues()).ok(),
         };
 
         let rlab_of_psi_interp = match psi.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
@@ -422,7 +420,7 @@ impl NcGeometry {
             _ => None,
         };
         let rlab_of_psip_interp = match psip.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,
@@ -433,7 +431,7 @@ impl NcGeometry {
         };
 
         let zlab_of_psi_interp = match psi.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
@@ -443,7 +441,7 @@ impl NcGeometry {
             _ => None,
         };
         let zlab_of_psip_interp = match psip.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,
@@ -454,7 +452,7 @@ impl NcGeometry {
         };
 
         let jacobian_of_psi_interp = match psi.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psi.uvalues(),
                 &theta_values,
@@ -464,7 +462,7 @@ impl NcGeometry {
             _ => None,
         };
         let jacobian_of_psip_interp = match psip.state() {
-            Good => DynInterpolator2d::build(
+            Good => make_interp2d(
                 builder.interp2d_type,
                 psip.uvalues(),
                 &theta_values,

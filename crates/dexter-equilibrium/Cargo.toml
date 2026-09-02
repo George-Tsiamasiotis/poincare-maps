@@ -1,6 +1,6 @@
 [package]
 name = "dexter-equilibrium"
-version = "0.1.8-pre.2"
+version = "0.1.8-pre.3"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

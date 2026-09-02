@@ -1,20 +1,21 @@
 //! Representation of a numerical equilibrium's single flute mode.
 
 use ndarray::Array1;
-use rsl_interpolation::{Accelerator, DynInterpolator, Interpolation, Interpolation1dType};
+use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
 use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
 use crate::constants::NC_ANALYTICAL_THRESHOLD_INDEX;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{DynModeCache, EquilibriumObject, Mode, ModeCache, ObjectType};
+use crate::{DynModeCache, EquilibriumObject, Interpolation1dType, Mode, ModeCache, ObjectType};
 use crate::{EqError, EvalError};
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
     interp_type_getter_impl, mode_cache_getters_impl, netcdf_path_getter_impl,
     netcdf_version_getter_impl,
 };
+use dexter_common::{DynInterpolator, make_interp};
 
 /// Defines the calculation method of the phase `φ` in an [`NcFluteMode`].
 #[derive(Default, Debug, Clone)]
@@ -650,7 +651,7 @@ impl SingleNcFluteMode {
         // Create interpolators, if possible
         use FluxCoordinateState::Good;
         let alpha_interp = match flux.state() {
-            Good => Some(DynInterpolator::build(
+            Good => Some(make_interp(
                 builder.interp_type,
                 flux.uvalues(),
                 &alpha_values,
@@ -659,7 +660,7 @@ impl SingleNcFluteMode {
         };
         #[rustfmt::skip]
         let phase_interp = match flux.state() {
-            Good => Some(DynInterpolator::build(
+            Good => Some(make_interp(
                 builder.interp_type,
                 flux.uvalues(),
                 &phase_values,

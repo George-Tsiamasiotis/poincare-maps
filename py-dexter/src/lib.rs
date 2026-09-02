@@ -20,5 +20,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<equilibrium::PyCurrent>()?;
     m.add_class::<equilibrium::PyBfield>()?;
     m.add_class::<equilibrium::PyMode>()?;
+    m.add_class::<equilibrium::PyPerturbation>()?;
     Ok(())
 }

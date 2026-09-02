@@ -158,7 +158,7 @@ impl Queue {
     ///     qfactor: Box::new(qfactor),
     ///     current: Box::new(NcCurrentBuilder::new(&path, Akima).build()?),
     ///     bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build()?),
-    ///     perturbation: Perturbation::new(&[
+    ///     perturbation: Perturbation::new(vec![
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
@@ -220,7 +220,7 @@ impl Queue {
     ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
     ///     current: Box::new(LarCurrent::new()),
     ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::new(&[
+    ///     perturbation: Perturbation::new(vec![
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
     ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),

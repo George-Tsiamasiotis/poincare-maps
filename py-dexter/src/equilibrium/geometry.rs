@@ -1,5 +1,7 @@
 //! Defines the PyGeometry enum that holds one of the Geometry objects.
 
+use std::sync::Arc;
+
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{prelude::*, types::PyType};
 
@@ -7,18 +9,18 @@ use crate::*;
 
 // ===============================================================================================
 
-#[pyclass(name = "_PyLarGeometry", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyLarGeometry(pub LarGeometry);
+pub struct PyLarGeometry(Arc<LarGeometry>);
 
-#[pyclass(name = "_PyNcGeometry", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyNcGeometry(pub NcGeometry);
+pub struct PyNcGeometry(Arc<NcGeometry>);
 
 // ===============================================================================================
 
 /// Actual export
-#[pyclass(name = "_PyGeometry", frozen, immutable_type, skip_from_py_object)]
+#[pyclass(name = "_PyGeometry", frozen, immutable_type)]
 pub enum PyGeometry {
     Lar(PyLarGeometry),
     Nc(PyNcGeometry),
@@ -33,9 +35,8 @@ impl PyGeometry {
         raxis: f64,
         rlast: f64,
     ) -> Result<Self> {
-        Ok(Self::Lar(PyLarGeometry(LarGeometry::new(
-            baxis, raxis, rlast,
-        ))))
+        let inner = PyLarGeometry(Arc::new(LarGeometry::new(baxis, raxis, rlast)));
+        Ok(Self::Lar(inner))
     }
 
     #[classmethod]
@@ -50,7 +51,8 @@ impl PyGeometry {
         let typ2 = resolve_interpolation_2d_type(interp2d_type)?;
         let builder = NcGeometryBuilder::new(&path, typ1, typ2);
         let geometry = builder.build()?;
-        Ok(Self::Nc(PyNcGeometry(geometry)))
+        let inner = PyNcGeometry(Arc::new(geometry));
+        Ok(Self::Nc(inner))
     }
 }
 
@@ -58,8 +60,8 @@ impl PyGeometry {
 impl PyGeometry {
     pub fn geometry(&self) -> &dyn Geometry {
         match self {
-            PyGeometry::Lar(geometry) => &geometry.0,
-            PyGeometry::Nc(geometry) => &geometry.0,
+            PyGeometry::Lar(geometry) => geometry.0.as_ref(),
+            PyGeometry::Nc(geometry) => geometry.0.as_ref(),
         }
     }
 
@@ -68,7 +70,7 @@ impl PyGeometry {
             PyGeometry::Lar(_) => Err(DexterError::EvalError(
                 "LarGeometry does not support flux commutation".into(),
             )),
-            PyGeometry::Nc(geometry) => Ok(&geometry.0),
+            PyGeometry::Nc(geometry) => Ok(geometry.0.as_ref()),
         }
     }
 

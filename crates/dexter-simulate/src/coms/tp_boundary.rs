@@ -5,7 +5,7 @@ use std::f64::consts::PI;
 use dexter_equilibrium::{Equilibrium, FluxCoordinateState};
 use ndarray::Array1;
 use rsl_interpolation::{
-    Accelerator, Accelerator2d, AkimaInterpolator, Interpolation, Interpolator,
+    Accelerator, Accelerator2d, AkimaInterpolator, BuildInterpolator, Interpolation,
 };
 
 use crate::constants::TRAPPED_PASSING_BOUNDARY_DENSITY;

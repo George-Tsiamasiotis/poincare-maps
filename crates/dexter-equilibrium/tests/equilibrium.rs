@@ -14,7 +14,7 @@ fn create_analytical() {
         qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
         ]),

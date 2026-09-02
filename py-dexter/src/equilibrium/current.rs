@@ -1,5 +1,7 @@
 //! Defines the PyCurrent enum that holds one of the Current objects.
 
+use std::sync::Arc;
+
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
@@ -7,18 +9,18 @@ use crate::*;
 
 // ===============================================================================================
 
-#[pyclass(name = "_PyLarCurrent", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyLarCurrent(pub LarCurrent);
+pub struct PyLarCurrent(Arc<LarCurrent>);
 
-#[pyclass(name = "_PyNcCurrent", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyNcCurrent(pub NcCurrent);
+pub struct PyNcCurrent(Arc<NcCurrent>);
 
 // ===============================================================================================
 
 /// Actual export
-#[pyclass(name = "_PyCurrent", frozen, immutable_type, skip_from_py_object)]
+#[pyclass(name = "_PyCurrent", frozen, immutable_type)]
 pub enum PyCurrent {
     Lar(PyLarCurrent),
     Nc(PyNcCurrent),
@@ -28,7 +30,7 @@ pub enum PyCurrent {
 impl PyCurrent {
     #[classmethod]
     pub fn build_lar<'py>(_: Bound<'py, PyType>) -> Result<Self> {
-        Ok(Self::Lar(PyLarCurrent(LarCurrent::new())))
+        Ok(Self::Lar(PyLarCurrent(Arc::new(LarCurrent::new()))))
     }
 
     #[classmethod]
@@ -37,7 +39,7 @@ impl PyCurrent {
         let typ = resolve_interpolation_1d_type(interp_type)?;
         let builder = NcCurrentBuilder::new(&path, typ);
         let current = builder.build()?;
-        Ok(Self::Nc(PyNcCurrent(current)))
+        Ok(Self::Nc(PyNcCurrent(Arc::new(current))))
     }
 }
 
@@ -45,14 +47,14 @@ impl PyCurrent {
 impl PyCurrent {
     pub fn current(&self) -> &dyn Current {
         match self {
-            PyCurrent::Lar(current) => &current.0,
-            PyCurrent::Nc(current) => &current.0,
+            PyCurrent::Lar(current) => current.0.as_ref(),
+            PyCurrent::Nc(current) => current.0.as_ref(),
         }
     }
 
     pub fn lar(&self) -> Result<&LarCurrent> {
         match self {
-            Self::Lar(current) => Ok(&current.0),
+            Self::Lar(current) => Ok(current.0.as_ref()),
             _ => Err(DexterError::InvalidVariant {
                 wrapper: "Current".into(),
                 inner: "LarCurrent".into(),
@@ -129,7 +131,7 @@ impl PyCurrent {
 // ===============================================================================================
 
 // #[pymethods] // Lar
-// impl PyCurrent {}
+impl PyCurrent {}
 
 #[pymethods] // Nc
 impl PyCurrent {

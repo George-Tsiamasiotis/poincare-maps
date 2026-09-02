@@ -17,7 +17,7 @@ pub enum EqError {
 
     /// Error from [`rsl_interpolation`].
     #[error("Interpolation error: {0}")]
-    InterpolationError(#[from] rsl_interpolation::InterpolatorError),
+    InterpolationError(#[from] rsl_interpolation::InterpolationError),
 
     /// Analytical threshold index cannot be greater that the number of data points.
     #[error("Analytical threshold index cannot be greater that the number of data points")]

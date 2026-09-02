@@ -54,7 +54,7 @@ impl std::fmt::Debug for InitialFlux {
 // ===============================================================================================
 
 /// Container for the caching objects needed for the evaluations.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 #[non_exhaustive]
 pub(crate) struct IntegrationCaches {
     /// The 2D integration Accelerator.
@@ -72,11 +72,6 @@ impl IntegrationCaches {
     /// Returns a mutable reference to the magnetic flux Accelerator.
     pub(crate) fn flux_acc(&mut self) -> &mut Accelerator {
         self.acc.xacc()
-    }
-
-    /// Returns a mutable reference to the theta angle Accelerator.
-    pub(crate) fn theta_acc(&mut self) -> &mut Accelerator {
-        self.acc.yacc()
     }
 
     /// Returns a mutable reference to mode caches.
@@ -208,7 +203,6 @@ pub enum OrbitType {
 // ===============================================================================================
 
 /// Representation of a charged particle.
-#[derive(Clone)]
 pub struct Particle {
     /// The [`InitialConditions`] set of the particle.
     initial_conditions: InitialConditions,
@@ -285,7 +279,7 @@ impl Particle {
     ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
     ///     current: Box::new(LarCurrent::new()),
     ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::new(&[
+    ///     perturbation: Perturbation::new(vec![
     ///         Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
     ///         Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
     ///     ]),
@@ -388,7 +382,7 @@ impl Particle {
     ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
     ///     current: Box::new(LarCurrent::new()),
     ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::new(&[
+    ///     perturbation: Perturbation::new(vec![
     ///         Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
     ///         Box::new(FluteMode::new(1e-5, lcfs, 1, 3, 0.0)),
     ///     ]),
@@ -576,25 +570,25 @@ impl Particle {
     /// Returns the Accelerator's magnetic flux cache hits.
     #[must_use]
     pub fn flux_cache_hits(&self) -> usize {
-        self.caches.clone().flux_acc().hits()
+        self.caches.acc.clone().xacc().hits()
     }
 
     /// Returns the Accelerator's magnetic flux cache misses.
     #[must_use]
     pub fn flux_cache_misses(&self) -> usize {
-        self.caches.clone().flux_acc().misses()
+        self.caches.acc.clone().xacc().misses()
     }
 
     /// Returns the Accelerator's theta angle cache hits.
     #[must_use]
     pub fn theta_cache_hits(&self) -> usize {
-        self.caches.clone().theta_acc().hits()
+        self.caches.acc.clone().yacc().hits()
     }
 
     /// Returns the Accelerator's theta angle cache misses.
     #[must_use]
     pub fn theta_cache_misses(&self) -> usize {
-        self.caches.clone().theta_acc().misses()
+        self.caches.acc.clone().yacc().misses()
     }
 
     /// Returns the mode cache's hits.
@@ -625,6 +619,22 @@ impl Particle {
     export_array1D_getter_impl!(ptheta_array, evolution, ptheta_array);
     export_array1D_getter_impl!(pzeta_array, evolution, pzeta_array);
     export_array1D_getter_impl!(energy_array, evolution, energy_array);
+}
+
+impl Clone for Particle {
+    fn clone(&self) -> Self {
+        Self {
+            initial_conditions: self.initial_conditions.clone(),
+            integration_status: self.integration_status.clone(),
+            evolution: self.evolution.clone(),
+            caches: IntegrationCaches::default(),
+            energy_pzeta_position: self.energy_pzeta_position,
+            orbit_type: self.orbit_type.clone(),
+            frequencies: self.frequencies.clone(),
+            initial_energy: self.initial_energy,
+            final_energy: self.final_energy,
+        }
+    }
 }
 
 impl std::fmt::Debug for Frequencies {

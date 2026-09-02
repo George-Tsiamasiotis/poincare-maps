@@ -1,5 +1,7 @@
 //! Defines the PyMode enum that holds one of the Mode objects.
 
+use std::sync::Arc;
+
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
@@ -7,18 +9,19 @@ use crate::*;
 
 // ===============================================================================================
 
-#[pyclass(name = "_PyFluteMode", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyFluteMode(pub FluteMode);
+pub struct PyFluteMode(Arc<FluteMode>);
 
-#[pyclass(name = "_PyNcFluteMode", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyNcFluteMode(pub NcFluteMode);
+pub struct PyNcFluteMode(Arc<NcFluteMode>);
 
 // ===============================================================================================
 
 /// Actual export
-#[pyclass(name = "_PyMode", frozen, immutable_type, skip_from_py_object)]
+#[pyclass(name = "_PyMode", frozen, immutable_type, from_py_object)]
+#[derive(Clone)]
 pub enum PyMode {
     Flute(PyFluteMode),
     Nc(PyNcFluteMode),
@@ -35,9 +38,8 @@ impl PyMode {
         n: i64,
         phase: f64,
     ) -> Result<Self> {
-        Ok(Self::Flute(PyFluteMode(FluteMode::new(
-            epsilon, lcfs.0, m, n, phase,
-        ))))
+        let inner = PyFluteMode(Arc::new(FluteMode::new(epsilon, lcfs.0, m, n, phase)));
+        Ok(Self::Flute(inner))
     }
 
     #[classmethod]
@@ -57,7 +59,10 @@ impl PyMode {
             .with_phase_method(phase_method)
             .with_analytical_threshold_index(analytical_threshold_index);
         let mode = builder.build()?;
-        Ok(Self::Nc(PyNcFluteMode(mode)))
+        let inner = PyNcFluteMode(Arc::new(mode));
+
+        assert_eq!(Arc::strong_count(&inner.0), 1);
+        Ok(Self::Nc(inner))
     }
 }
 
@@ -65,8 +70,15 @@ impl PyMode {
 impl PyMode {
     pub fn mode(&self) -> &dyn Mode {
         match self {
-            PyMode::Flute(mode) => &mode.0,
-            PyMode::Nc(mode) => &mode.0,
+            PyMode::Flute(mode) => mode.0.as_ref(),
+            PyMode::Nc(mode) => mode.0.as_ref(),
+        }
+    }
+
+    pub fn boxed_mode(&self) -> Box<dyn Mode> {
+        match self {
+            PyMode::Flute(mode) => Box::new(Arc::unwrap_or_clone(mode.0.clone())),
+            PyMode::Nc(mode) => Box::new(Arc::unwrap_or_clone(mode.0.clone())),
         }
     }
 
@@ -132,18 +144,12 @@ impl PyMode {
 
     #[getter]
     pub fn m(&self) -> Result<i64> {
-        match self {
-            Self::Flute(mode) => Ok(mode.0.m()),
-            Self::Nc(mode) => Ok(mode.0.m()),
-        }
+        Ok(self.mode().m())
     }
 
     #[getter]
     pub fn n(&self) -> Result<i64> {
-        match self {
-            Self::Flute(mode) => Ok(mode.0.n()),
-            Self::Nc(mode) => Ok(mode.0.n()),
-        }
+        Ok(self.mode().n())
     }
 
     pub fn ampl_of_psi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {

@@ -18,7 +18,7 @@ fn queue_intersect_const_theta_parQ_larC_larB_cosP() -> Result<(), SimulationErr
         qfactor: Box::new(ParabolicQfactor::new(1.1, 1.9, lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
         ]),
@@ -76,7 +76,7 @@ fn queue_poloidal_intersect_const_zeta_ncdQ_ncdC_ncdB_ncdP() -> Result<(), Simul
         qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(
                 NcFluteModeBuilder::new(&path, Akima, 2, 1)
                     .with_phase_method(Interpolation)

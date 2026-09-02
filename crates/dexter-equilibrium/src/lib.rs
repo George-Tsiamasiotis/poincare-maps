@@ -77,8 +77,8 @@ mod objects;
 
 // ============== Re-exports
 
+pub use dexter_common::{Interpolation1dType, Interpolation2dType};
 pub use rsl_interpolation::{Accelerator, Accelerator2d};
-pub use rsl_interpolation::{Interpolation1dType, Interpolation2dType};
 
 // ============== Public API
 

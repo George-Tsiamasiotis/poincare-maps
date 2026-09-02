@@ -11,7 +11,7 @@ fn main() {
         qfactor: Box::new(UnityQfactor::new(lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-2, lcfs, 1, 1, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),

@@ -1,5 +1,7 @@
 //! Defines the PyQfactor enum that holds one of the Qfactor objects.
 
+use std::sync::Arc;
+
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
@@ -7,22 +9,22 @@ use crate::*;
 
 // ===============================================================================================
 
-#[pyclass(name = "_PyUnityQfactor", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyUnityQfactor(pub UnityQfactor);
+pub struct PyUnityQfactor(Arc<UnityQfactor>);
 
-#[pyclass(name = "_PyParabolicQfactor", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyParabolicQfactor(pub ParabolicQfactor);
+pub struct PyParabolicQfactor(Arc<ParabolicQfactor>);
 
-#[pyclass(name = "_PyNcQfactor", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyNcQfactor(pub NcQfactor);
+pub struct PyNcQfactor(Arc<NcQfactor>);
 
 // ===============================================================================================
 
 /// Actual export
-#[pyclass(name = "_PyQfactor", frozen, immutable_type, skip_from_py_object)]
+#[pyclass(name = "_PyQfactor", frozen, immutable_type)]
 pub enum PyQfactor {
     Unity(PyUnityQfactor),
     Parabolic(PyParabolicQfactor),
@@ -33,7 +35,8 @@ pub enum PyQfactor {
 impl PyQfactor {
     #[classmethod]
     pub fn build_unity<'py>(_: Bound<'py, PyType>, lcfs: &PyLastClosedFluxSurface) -> Result<Self> {
-        Ok(Self::Unity(PyUnityQfactor(UnityQfactor::new(lcfs.0))))
+        let inner = PyUnityQfactor(Arc::new(UnityQfactor::new(lcfs.0)));
+        Ok(Self::Unity(inner))
     }
 
     #[classmethod]
@@ -43,9 +46,8 @@ impl PyQfactor {
         qlast: f64,
         lcfs: &PyLastClosedFluxSurface,
     ) -> Result<Self> {
-        Ok(Self::Parabolic(PyParabolicQfactor(ParabolicQfactor::new(
-            qaxis, qlast, lcfs.0,
-        ))))
+        let inner = PyParabolicQfactor(Arc::new(ParabolicQfactor::new(qaxis, qlast, lcfs.0)));
+        Ok(Self::Parabolic(inner))
     }
 
     #[classmethod]
@@ -54,7 +56,8 @@ impl PyQfactor {
         let typ = resolve_interpolation_1d_type(interp_type)?;
         let builder = NcQfactorBuilder::new(&path, typ);
         let qfactor = builder.build()?;
-        Ok(Self::Nc(PyNcQfactor(qfactor)))
+        let inner = PyNcQfactor(Arc::new(qfactor));
+        Ok(Self::Nc(inner))
     }
 }
 
@@ -62,9 +65,9 @@ impl PyQfactor {
 impl PyQfactor {
     pub fn qfactor(&self) -> &dyn Qfactor {
         match self {
-            PyQfactor::Unity(qfactor) => &qfactor.0,
-            PyQfactor::Parabolic(qfactor) => &qfactor.0,
-            PyQfactor::Nc(qfactor) => &qfactor.0,
+            PyQfactor::Unity(qfactor) => qfactor.0.as_ref(),
+            PyQfactor::Parabolic(qfactor) => qfactor.0.as_ref(),
+            PyQfactor::Nc(qfactor) => qfactor.0.as_ref(),
         }
     }
 

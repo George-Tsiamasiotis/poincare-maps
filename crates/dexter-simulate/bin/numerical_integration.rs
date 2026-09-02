@@ -16,7 +16,7 @@ fn main() {
     let qfactor = NcQfactorBuilder::new(&path, Steffen).build().unwrap();
     let current = NcCurrentBuilder::new(&path, Steffen).build().unwrap();
     let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
-    let perturbation = Perturbation::new(&[
+    let perturbation = Perturbation::new(vec![
         Box::new(
             NcFluteModeBuilder::new(&path, Steffen, 2, 1)
                 .with_phase_method(PhaseMethod::Interpolation)

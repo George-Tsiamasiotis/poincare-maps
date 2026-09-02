@@ -97,17 +97,16 @@ impl GCState {
         caches: &mut IntegrationCaches,
     ) -> Result<Self, SimulationError> {
         let (psi, psip): (f64, f64);
-        let coordinate: FluxCoordinate;
-        match initial.flux0 {
+        let coordinate = match initial.flux0 {
             InitialFlux::Toroidal(psi0) => {
                 (psi, psip) = (psi0, f64::NAN);
-                coordinate = FluxCoordinate::Toroidal;
+                FluxCoordinate::Toroidal
             }
             InitialFlux::Poloidal(psip0) => {
                 (psi, psip) = (f64::NAN, psip0);
-                coordinate = FluxCoordinate::Poloidal;
+                FluxCoordinate::Poloidal
             }
-        }
+        };
         let Some(rho0) = initial.rho0 else {
             unreachable!("rho0 must be initialized at this point")
         };

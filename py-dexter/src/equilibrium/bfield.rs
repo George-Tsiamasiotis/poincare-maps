@@ -1,5 +1,7 @@
 //! Defines the PyBfield enum that holds one of the Bfield objects.
 
+use std::sync::Arc;
+
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{prelude::*, types::PyType};
 
@@ -7,18 +9,18 @@ use crate::*;
 
 // ===============================================================================================
 
-#[pyclass(name = "_PyLarBfield", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyLarBfield(pub LarBfield);
+pub struct PyLarBfield(Arc<LarBfield>);
 
-#[pyclass(name = "_PyNcBfield", from_py_object, frozen, immutable_type)]
+#[pyclass(frozen, immutable_type, from_py_object)]
 #[derive(Clone)]
-pub struct PyNcBfield(pub NcBfield);
+pub struct PyNcBfield(Arc<NcBfield>);
 
 // ===============================================================================================
 
 /// Actual export
-#[pyclass(name = "_PyBfield", frozen, immutable_type, skip_from_py_object)]
+#[pyclass(name = "_PyBfield", frozen, immutable_type)]
 pub enum PyBfield {
     Lar(PyLarBfield),
     Nc(PyNcBfield),
@@ -28,7 +30,8 @@ pub enum PyBfield {
 impl PyBfield {
     #[classmethod]
     pub fn build_lar<'py>(_: Bound<'py, PyType>) -> Result<Self> {
-        Ok(Self::Lar(PyLarBfield(LarBfield::new())))
+        let inner = PyLarBfield(Arc::new(LarBfield::new()));
+        Ok(Self::Lar(inner))
     }
 
     #[classmethod]
@@ -42,7 +45,8 @@ impl PyBfield {
         let typ = resolve_interpolation_2d_type(interp_type)?;
         let builder = NcBfieldBuilder::new(&path, typ).with_padding(padding);
         let bfield = builder.build()?;
-        Ok(Self::Nc(PyNcBfield(bfield)))
+        let inner = PyNcBfield(Arc::new(bfield));
+        Ok(Self::Nc(inner))
     }
 }
 
@@ -50,8 +54,8 @@ impl PyBfield {
 impl PyBfield {
     pub fn bfield(&self) -> &dyn Bfield {
         match self {
-            PyBfield::Lar(bfield) => &bfield.0,
-            PyBfield::Nc(bfield) => &bfield.0,
+            PyBfield::Lar(bfield) => bfield.0.as_ref(),
+            PyBfield::Nc(bfield) => bfield.0.as_ref(),
         }
     }
 

@@ -318,7 +318,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
 }
 
 /// Conversion between the two flux coordinates `ψ` and `ψp`.
-pub trait FluxCommute {
+pub trait FluxCommute: Debug + Send + Sync {
     /// Calculates `ψp(ψ)`.
     ///
     /// # Example

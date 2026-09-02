@@ -123,7 +123,7 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
         qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
@@ -182,7 +182,7 @@ fn gc_toroidal_poloidal_equivalence_const_zeta() {
         qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),

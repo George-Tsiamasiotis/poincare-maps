@@ -11,7 +11,6 @@ use dexter_equilibrium::*;
 #[rustfmt::skip]
 fn empty_perturbation() {
     let p = Perturbation::zero();
-    assert!(p.modes().is_empty());
 
     let mut caches: DynModeCaches = p.generate_caches();
 
@@ -32,15 +31,11 @@ fn empty_perturbation() {
 #[rustfmt::skip]
 fn cos_toroidal_lcfs_perturbation() {
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let per = Perturbation::new(&[
+    let per = Perturbation::new(vec![
         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     ]);
-    let m0: DynMode = per[0].clone();
-    let m1: DynMode= per[1].clone();
-    let modes = per.modes();
-    assert_eq!(modes.len(), 3);
     assert_eq!(per.count(), 3);
 
     let mut c: DynModeCaches = per.generate_caches();
@@ -65,15 +60,11 @@ fn cos_toroidal_lcfs_perturbation() {
 #[rustfmt::skip]
 fn cos_poloidal_lcfs_perturbation() {
     let lcfs = LastClosedFluxSurface::Poloidal(0.45);
-    let per = Perturbation::new(&[
+    let per = Perturbation::new(vec![
         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
     ]);
-    let m0: DynMode = per[0].clone();
-    let m1: DynMode = per[1].clone();
-    let modes = per.modes();
-    assert_eq!(modes.len(), 3);
     assert_eq!(per.count(), 3);
 
     let mut c: DynModeCaches = per.generate_caches();
@@ -109,11 +100,7 @@ fn nc_perturbation() {
         .build()
         .unwrap();
 
-    let per = dbg!(Perturbation::new(&[Box::new(m1), Box::new(m2), Box::new(m3)]));
-    let m0: DynMode = per[0].clone();
-    let m1: DynMode = per[1].clone();
-    let modes = per.modes();
-    assert_eq!(modes.len(), 3);
+    let per = dbg!(Perturbation::new(vec![Box::new(m1), Box::new(m2), Box::new(m3)]));
     assert_eq!(per.count(), 3);
 
     let mut caches: DynModeCaches = per.generate_caches();
@@ -142,11 +129,7 @@ fn mixed_perturbation() {
         .unwrap();
     let mode = FluteMode::new(1e-3, lcfs, 1, 3, 0.0);
 
-    let per = dbg!(Perturbation::new(&[Box::new(nc_mode), Box::new(mode)]));
-    let m0: DynMode = per[0].clone();
-    let m1: DynMode = per[1].clone();
-    let modes = per.modes();
-    assert_eq!(modes.len(), 2);
+    let per = dbg!(Perturbation::new(vec![Box::new(nc_mode), Box::new(mode)]));
     assert_eq!(per.count(), 2);
 
     let mut caches: DynModeCaches = per.generate_caches();

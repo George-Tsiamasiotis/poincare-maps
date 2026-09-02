@@ -16,7 +16,7 @@ fn integration_cache_analytical_eq_flute_mode() {
         qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
@@ -60,7 +60,7 @@ fn integration_cache_nc_eq_nc_flute_mode() {
         qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(
                 NcFluteModeBuilder::new(&path, Akima, 2, 1)
                     .with_phase_method(PhaseMethod::Interpolation)

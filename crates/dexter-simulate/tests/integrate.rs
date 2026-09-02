@@ -26,7 +26,7 @@ fn gc_toroidal_integration_uniQ_larC_larB_cosP() {
         qfactor: Box::new(UnityQfactor::new(lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
         ]),
@@ -64,7 +64,7 @@ fn gc_toroidal_integration_ncdQ_ncdC_ncdB_ncdP() {
         qfactor : Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current : Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield : Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
@@ -102,7 +102,7 @@ fn gc_poloidal_integration_ncdQ_ncdC_ncdB_ncdP() {
         qfactor : Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current : Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield : Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
@@ -195,7 +195,7 @@ fn gc_toroidal_poloidal_equivalence() {
         qfactor : Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current : Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield : Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),
@@ -290,7 +290,7 @@ fn gc_mixed_boozer_equivalence() {
         qfactor : Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
         current : Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
         bfield : Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
             Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
         ]),

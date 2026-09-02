@@ -15,7 +15,7 @@ fn queue_integrate_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
         qfactor: Box::new(ParabolicQfactor::new(1.1, 1.9, lcfs)),
         current: Box::new(LarCurrent::new()),
         bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(&[
+        perturbation: Perturbation::new(vec![
             Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
             Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
         ]),
