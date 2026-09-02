@@ -1,6 +1,6 @@
 [project]
 name = "dexter"
-version = "0.2.0-pre.8"
+version = "0.2.0-pre.9"
 description = "Calculations and simulations in analytical and reconstructed equilibria of toroidal fusion devices."
 readme = "README.md"
 authors = [
@@ -47,13 +47,14 @@ test = [
 ]
 docs = [
     "mkdocstrings-python>=2.0.5",
-    "zensical==0.0.53",
+    "zensical==0.0.57",
 ]
 
 [tool.pytest.ini_options]
 testpaths = [ # Run from workspace root
     "./py-dexter/pytests",
     "./py-dexter/dexter/equilibrium/*",
+    "./py-dexter/dexter/simulate/*",
 ]
 addopts = """
     --durations 2

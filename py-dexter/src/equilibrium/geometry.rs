@@ -6,6 +6,7 @@ use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
+use dexter::dexter_equilibrium::*;
 
 // ===============================================================================================
 

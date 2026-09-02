@@ -2,9 +2,9 @@ mod args;
 mod equilibrium;
 mod error;
 mod macros;
+mod simulate;
 
 pub use args::*;
-pub use dexter::dexter_equilibrium::*;
 pub use equilibrium::*;
 pub use error::*;
 
@@ -21,5 +21,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<equilibrium::PyBfield>()?;
     m.add_class::<equilibrium::PyMode>()?;
     m.add_class::<equilibrium::PyPerturbation>()?;
+    m.add_class::<simulate::PyInitialFlux>()?;
+    m.add_class::<simulate::PyInitialConditions>()?;
     Ok(())
 }

@@ -125,3 +125,19 @@ Interpolation over the `phase_array`.
 # Custom(float)
 Use a custom value for $\phi = const$.
 """
+
+# =================== Simulate
+
+CoordinateSet: TypeAlias = Literal[
+    "BoozerToroidal",
+    "BoozerPoloidal",
+    "MixedToroidal",
+    "MixedPoloidal",
+]
+r""" The kind of InitialConditions set.
+
+    - `BoozerToroidal`: Initial conditions set in the $(t, \psi, \theta, \zeta, \rho, \mu)$ space.
+    - `BoozerPoloidal`: Initial conditions set in the $(t, \psi_p, \theta, \zeta, \rho, \mu)$ space.
+    - `MixedToroidal`: Initial conditions set in the $(t, P_\zeta, \psi, \theta, \zeta, \mu)$ space.
+    - `MixedPoloidal`: Initial conditions set in the $(t, P_\zeta, \psi_p, \theta, \zeta, \mu)$ space.
+"""

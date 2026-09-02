@@ -13,6 +13,7 @@ from dexter.types import (
     Interpolation1dType,
     Interpolation2dType,
     PhaseMethod,
+    CoordinateSet,
 )
 
 
@@ -24,6 +25,8 @@ from dexter.equilibrium.currents import LarCurrent, NcCurrent
 from dexter.equilibrium.bfields import LarBfield, NcBfield
 from dexter.equilibrium.modes import FluteMode, NcFluteMode
 from dexter.equilibrium.perturbation import Perturbation
+
+from dexter.simulate.initial import InitialFlux, InitialConditions
 
 GeometryObject: TypeAlias = LarGeometry | NcGeometry
 QfactorObject: TypeAlias = UnityQfactor | ParabolicQfactor | NcQfactor
@@ -45,6 +48,7 @@ __all__ = [
     "Interpolation1dType",
     "Interpolation2dType",
     "PhaseMethod",
+    "CoordinateSet",
     # Equilibrium
     "GeometryObject",
     "QfactorObject",
@@ -64,4 +68,7 @@ __all__ = [
     "FluteMode",
     "NcFluteMode",
     "Perturbation",
+    # Simulate
+    "InitialFlux",
+    "InitialConditions",
 ]

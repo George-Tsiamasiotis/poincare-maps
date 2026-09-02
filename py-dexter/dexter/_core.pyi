@@ -16,6 +16,7 @@ from dexter.types import (
     Interpolation2dType,
     PhaseMethod,
     ObjectType,
+    CoordinateSet,
 )
 
 class _PyLastClosedFluxSurface:
@@ -241,5 +242,51 @@ class _PyPerturbation:
     def dp_of_psip_dt(self, psip: float, theta: float, zeta: float, t: float) -> float: ...
     # fmt: on
     def __len__(self) -> int: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+# ================================================================================================
+
+class _PyInitialFlux:
+    value: float
+    kind: FluxCoordinate
+
+    @classmethod
+    def toroidal(cls, value: float) -> _PyInitialFlux: ...
+    @classmethod
+    def poloidal(cls, value: float) -> _PyInitialFlux: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+class _PyInitialConditions:
+    t0: float
+    flux0: _PyInitialFlux
+    theta0: float
+    zeta0: float
+    rho0: float | None
+    pzeta0: float | None
+    mu0: float
+    coordinate_set: CoordinateSet
+
+    @classmethod
+    def boozer(
+        cls,
+        t0: float,
+        flux0: _PyInitialFlux,
+        theta0: float,
+        zeta0: float,
+        rho0: float,
+        mu0: float,
+    ) -> _PyInitialConditions: ...
+    @classmethod
+    def mixed(
+        cls,
+        t0: float,
+        flux0: _PyInitialFlux,
+        theta0: float,
+        zeta0: float,
+        pzeta0: float,
+        mu0: float,
+    ) -> _PyInitialConditions: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...

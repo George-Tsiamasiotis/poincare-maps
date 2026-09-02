@@ -5,7 +5,11 @@ from dexter._utils import _ReprStrImpl
 
 
 class LastClosedFluxSurface(_ReprStrImpl):
-    """Helper type to define the Last Closed Flux Surface (LCFS) with respect to one of the two fluxes."""
+    """Helper type to define the Last Closed Flux Surface (LCFS) with respect to one of the two fluxes.
+
+    This type is instantiated through the [`Toroidal`][dexter.LastClosedFluxSurface.Toroidal] and
+    [`Poloidal`][dexter.LastClosedFluxSurface.Poloidal] class methods.
+    """
 
     _r: _PyLastClosedFluxSurface
 
@@ -54,12 +58,12 @@ class LastClosedFluxSurface(_ReprStrImpl):
 
     @property
     def value(self) -> float:
-        """Returns the value of the magnetic flux."""
+        """The value of the magnetic flux."""
         return self._r.value
 
     @property
     def kind(self) -> FluxCoordinate:
-        """Returns the kind of the magnetic flux."""
+        """The kind of the magnetic flux."""
         return self._r.kind
 
     @classmethod

@@ -20,6 +20,9 @@ nav = [
         "reference/equilibrium/bfields.md",
         "reference/equilibrium/modes.md",
         "reference/equilibrium/perturbation.md",
+    ]},
+    {"Simulate" = [
+        "reference/simulate/initial.md",
     ]}
 ]
 
@@ -74,7 +77,7 @@ pygments_lang_class = true
 [project.markdown_extensions.pymdownx.superfences]
 [project.markdown_extensions.toc]
 permalink = true
-toc_depth = 4
+toc_depth = 3
 
 # mkdocstrings
 

@@ -15,6 +15,7 @@ pub use perturbation::*;
 pub use qfactor::*;
 
 use crate::*;
+use dexter::dexter_equilibrium::*;
 use pyo3::{prelude::*, types::PyType};
 
 #[pyclass(name = "_PyLastClosedFluxSurface", frozen, immutable_type)]

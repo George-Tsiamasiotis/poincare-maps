@@ -1,4 +1,4 @@
-use crate::*;
+use dexter::dexter_equilibrium::*;
 use pyo3::{CastError, exceptions::PyException, prelude::*};
 
 #[derive(Debug)]
