@@ -1,10 +1,9 @@
-//! Representation of an equilibrium's general geometry.
+//! Representation of a machine's general geometry.
 
 use crate::{
-    EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, debug_assert_non_negative_r, fluxes_values_array_getter_impl,
-    fortran_vec_to_carray2d_impl, lcfs_getter_impl, netcdf_path_getter_impl,
-    netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
+    debug_assert_non_negative_r, fluxes_values_array_getter_impl, fortran_vec_to_carray2d_impl,
+    lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 use core::f64::consts::PI;
 use dexter_common::array1D_getter_impl;
@@ -14,8 +13,8 @@ use std::path::{Path, PathBuf};
 
 use super::debug_assert_all_finite_values;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{EqError, EvalError};
-use crate::{FluxCommute, Geometry, ObjectType};
+use crate::{EvalError, MachineError};
+use crate::{FluxCommute, Geometry, MachineObject, MachineType};
 use crate::{Interpolation1dType, Interpolation2dType};
 use dexter_common::{DynInterpolator, DynInterpolator2d, make_interp, make_interp2d};
 
@@ -50,7 +49,7 @@ impl LarGeometry {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let geometry = LarGeometry::new(2.0, 1.75, 0.5);
     /// ```
     #[must_use]
@@ -66,9 +65,9 @@ impl LarGeometry {
     }
 }
 
-impl EquilibriumObject for LarGeometry {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for LarGeometry {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -205,13 +204,13 @@ pub struct NcGeometryBuilder {
 }
 
 impl NcGeometryBuilder {
-    /// Creates a new [`NcGeometryBuilder`] from a netCDF file at `path`, with 1D interpolation
+    /// Creates a new `NcGeometryBuilder` from a netCDF file at `path`, with 1D interpolation
     /// type `interp1d_type` and 2D interpolation type `interp2d_type`.
     ///
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let interp1d_type = Interpolation1dType::Akima;
     /// let interp2d_type = Interpolation2dType::Bicubic;
@@ -235,18 +234,18 @@ impl NcGeometryBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let interp1d_type = Interpolation1dType::Akima;
     /// let interp2d_type = Interpolation2dType::Bicubic;
     /// let builder = NcGeometryBuilder::new(&path, interp1d_type, interp2d_type);
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcGeometry`].
-    pub fn build(self) -> Result<NcGeometry, EqError> {
+    /// Returns an [`MachineError`] if it fails to build the [`NcGeometry`].
+    pub fn build(self) -> Result<NcGeometry, MachineError> {
         NcGeometry::build(self)
     }
 }
@@ -326,8 +325,8 @@ pub struct NcGeometry {
 
 /// Creation.
 impl NcGeometry {
-    /// Constructs an [`NcGeometry`] from an [`NcGeometryBuilder`].
-    pub(crate) fn build(builder: NcGeometryBuilder) -> Result<Self, EqError> {
+    /// Constructs an `NcGeometry` from an [`NcGeometryBuilder`].
+    pub(crate) fn build(builder: NcGeometryBuilder) -> Result<Self, MachineError> {
         use crate::extract;
         use crate::extract::netcdf_fields::{NC_BAXIS, NC_RAXIS, NC_RGEO, NC_ZAXIS};
         use crate::extract::netcdf_fields::{NC_JACOBIAN, NC_R, NC_RLAB, NC_THETA, NC_ZLAB};
@@ -504,9 +503,9 @@ impl NcGeometry {
     }
 }
 
-impl EquilibriumObject for NcGeometry {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Numerical
+impl MachineObject for NcGeometry {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Numerical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -797,7 +796,6 @@ impl std::fmt::Debug for NcGeometry {
         f.debug_struct("NcGeometry")
             .field("netCDF path", &self.path())
             .field("netCDF version", &self.netcdf_version().to_string())
-            .field("equilibrium type", &self.object_type())
             .field("1D interpolation type", &self.interp1d_type())
             .field("2D interpolation type", &self.interp2d_type())
             .field("baxis [T]", &self.baxis)

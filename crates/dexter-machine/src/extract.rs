@@ -1,9 +1,4 @@
-//! Methods for data extraction from `netCDF` file and field names definitions.
-
-#![allow(
-    clippy::missing_inline_in_public_items,
-    reason = "extraction functions are rarely used"
-)]
+//! Methods for data extraction from `netCDF` files and field names definitions.
 
 /// The names of the netCDF fields (see [`convention`](https://dexter.tsiamasiotis.gr/netcdf)).
 ///
@@ -129,12 +124,12 @@ impl NcType for i32 {}
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::*;
 /// # use std::path::PathBuf;
 /// #
 /// let path = PathBuf::from("netcdf.nc");
 /// let file = extract::open(&path)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -157,14 +152,14 @@ pub fn open(path: &PathBuf) -> Result<NcFile, NcError> {
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use std::path::PathBuf;
 /// #
 /// let path = PathBuf::from("netcdf.nc");
 /// let file = extract::open(&path)?;
 /// let date: String = extract::attribute(&file, netcdf_fields::NC_DATE)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Panics
@@ -199,13 +194,13 @@ pub fn attribute(file: &NcFile, name: &str) -> Result<String, NcError> {
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::*;
 /// # use std::path::PathBuf;
 /// #
 /// let path = PathBuf::from("netcdf.nc");
 /// let file = extract::open(&path)?;
 /// let version: semver::Version = extract::version(&file)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -234,15 +229,15 @@ fn check_if_empty(var: &Variable) -> Result<(), NcError> {
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use std::path::PathBuf;
 /// #
 /// let path = PathBuf::from("netcdf.nc");
 /// let file = extract::open(&path)?;
 ///
 /// let qfactor_var = extract::variable(&file, netcdf_fields::NC_Q)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -283,8 +278,8 @@ where
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use ndarray::Array1;
 /// # use std::path::PathBuf;
 /// #
@@ -292,7 +287,7 @@ where
 /// let file = extract::open(&path)?;
 ///
 /// let baxis: f64 = extract::scalar(&file, netcdf_fields::NC_BAXIS)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -308,8 +303,8 @@ pub fn scalar<T: NcType>(file: &NcFile, name: &str) -> Result<T, NcError> {
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use ndarray::Array1;
 /// # use std::path::PathBuf;
 /// #
@@ -317,7 +312,7 @@ pub fn scalar<T: NcType>(file: &NcFile, name: &str) -> Result<T, NcError> {
 /// let file = extract::open(&path)?;
 ///
 /// let q_array: Array1<f64> = extract::array_1d(&file, netcdf_fields::NC_Q)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -333,8 +328,8 @@ pub fn array_1d<T: NcType>(file: &NcFile, name: &str) -> Result<Array1<T>, NcErr
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use ndarray::Array2;
 /// # use std::path::PathBuf;
 /// #
@@ -342,7 +337,7 @@ pub fn array_1d<T: NcType>(file: &NcFile, name: &str) -> Result<Array1<T>, NcErr
 /// let file = extract::open(&path)?;
 ///
 /// let b_norm_array: Array2<f64> = extract::array_2d(&file, netcdf_fields::NC_B_NORM)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -358,8 +353,8 @@ pub fn array_2d<T: NcType>(file: &NcFile, name: &str) -> Result<Array2<T>, NcErr
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::extract::netcdf_fields;
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::extract::netcdf_fields;
+/// # use dexter_machine::*;
 /// # use ndarray::Array3;
 /// # use std::path::PathBuf;
 /// #
@@ -367,7 +362,7 @@ pub fn array_2d<T: NcType>(file: &NcFile, name: &str) -> Result<Array2<T>, NcErr
 /// let file = extract::open(&path)?;
 ///
 /// let alphas_norm_array: Array3<f64> = extract::array_3d(&file, netcdf_fields::NC_ALPHAS_NORM)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors
@@ -381,7 +376,7 @@ pub fn array_3d<T: NcType>(file: &NcFile, name: &str) -> Result<Array3<T>, NcErr
 ///
 /// # Example
 /// ```
-/// # use dexter_equilibrium::*;
+/// # use dexter_machine::*;
 /// # use ndarray::Array1;
 /// # use std::path::PathBuf;
 /// #
@@ -389,7 +384,7 @@ pub fn array_3d<T: NcType>(file: &NcFile, name: &str) -> Result<Array3<T>, NcErr
 /// let file = extract::open(&path)?;
 ///
 /// let (mode32_alpha, mode32_phase) = extract::mode_arrays::<f64>(&file, 3, 2)?;
-/// # Ok::<_, EqError>(())
+/// # Ok::<_, MachineError>(())
 /// ```
 ///
 /// # Errors

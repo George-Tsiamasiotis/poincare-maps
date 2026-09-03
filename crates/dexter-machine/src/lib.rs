@@ -1,27 +1,28 @@
 #![doc = include_str!("../README.md")]
 //!
-//! # Equilibrium
+//! # Machine
 //!
-//! + [`Equilibrium`]: Representation of an equilibrium and added perturbations.
+//! + [`Machine`]: Contains all information about the magnetic field, geometry and perturbations of a
+//!   device.
 //!
-//! # Equilibrium objects
+//! # Machine objects
 //!
-//! + Representations of an equilibrium's general geometry. Provides interpolation methods between `ψ`, `ψp`, `r`, `R`, `Z`, `J`.
+//! + Representations of a machine's general geometry. Provides interpolation methods between `ψ`, `ψp`, `r`, `R`, `Z`, `J`.
 //!     - [`LarGeometry`]: Analytical Large Aspect Ratio Geometry of a circular device.
-//!     - [`NcGeometry`]: Geometry of the netCDF equilibrium
+//!     - [`NcGeometry`]: Geometry from a netCDF file.
 //!
 //! + Representations of the q-factor profile:
 //!     - [`UnityQfactor`]: q-factor profile of q = 1 and ψ=ψp.
 //!     - [`ParabolicQfactor`]: q-factor of parabolic q(ψ) profile.
-//!     - [`NcQfactor`]: q-factor reconstructed from a netCDF file.
+//!     - [`NcQfactor`]: q-factor from a netCDF file.
 //!
 //! + Representations of the plasma currents:
 //!     - [`LarCurrent`]: Large Aspect Ration plasma current with g=1 and I=0.
-//!     - [`NcCurrent`]: Plasma current reconstructed from a netCDF file.
+//!     - [`NcCurrent`]: Plasma current from a netCDF file.
 //!
 //! + Representations of the magnetic field:
 //!     - [`LarBfield`]: Large Aspect Ratio magnetic field with B(ψ, θ) = 1 - sqrt(2ψ)cos(θ).
-//!     - [`NcBfield`]: Magnetic reconstructed from a netCDF file.
+//!     - [`NcBfield`]: Magnetic field from a netCDF file.
 //!
 //! + Representations of single perturbation modes:
 //!     - [`FluteMode`]: Single analytical flute mode of the form `α*cos(mθ-nζ+φ)`.
@@ -31,9 +32,9 @@
 //! + Representations of Perturbations.
 //!     - [`Perturbation`]: A sum of an arbitrary number of [`Modes`](Mode).
 //!
-//! ## Evaluations:
+//! ## Evaluation Traits:
 //!
-//! + [`Geometry`]: Conversions to laboratory quantities.
+//! + [`Geometry`]: Conversions to and from laboratory quantities.
 //! + [`FluxCommute`]: Conversion between the two flux coordinates `ψ` and `ψp`
 //! + [`Qfactor`]: Evaluation of q-factor related quantities.
 //! + [`Current`]: Evaluation of plasma current related quantities.
@@ -70,9 +71,9 @@
 //! + [`extract::attribute`]: Extraction of a file's attribute as a String.
 //! + [`extract::version`]: Extraction of a files convention [`Semantic Version`](https://semver.org/)
 
-mod equilibrium;
 mod error;
 mod eval;
+mod machine;
 mod objects;
 
 // ============== Re-exports
@@ -84,17 +85,17 @@ pub use rsl_interpolation::{Accelerator, Accelerator2d};
 
 pub mod extract;
 
-pub use error::{EqError, EvalError, NcError};
+pub use machine::{Machine, MachineBuilder};
 
-pub use objects::{LastClosedFluxSurface, ObjectType};
+pub use error::{EvalError, MachineError, NcError};
+
+pub use objects::{LastClosedFluxSurface, MachineType};
 
 pub use objects::nc_flux::FluxCoordinateState;
 
 pub use eval::ModeCache;
-pub use eval::{Bfield, Current, EquilibriumObject, FluxCommute, Geometry, Mode, Qfactor};
+pub use eval::{Bfield, Current, FluxCommute, Geometry, MachineObject, Mode, Qfactor};
 pub use eval::{DynMode, DynModeCache};
-
-pub use equilibrium::Equilibrium;
 
 pub use objects::geometries::LarGeometry;
 pub use objects::geometries::NcGeometry;
@@ -109,9 +110,9 @@ pub use objects::currents::LarCurrent;
 pub use objects::currents::NcCurrent;
 pub use objects::currents::NcCurrentBuilder;
 
-pub use objects::bfield::LarBfield;
-pub use objects::bfield::NcBfield;
-pub use objects::bfield::NcBfieldBuilder;
+pub use objects::bfields::LarBfield;
+pub use objects::bfields::NcBfield;
+pub use objects::bfields::NcBfieldBuilder;
 
 pub use objects::flute_mode::{FluteMode, FluteModeCache};
 pub use objects::nc_flute_mode::{NcFluteMode, NcFluteModeBuilder, NcFluteModeCache, PhaseMethod};

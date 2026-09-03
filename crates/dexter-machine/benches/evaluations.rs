@@ -1,10 +1,10 @@
-//! Benchmark for the equilibrium objects evaluation methods.
+//! Benchmark for the machine objects' evaluation methods.
 
 #![allow(unused_results)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dexter_equilibrium::extract::TEST_NETCDF_PATH;
-use dexter_equilibrium::*;
+use dexter_machine::extract::TEST_NETCDF_PATH;
+use dexter_machine::*;
 
 use std::path::PathBuf;
 

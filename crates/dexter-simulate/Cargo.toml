@@ -14,7 +14,7 @@ description = "Simulations of charge particles inside a plasma"
 
 [dependencies]
 dexter-common.workspace = true
-dexter-equilibrium.workspace = true
+dexter-machine.workspace = true
 thiserror.workspace = true
 ndarray.workspace = true
 approx.workspace = true

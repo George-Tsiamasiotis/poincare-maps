@@ -1,8 +1,8 @@
-//! Custom Error types for netCDF and equilibrium object creation/evalution errors.
+//! Custom Error types for netCDF and machine object creation/evalution errors.
 
 /// Top level Error type.
 #[derive(thiserror::Error, Debug)]
-pub enum EqError {
+pub enum MachineError {
     /// From [`std::io::Error`].
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
@@ -37,7 +37,7 @@ pub enum EvalError {
 
     /// Analytical evaluation method received an out-of-bounds input.
     ///
-    /// The bounds check is enforced by the definition of the equilibrium object's
+    /// The bounds check is enforced by the definition of the machine object's
     /// [`LastClosedFluxSurface`](crate::LastClosedFluxSurface), rather than the formula itself.
     #[error("Analytical calculation domain error")]
     AnalyticalDomainError,

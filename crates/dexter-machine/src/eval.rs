@@ -1,14 +1,14 @@
-//! Definitions of evaluation methods of equilibrium objects.
+//! Definitions of evaluation methods of machine objects.
 //!
-//! For analytical equilibria, this is achieved by evaluation of analytical formulas, while for
-//! numerical equilibria by interpolation over the reconstructed data arrays.
+//! For analytical machines, this is achieved by evaluation of analytical formulas, while for
+//! numerical machines by interpolation over the reconstructed data arrays.
 
 use std::fmt::Debug;
 
 use ndarray::Array1;
 use rsl_interpolation::{Accelerator, Accelerator2d};
 
-use crate::{EvalError, FluxCoordinateState, ObjectType};
+use crate::{EvalError, FluxCoordinateState, MachineType};
 
 /// Reference to a dynamically dispatched [`Mode`] object.
 pub type DynMode = Box<dyn Mode>;
@@ -16,10 +16,10 @@ pub type DynMode = Box<dyn Mode>;
 /// Reference to a dynamically dispatched [`ModeCache`] object.
 pub type DynModeCache = Box<dyn ModeCache + Send + Sync + 'static>;
 
-/// Common equilibrium object methods.
-pub trait EquilibriumObject: Debug + Send + Sync {
-    /// Returns the object's equilibrium type.
-    fn object_type(&self) -> ObjectType;
+/// Basic machine object methods.
+pub trait MachineObject: Debug + Send + Sync {
+    /// Returns the machine object's type.
+    fn machine_type(&self) -> MachineType;
 
     /// Returns the [`FluxCoordinateState`] of the toroidal `ψ` flux coordinate.
     fn psi_state(&self) -> FluxCoordinateState;
@@ -28,8 +28,8 @@ pub trait EquilibriumObject: Debug + Send + Sync {
     fn psip_state(&self) -> FluxCoordinateState;
 }
 
-/// Equilibrium geometry related quantities computation.
-pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
+/// Machine geometry related quantities computation.
+pub trait Geometry: MachineObject + Debug + Send + Sync {
     /// Returns the magnetic field strength on the axis `B0` in **\[T\]**.
     fn baxis(&self) -> f64;
 
@@ -56,7 +56,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// #
     /// # let path = PathBuf::from("./netcdf.nc");
@@ -66,7 +66,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let r_of_psi = geometry.r_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -79,7 +79,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -90,7 +90,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let r_of_psip = geometry.r_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -103,7 +103,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -114,7 +114,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psi_of_r = geometry.psi_of_r(0.02, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -127,7 +127,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -138,7 +138,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psip_of_r = geometry.psip_of_r(0.02, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -151,7 +151,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -162,7 +162,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let rlab_of_psi = geometry.rlab_of_psi(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -175,7 +175,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -186,7 +186,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let rlab_of_psip = geometry.rlab_of_psip(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -204,7 +204,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -215,7 +215,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let zlab_of_psi = geometry.zlab_of_psi(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -228,7 +228,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -239,7 +239,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let zlab_of_psip = geometry.zlab_of_psip(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -257,7 +257,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -268,7 +268,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let jacobian_of_psi = geometry.jacobian_of_psi(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -286,7 +286,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -297,7 +297,7 @@ pub trait Geometry: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let jacobian_of_psip = geometry.zlab_of_psip(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -324,7 +324,7 @@ pub trait FluxCommute: Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -333,7 +333,7 @@ pub trait FluxCommute: Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psip_of_psi = qfactor.psip_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -346,7 +346,7 @@ pub trait FluxCommute: Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -357,7 +357,7 @@ pub trait FluxCommute: Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psi_of_psip = geometry.psi_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -367,7 +367,7 @@ pub trait FluxCommute: Debug + Send + Sync {
 }
 
 /// q-factor related quantities computation.
-pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
+pub trait Qfactor: MachineObject + FluxCommute + Debug + Send + Sync {
     /// Returns the value of the last closed toroidal flux `ψ_last`.
     fn psi_last(&self) -> f64;
 
@@ -385,7 +385,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -394,7 +394,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let q_of_psi = qfactor.q_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -407,7 +407,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -416,7 +416,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let q_of_psip = qfactor.q_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -431,7 +431,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -440,7 +440,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let dpsip_dpsi = qfactor.dpsip_dpsi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -455,7 +455,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -464,7 +464,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let dpsi_dpsip = qfactor.dpsi_dpsip(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -477,7 +477,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -486,7 +486,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let iota_of_psi = qfactor.iota_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -502,7 +502,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -511,7 +511,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let iota_of_psip = qfactor.iota_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -527,7 +527,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -536,7 +536,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psi_of_q = qfactor.psi_of_q(1.2, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -549,7 +549,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -558,7 +558,7 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let psip_of_q = qfactor.psip_of_q(1.2, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -568,13 +568,13 @@ pub trait Qfactor: EquilibriumObject + FluxCommute + Debug + Send + Sync {
 }
 
 /// Plasma current related quantities computation.
-pub trait Current: EquilibriumObject + Debug + Send + Sync {
+pub trait Current: MachineObject + Debug + Send + Sync {
     /// Calculates `g(ψ)`.
     ///
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -583,7 +583,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let g_of_psi = current.g_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -596,7 +596,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -605,7 +605,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let g_of_psip = current.g_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -618,7 +618,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -627,7 +627,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let i_of_psi = current.i_of_psi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -640,7 +640,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -649,7 +649,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let i_of_psip = current.i_of_psip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -662,7 +662,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -671,7 +671,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let dg_dpsi = current.dg_dpsi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -684,7 +684,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -693,7 +693,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let dg_dpsip = current.dg_dpsip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -706,7 +706,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -715,7 +715,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let di_dpsi = current.di_dpsi(0.01, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -728,7 +728,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// # use rsl_interpolation::Accelerator;
     /// #
@@ -737,7 +737,7 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator::new();
     /// let di_dpsip = current.di_dpsip(0.015, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -747,13 +747,13 @@ pub trait Current: EquilibriumObject + Debug + Send + Sync {
 }
 
 /// Magnetic field related quantities computation.
-pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
+pub trait Bfield: MachineObject + Debug + Send + Sync {
     /// Calculates `B(ψ, θ)`.
     ///
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -762,7 +762,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let b_of_psi = bfield.b_of_psi(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -775,7 +775,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -784,7 +784,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let b_of_psip = bfield.b_of_psip(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -797,7 +797,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -806,7 +806,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let db_dpsi = bfield.db_dpsi(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -819,7 +819,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -828,7 +828,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let db_dpsip = bfield.db_dpsip(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -841,7 +841,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -850,7 +850,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let db_of_psi_dtheta = bfield.db_of_psi_dtheta(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -868,7 +868,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use rsl_interpolation::*;
     /// # use std::path::PathBuf;
     /// #
@@ -877,7 +877,7 @@ pub trait Bfield: EquilibriumObject + Debug + Send + Sync {
     /// #
     /// let acc = &mut Accelerator2d::new();
     /// let db_of_psip_dtheta = bfield.db_of_psip_dtheta(0.01, 3.14, acc)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -933,7 +933,7 @@ pub trait ModeCache: DynModeCacheClone + Debug {
     private_bounds,
     reason = "only used internally for creating Perturbation"
 )]
-pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
+pub trait Mode: MachineObject + DynModeClone + Debug + Send + Sync {
     /// Returns the value of the last closed toroidal flux surface `ψ_last`.
     fn psi_last(&self) -> Option<f64>;
 
@@ -951,11 +951,11 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let cache1 = mode.generate_cache();
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     fn generate_cache(&self) -> DynModeCache;
 
@@ -964,12 +964,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let a = mode.ampl_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -989,12 +989,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let a = mode.ampl_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1014,12 +1014,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let phase = mode.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1039,12 +1039,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let phase = mode.phase_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1064,12 +1064,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let m = mode.m_of_psi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1089,12 +1089,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let m = mode.m_of_psip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1114,12 +1114,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_dpsi = mode.dm_dpsi(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1139,12 +1139,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_dpsip = mode.dm_dpsip(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1164,12 +1164,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psi_dtheta = mode.dm_of_psi_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1189,12 +1189,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psip_dtheta = mode.dm_of_psip_dtheta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1214,12 +1214,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psi_dzeta = mode.dm_of_psi_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1239,12 +1239,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psip_dzeta = mode.dm_of_psip_dzeta(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1264,12 +1264,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psi_dt = mode.dm_of_psi_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -1289,12 +1289,12 @@ pub trait Mode: EquilibriumObject + DynModeClone + Debug + Send + Sync {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// let mut cache = mode.generate_cache();
     /// let dm_of_psip_dt = mode.dm_of_psip_dt(0.1, 0.2, 0.3, 0.0, &mut cache)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors

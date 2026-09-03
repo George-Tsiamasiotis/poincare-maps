@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use ndarray::{Array1, Array2};
 
 #[test]
@@ -14,7 +14,7 @@ fn lar_geometry() {
     assert_eq!(geometry.psi_state(), FluxCoordinateState::Good);
     assert_eq!(geometry.psip_state(), FluxCoordinateState::Bad);
 
-    let equilibrium_type: ObjectType = geometry.object_type();
+    let machine_type: MachineType = geometry.machine_type();
     let baxis: f64 = geometry.baxis();
     let raxis: f64 = geometry.raxis();
     let rlast: f64 = geometry.rlast();
@@ -72,7 +72,7 @@ fn nc_geometry() {
     assert_eq!(geometry.psi_state(), FluxCoordinateState::Good);
     assert_eq!(geometry.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: ObjectType = geometry.object_type();
+    let machine_type: MachineType = geometry.machine_type();
     let netcdf_version: semver::Version = geometry.netcdf_version();
     let path: PathBuf = geometry.path();
     let interp1d_type: Interpolation1dType = geometry.interp1d_type();

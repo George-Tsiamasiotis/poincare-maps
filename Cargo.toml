@@ -2,7 +2,7 @@
 resolver = "3"
 members = [
     "crates/dexter-common",
-    "crates/dexter-equilibrium",
+    "crates/dexter-machine",
     "crates/dexter-simulate",
     "crates/dexter",
     "py-dexter",
@@ -21,7 +21,7 @@ rsl-interpolation = { git = "https://github.com/George-Tsiamasiotis/rsl-interpol
 
 dexter = { path = "crates/dexter" }
 dexter-common = { path = "crates/dexter-common" }
-dexter-equilibrium = { path = "crates/dexter-equilibrium" }
+dexter-machine = { path = "crates/dexter-machine" }
 dexter-simulate = { path = "crates/dexter-simulate" }
 
 [workspace.package]
@@ -32,7 +32,7 @@ license = "GPL-3.0-only"
 homepage = "https://github.com/George-Tsiamasiotis/DEXTER"
 repository = "https://github.com/George-Tsiamasiotis/DEXTER"
 documentation = "https://github.com/George-Tsiamasiotis/DEXTER"
-description = "Calculations and simulations in reconstructed equilibria of toroidal fusion devices."
+description = "Calculations and simulations in reconstructed configurations of toroidal fusion devices."
 keywords = ["dexter", "physics", "plasma", "fusion"]
 categories = ["science", "simulation", "visualization"]
 

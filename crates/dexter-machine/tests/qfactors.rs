@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use approx::{assert_abs_diff_eq, assert_relative_eq};
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use ndarray::Array1;
 
 #[test]
@@ -72,7 +72,7 @@ fn nc_qfactor() {
     assert_eq!(qfactor.psi_state(), FluxCoordinateState::Good);
     assert_eq!(qfactor.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: ObjectType = qfactor.object_type();
+    let machine_type: MachineType = qfactor.machine_type();
     let netcdf_version: semver::Version = qfactor.netcdf_version();
     let path: PathBuf = qfactor.path();
     let interp_type: Interpolation1dType = qfactor.interp_type();

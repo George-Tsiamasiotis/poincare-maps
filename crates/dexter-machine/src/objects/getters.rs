@@ -1,4 +1,4 @@
-//! Common getter method implementations for equilibrium objects.
+//! Common getter method implementations for machine objects.
 
 /// Creates a getter method for extracting the flat Vec data as an Array2.
 /// The Vec is assumed to be in Fortran order, since it is intended for use by the splines.

@@ -1,9 +1,9 @@
-//! Equilibrium representation objects.
+//! Machine representation objects.
 
 pub(crate) mod getters;
 pub(crate) mod nc_flux;
 
-pub(crate) mod bfield;
+pub(crate) mod bfields;
 pub(crate) mod currents;
 pub(crate) mod flute_mode;
 pub(crate) mod geometries;
@@ -11,14 +11,14 @@ pub(crate) mod nc_flute_mode;
 pub(crate) mod perturbation;
 pub(crate) mod qfactors;
 
-/// Describes the type of equilibrium the object represents.
+/// Describes the type of machine.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ObjectType {
-    /// Equilibrium reconstructed from numerical data.
+pub enum MachineType {
+    /// Machine reconstructed from numerical data.
     ///
     /// Evaluations are calculated by interpolation.
     Numerical,
-    /// Equilibrium described by analytical formulas.
+    /// Machine described by analytical formulas.
     ///
     /// Evaluations are calculated by simply evaluating the formulas.
     Analytical,

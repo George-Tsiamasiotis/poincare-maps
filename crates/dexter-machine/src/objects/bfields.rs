@@ -1,9 +1,9 @@
-//! Representation of an equilibrium's magnetic field.
+//! Representation of a machine's magnetic field.
 
 use crate::{
-    EquilibriumObject, debug_assert_is_2pi_modulo, debug_assert_is_finite,
-    debug_assert_non_negative_psi, debug_assert_non_negative_psip, fluxes_values_array_getter_impl,
-    interp_type_getter_impl, lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
+    debug_assert_is_2pi_modulo, debug_assert_is_finite, debug_assert_non_negative_psi,
+    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
+    lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 use ndarray::{Array1, Array2, Axis, Order::ColumnMajor};
 use ndarray::{concatenate, s};
@@ -15,8 +15,8 @@ use super::debug_assert_all_finite_values;
 use crate::Interpolation2dType;
 use crate::constants::DEFAULT_THETA_PADDING_WIDTH;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{Bfield, ObjectType};
-use crate::{EqError, EvalError, NcError};
+use crate::{Bfield, MachineObject, MachineType};
+use crate::{EvalError, MachineError, NcError};
 use dexter_common::{DynInterpolator2d, make_interp2d};
 
 // ===============================================================================================
@@ -37,7 +37,7 @@ impl LarBfield {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let bfield = LarBfield::new();
     /// ```
     #[must_use]
@@ -46,9 +46,9 @@ impl LarBfield {
     }
 }
 
-impl EquilibriumObject for LarBfield {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for LarBfield {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -124,7 +124,7 @@ impl NcBfieldBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let builder = NcBfieldBuilder::new(&path, Interpolation2dType::Bicubic);
     /// ```
@@ -159,11 +159,11 @@ impl NcBfieldBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let typ = Interpolation2dType::Bicubic;
     /// let builder = NcBfieldBuilder::new(&path, typ).with_padding(5).build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// [`this`]: https://stackoverflow.com/a/25106574/32596387
@@ -178,17 +178,17 @@ impl NcBfieldBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let typ = Interpolation2dType::Bicubic;
     /// let bfield = NcBfieldBuilder::new(&path, typ).build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcBfield`].
-    pub fn build(self) -> Result<NcBfield, EqError> {
+    /// Returns an [`MachineError`] if it fails to build the [`NcBfield`].
+    pub fn build(self) -> Result<NcBfield, MachineError> {
         NcBfield::build(self)
     }
 }
@@ -235,8 +235,8 @@ pub struct NcBfield {
 
 /// Creation.
 impl NcBfield {
-    /// Constructs an [`NcBfield`] from an [`NcBfieldBuilder`].
-    pub(crate) fn build(builder: NcBfieldBuilder) -> Result<Self, EqError> {
+    /// Constructs an `NcBfield` from an [`NcBfieldBuilder`].
+    pub(crate) fn build(builder: NcBfieldBuilder) -> Result<Self, MachineError> {
         use crate::extract;
         use crate::extract::netcdf_fields::{NC_B_NORM, NC_BAXIS, NC_THETA};
 
@@ -338,9 +338,9 @@ impl NcBfield {
     }
 }
 
-impl EquilibriumObject for NcBfield {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Numerical
+impl MachineObject for NcBfield {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Numerical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {

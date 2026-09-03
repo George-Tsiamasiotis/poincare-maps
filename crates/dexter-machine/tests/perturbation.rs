@@ -4,8 +4,8 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::extract::TEST_NETCDF_PATH;
-use dexter_equilibrium::*;
+use dexter_machine::extract::TEST_NETCDF_PATH;
+use dexter_machine::*;
 
 #[test]
 #[rustfmt::skip]

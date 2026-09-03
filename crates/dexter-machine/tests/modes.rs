@@ -2,7 +2,7 @@
 
 #![allow(unused_variables)]
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use ndarray::Array1;
 use std::f64::consts::PI;
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ fn flute_mode_toroidal_lcfs() {
     assert_eq!(mode.psi_state(), FluxCoordinateState::Good);
     assert_eq!(mode.psip_state(), FluxCoordinateState::Bad);
 
-    assert_eq!(mode.object_type(), ObjectType::Analytical);
+    assert_eq!(mode.machine_type(), MachineType::Analytical);
     assert_eq!(mode.epsilon(), 1e-3);
     assert_eq!(mode.m(), 3);
     assert_eq!(mode.n(), 2);
@@ -55,7 +55,7 @@ fn flute_mode_poloidal_lcfs() {
     assert_eq!(mode.psi_state(), FluxCoordinateState::Bad);
     assert_eq!(mode.psip_state(), FluxCoordinateState::Good);
 
-    assert_eq!(mode.object_type(), ObjectType::Analytical);
+    assert_eq!(mode.machine_type(), MachineType::Analytical);
     assert_eq!(mode.epsilon(), 1e-3);
     assert_eq!(mode.m(), 3);
     assert_eq!(mode.n(), 2);
@@ -98,7 +98,7 @@ fn nc_flute_mode() {
     assert_eq!(mode.psi_state(), FluxCoordinateState::Good);
     assert_eq!(mode.psip_state(), FluxCoordinateState::Good);
 
-    assert_eq!(mode.object_type(), ObjectType::Numerical);
+    assert_eq!(mode.machine_type(), MachineType::Numerical);
     assert_eq!(mode.m(), 3);
     assert_eq!(mode.n(), 2);
     assert!(matches!(mode.phase_method(), Interpolation));

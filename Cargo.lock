@@ -293,7 +293,7 @@ dependencies = [
 name = "dexter"
 version = "0.1.1"
 dependencies = [
- "dexter-equilibrium",
+ "dexter-machine",
  "dexter-simulate",
 ]
 
@@ -305,8 +305,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "dexter-equilibrium"
-version = "0.1.8-pre.3"
+name = "dexter-machine"
+version = "0.1.8"
 dependencies = [
  "approx",
  "criterion",
@@ -324,7 +324,7 @@ version = "0.1.6-pre.1"
 dependencies = [
  "approx",
  "dexter-common",
- "dexter-equilibrium",
+ "dexter-machine",
  "indicatif",
  "ndarray",
  "parabola",

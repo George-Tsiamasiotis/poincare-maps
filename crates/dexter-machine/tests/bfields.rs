@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use ndarray::{Array1, Array2};
 
 #[test]
@@ -46,7 +46,7 @@ fn nc_bfield_no_pad() {
     assert_eq!(bfield.psi_state(), FluxCoordinateState::Good);
     assert_eq!(bfield.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: ObjectType = bfield.object_type();
+    let machine_type: MachineType = bfield.machine_type();
     let netcdf_version: semver::Version = bfield.netcdf_version();
     let path: PathBuf = bfield.path();
     let interp_type: Interpolation2dType = bfield.interp_type();

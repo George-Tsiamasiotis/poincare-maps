@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 use approx::assert_abs_diff_eq;
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use ndarray::Array1;
 
 #[test]
@@ -35,7 +35,7 @@ fn nc_current() {
     assert_eq!(current.psi_state(), FluxCoordinateState::Good);
     assert_eq!(current.psip_state(), FluxCoordinateState::Good);
 
-    let equilibrium_type: ObjectType = current.object_type();
+    let machine_type: MachineType = current.machine_type();
     let netcdf_version: semver::Version = current.netcdf_version();
     let path: PathBuf = current.path();
     let interp_type: Interpolation1dType = current.interp_type();

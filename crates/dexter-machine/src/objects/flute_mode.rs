@@ -4,8 +4,8 @@ use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
 
 use crate::{
-    DynModeCache, EquilibriumObject, EvalError, FluxCoordinateState, LastClosedFluxSurface, Mode,
-    ModeCache, ObjectType,
+    DynModeCache, EvalError, FluxCoordinateState, LastClosedFluxSurface, MachineObject,
+    MachineType, Mode, ModeCache,
 };
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
@@ -49,7 +49,7 @@ impl FluteMode {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let mode = FluteMode::new(1e-3, lcfs, 3, 2, 0.0);
     /// ```
@@ -98,9 +98,9 @@ impl FluteMode {
     }
 }
 
-impl EquilibriumObject for FluteMode {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for FluteMode {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {

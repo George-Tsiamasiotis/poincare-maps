@@ -1,6 +1,6 @@
 [package]
-name = "dexter-equilibrium"
-version = "0.1.8-pre.3"
+name = "dexter-machine"
+version = "0.1.8"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,7 +10,7 @@ categories.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 documentation.workspace = true
-description = "Representation of Equilibria from analytical formulas and experimental data."
+description = "Representations of configurations from analytical formulas and experimental data."
 
 [dependencies]
 dexter-common.workspace = true

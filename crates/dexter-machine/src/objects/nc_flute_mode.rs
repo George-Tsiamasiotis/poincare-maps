@@ -1,4 +1,4 @@
-//! Representation of a numerical equilibrium's single flute mode.
+//! Representation of a numerical flute mode.
 
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::constants::NC_ANALYTICAL_THRESHOLD_INDEX;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{DynModeCache, EquilibriumObject, Interpolation1dType, Mode, ModeCache, ObjectType};
-use crate::{EqError, EvalError};
+use crate::{DynModeCache, Interpolation1dType, MachineObject, MachineType, Mode, ModeCache};
+use crate::{EvalError, MachineError};
 use crate::{
     debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
     interp_type_getter_impl, mode_cache_getters_impl, netcdf_path_getter_impl,
@@ -56,7 +56,7 @@ impl NcFluteModeBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let builder = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2);
     /// ```
@@ -77,12 +77,12 @@ impl NcFluteModeBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # let path = PathBuf::from("./netcdf.nc");
     /// let builder = NcFluteModeBuilder::new(&path, Interpolation1dType::Cubic, 3, 2)
     ///     .with_phase_method(PhaseMethod::Interpolation)
     ///     .build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     #[must_use]
     pub fn with_phase_method(mut self, method: PhaseMethod) -> Self {
@@ -115,13 +115,13 @@ impl NcFluteModeBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # let path = PathBuf::from("./netcdf.nc");
     /// let typ = Interpolation1dType::Akima;
     /// let builder = NcFluteModeBuilder::new(&path, typ, 3, 2)
     ///     .with_analytical_threshold_index(4)
     ///     .build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     #[must_use]
     pub fn with_analytical_threshold_index(mut self, index: usize) -> Self {
@@ -134,17 +134,17 @@ impl NcFluteModeBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # let path = PathBuf::from("./netcdf.nc");
     /// let typ = Interpolation1dType::Akima;
     /// let mode = NcFluteModeBuilder::new(&path, typ, 3, 2).build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcFluteMode`].
-    pub fn build(self) -> Result<NcFluteMode, EqError> {
+    /// Returns an [`MachineError`] if it fails to build the [`NcFluteMode`].
+    pub fn build(self) -> Result<NcFluteMode, MachineError> {
         NcFluteMode::build(self)
     }
 }
@@ -180,9 +180,9 @@ pub struct NcFluteMode {
 }
 
 impl NcFluteMode {
-    /// Constructs an [`NcFluteMode`] from an [`NcFluteModeBuilder`].
+    /// Constructs an `NcFluteMode` from an [`NcFluteModeBuilder`].
     #[expect(clippy::needless_pass_by_value, reason = "should be consumed")]
-    pub(crate) fn build(builder: NcFluteModeBuilder) -> Result<Self, EqError> {
+    pub(crate) fn build(builder: NcFluteModeBuilder) -> Result<Self, MachineError> {
         use crate::extract;
 
         // Make path absolute for display purposes.
@@ -217,9 +217,9 @@ impl NcFluteMode {
     }
 }
 
-impl EquilibriumObject for NcFluteMode {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Numerical
+impl MachineObject for NcFluteMode {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Numerical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -638,7 +638,7 @@ impl SingleNcFluteMode {
         file: &netcdf::File,
         builder: &NcFluteModeBuilder,
         flux: NcFlux,
-    ) -> Result<Self, EqError> {
+    ) -> Result<Self, MachineError> {
         use crate::extract;
 
         let (alpha_data, phase_data) = extract::mode_arrays(file, builder.m, builder.n)?;
@@ -713,7 +713,7 @@ impl SingleNcFluteMode {
 
     /// Calculates the patch's `β` and `γ` coefficients.
     #[expect(clippy::unwrap_in_result, reason = "cannot panic")]
-    fn patch_axis(mut self) -> Result<Self, EqError> {
+    fn patch_axis(mut self) -> Result<Self, MachineError> {
         let Some(interp) = self.alpha_interp.as_ref() else {
             return Ok(self);
         };
@@ -724,7 +724,7 @@ impl SingleNcFluteMode {
             .uvalues()
             .get(self.analytical_threshold_index)
             .copied()
-            .ok_or(EqError::InvalidFluteModeAnalyticalThresholdIndex)?;
+            .ok_or(MachineError::InvalidFluteModeAnalyticalThresholdIndex)?;
         let switch_alpha = interp
             .eval(self.flux.uvalues(), &self.alpha_values, flux_value, acc)
             .expect("domain just checked");
@@ -1234,9 +1234,9 @@ mod nc_flute_mode_analytical_threshold {
             .with_analytical_threshold_index(5000000000)
             .build();
 
-        assert!(
-            mode_attempt
-                .is_err_and(|err| matches!(err, EqError::InvalidFluteModeAnalyticalThresholdIndex))
-        );
+        assert!(mode_attempt.is_err_and(|err| matches!(
+            err,
+            MachineError::InvalidFluteModeAnalyticalThresholdIndex
+        )));
     }
 }

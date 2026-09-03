@@ -11,10 +11,10 @@ documentation.workspace = true
 description = "Collection of all crates needed to build 'py-dexter'"
 
 [dependencies]
-dexter-equilibrium.workspace = true
+dexter-machine.workspace = true
 dexter-simulate.workspace = true
 
 [features]
 default = []
-netcdf-static = ["dexter-equilibrium/netcdf-static"]
-openblas-static = ["dexter-equilibrium/openblas-static"]
+netcdf-static = ["dexter-machine/netcdf-static"]
+openblas-static = ["dexter-machine/openblas-static"]

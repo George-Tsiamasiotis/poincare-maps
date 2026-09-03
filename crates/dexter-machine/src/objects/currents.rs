@@ -1,9 +1,9 @@
-//! Representation of an equilibrium's plasma current.
+//! Representation of a machine's plasma current.
 
 use crate::{
-    EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
-    lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
+    fluxes_values_array_getter_impl, interp_type_getter_impl, lcfs_getter_impl,
+    netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{Current, ObjectType};
-use crate::{EqError, EvalError};
+use crate::{Current, MachineObject, MachineType};
+use crate::{EvalError, MachineError};
 use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
@@ -32,7 +32,7 @@ impl LarCurrent {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let current = LarCurrent::new();
     /// ```
     #[must_use]
@@ -41,9 +41,9 @@ impl LarCurrent {
     }
 }
 
-impl EquilibriumObject for LarCurrent {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for LarCurrent {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -119,13 +119,13 @@ pub struct NcCurrentBuilder {
 }
 
 impl NcCurrentBuilder {
-    /// Creates a new [`NcCurrentBuilder`] from a netCDF file at `path`, with `interp_type`
+    /// Creates a new `NcCurrentBuilder` from a netCDF file at `path`, with `interp_type`
     /// interpolation type.
     ///
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let builder = NcCurrentBuilder::new(&path, Interpolation1dType::Cubic);
     /// ```
@@ -142,16 +142,16 @@ impl NcCurrentBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let current = NcCurrentBuilder::new(&path, Interpolation1dType::Akima).build()?;
-    /// Ok::<_, EqError>(())
+    /// Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcCurrent`].
-    pub fn build(self) -> Result<NcCurrent, EqError> {
+    /// Returns an [`MachineError`] if it fails to build the [`NcCurrent`].
+    pub fn build(self) -> Result<NcCurrent, MachineError> {
         NcCurrent::build(self)
     }
 }
@@ -194,8 +194,8 @@ pub struct NcCurrent {
 
 /// Creation.
 impl NcCurrent {
-    /// Constructs an [`NcCurrent`] from [`NcCurrentBuilder`].
-    fn build(builder: NcCurrentBuilder) -> Result<Self, EqError> {
+    /// Constructs an `NcCurrent` from [`NcCurrentBuilder`].
+    fn build(builder: NcCurrentBuilder) -> Result<Self, MachineError> {
         use crate::extract;
         use crate::extract::netcdf_fields::{NC_G_NORM, NC_I_NORM};
 
@@ -248,9 +248,9 @@ impl NcCurrent {
     }
 }
 
-impl EquilibriumObject for NcCurrent {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Numerical
+impl MachineObject for NcCurrent {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Numerical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {

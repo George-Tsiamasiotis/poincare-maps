@@ -1,9 +1,9 @@
-//! Representation of an equilibrium's q-factor profile.
+//! Representation of a machines's q-factor profile.
 
 use crate::{
-    EquilibriumObject, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
-    netcdf_path_getter_impl, netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
+    fluxes_values_array_getter_impl, interp_type_getter_impl, netcdf_path_getter_impl,
+    netcdf_version_getter_impl,
 };
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use super::debug_assert_all_finite_values;
 use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
-use crate::{EqError, EvalError};
-use crate::{FluxCommute, LastClosedFluxSurface, ObjectType, Qfactor};
+use crate::{EvalError, MachineError};
+use crate::{FluxCommute, LastClosedFluxSurface, MachineObject, MachineType, Qfactor};
 use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
@@ -33,7 +33,7 @@ impl UnityQfactor {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// // Define ψ=ψ_last=0.45
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let qfactor = UnityQfactor::new(lcfs);
@@ -47,9 +47,9 @@ impl UnityQfactor {
     }
 }
 
-impl EquilibriumObject for UnityQfactor {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for UnityQfactor {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -168,7 +168,7 @@ impl ParabolicQfactor {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// // Define q(ψ=ψ_last=0.45) = qlast = 3.8
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let qfactor = ParabolicQfactor::new(1.1, 3.8, lcfs);
@@ -232,9 +232,9 @@ impl ParabolicQfactor {
     }
 }
 
-impl EquilibriumObject for ParabolicQfactor {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Analytical
+impl MachineObject for ParabolicQfactor {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Analytical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {
@@ -371,13 +371,13 @@ pub struct NcQfactorBuilder {
 }
 
 impl NcQfactorBuilder {
-    /// Creates a new [`NcQfactorBuilder`] from a netCDF file at `path`, with `interp_type`
+    /// Creates a new `NcQfactorBuilder` from a netCDF file at `path`, with `interp_type`
     /// interpolation type.
     ///
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let builder = NcQfactorBuilder::new(&path, Interpolation1dType::Cubic);
     /// ```
@@ -394,16 +394,16 @@ impl NcQfactorBuilder {
     /// # Example
     /// ```
     /// # use std::path::PathBuf;
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let path = PathBuf::from("./netcdf.nc");
     /// let qfactor = NcQfactorBuilder::new(&path, Interpolation1dType::Akima).build()?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
     ///
-    /// Returns an [`EqError`] if it fails to build the [`NcQfactor`].
-    pub fn build(self) -> Result<NcQfactor, EqError> {
+    /// Returns an [`MachineError`] if it fails to build the [`NcQfactor`].
+    pub fn build(self) -> Result<NcQfactor, MachineError> {
         NcQfactor::build(self)
     }
 }
@@ -451,8 +451,8 @@ pub struct NcQfactor {
 
 /// Creation.
 impl NcQfactor {
-    /// Constructs an [`NcQfactor`] from an [`NcQfactorBuilder`].
-    fn build(builder: NcQfactorBuilder) -> Result<Self, EqError> {
+    /// Constructs an `NcQfactor` from an [`NcQfactorBuilder`].
+    fn build(builder: NcQfactorBuilder) -> Result<Self, MachineError> {
         use crate::extract;
         use crate::extract::netcdf_fields::NC_Q;
 
@@ -567,9 +567,9 @@ impl NcQfactor {
     }
 }
 
-impl EquilibriumObject for NcQfactor {
-    fn object_type(&self) -> ObjectType {
-        ObjectType::Numerical
+impl MachineObject for NcQfactor {
+    fn machine_type(&self) -> MachineType {
+        MachineType::Numerical
     }
 
     fn psi_state(&self) -> FluxCoordinateState {

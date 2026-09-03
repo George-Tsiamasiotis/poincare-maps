@@ -23,12 +23,12 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let perturbation = Perturbation::zero();
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     #[must_use]
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self(vec![])
     }
 }
@@ -38,7 +38,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// // from analytical flute modes
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
@@ -62,7 +62,7 @@ impl Perturbation {
     ///     Box::new(NcFluteModeBuilder::new(&path, typ, 2, 1).build()?),
     ///     Box::new(FluteMode::new(1e-3, lcfs, 19, 30, 0.0)),
     /// ]);
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     #[must_use]
     pub fn new(modes: Vec<DynMode>) -> Self {
@@ -81,7 +81,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use std::path::PathBuf;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
@@ -92,7 +92,7 @@ impl Perturbation {
     /// assert_eq!(perturbation.count(), caches.len());
     ///
     /// let p = perturbation.p_of_psi(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     #[must_use]
     pub fn generate_caches(&self) -> DynModeCaches {
@@ -106,7 +106,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -114,7 +114,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let p_of_psi = perturbation.p_of_psi(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -142,7 +142,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -150,7 +150,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let p_of_psip = perturbation.p_of_psip(0.015, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -178,7 +178,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -186,7 +186,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_dpsi = perturbation.dp_dpsi(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -214,7 +214,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -222,7 +222,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_dpsip = perturbation.dp_dpsip(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -250,7 +250,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -258,7 +258,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psi_dtheta = perturbation.dp_of_psi_dtheta(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -286,7 +286,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -294,7 +294,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psip_dtheta = perturbation.dp_of_psip_dtheta(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -322,7 +322,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -330,7 +330,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psi_dzeta = perturbation.dp_of_psi_dzeta(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -358,7 +358,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -366,7 +366,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psip_dzeta = perturbation.dp_of_psip_dzeta(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -394,7 +394,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -402,7 +402,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psi_dt = perturbation.dp_of_psi_dt(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
@@ -430,7 +430,7 @@ impl Perturbation {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// let lcfs = LastClosedFluxSurface::Poloidal(0.45);
     /// let perturbation = Perturbation::new(vec![
     ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
@@ -438,7 +438,7 @@ impl Perturbation {
     /// ]);
     /// let mut caches = perturbation.generate_caches();
     /// let dp_of_psip_dt = perturbation.dp_of_psip_dt(0.01, 3.14, 3.14, 0.0, &mut caches)?;
-    /// # Ok::<_, EqError>(())
+    /// # Ok::<_, MachineError>(())
     /// ```
     ///
     /// # Errors
