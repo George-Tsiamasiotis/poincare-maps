@@ -1,11 +1,11 @@
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 use pyo3::{CastError, exceptions::PyException, prelude::*};
 
 #[derive(Debug)]
 pub enum DexterError {
     PyErr(String),
     CastError(String),
-    /// Raised when an equilibrium object tries to access the wrong variant.
+    /// Raised when a machine object tries to access the wrong variant.
     InvalidVariant {
         wrapper: String,
         inner: String,
@@ -80,8 +80,8 @@ impl<'a, 'py> From<CastError<'a, 'py>> for DexterError {
     }
 }
 
-impl From<EqError> for DexterError {
-    fn from(err: EqError) -> Self {
+impl From<MachineError> for DexterError {
+    fn from(err: MachineError) -> Self {
         DexterError::EqError(err.to_string())
     }
 }

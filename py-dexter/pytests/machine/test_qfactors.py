@@ -10,7 +10,7 @@ LCFS = dex.LastClosedFluxSurface.Toroidal(0.05)
 
 def test_unity():
     qfactor = dex.UnityQfactor(LCFS)
-    assert qfactor.object_type == "Analytical"
+    assert qfactor.machine_type == "Analytical"
     assert qfactor.psi_state == "Good"
     assert qfactor.psip_state == "Good"
     assert qfactor.psi_last == 0.05
@@ -50,7 +50,7 @@ def _test_qfactor_base(qfactor: dex.QfactorObject):
     qfactor.__repr__()
     qfactor.__str__()
 
-    assert qfactor.object_type in ["Numerical", "Analytical"]
+    assert qfactor.machine_type in ["Numerical", "Analytical"]
     assert qfactor.psi_state in ["Good", "Bad"]
     assert qfactor.psip_state in ["Good", "Bad"]
 

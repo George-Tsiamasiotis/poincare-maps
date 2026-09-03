@@ -10,7 +10,7 @@
         show_bases: true
         inherited_members: false
 
-A LAR equilibrium's geometry is described by the following formulas:
+A LAR configuration's geometry is described by the following formulas:
 
 $$
 r(\psi) = \sqrt{2\psi}

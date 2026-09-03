@@ -6,7 +6,7 @@ from semver import Version
 from dexter._core import _PyGeometry
 
 from .utils import LastClosedFluxSurface
-from .base import EquilibriumObject, Geometry
+from .base import MachineObject, Geometry
 from dexter.types import (
     Array1,
     Array2,
@@ -18,7 +18,7 @@ from dexter.types import (
 )
 
 
-class LarGeometry(EquilibriumObject, Geometry):
+class LarGeometry(MachineObject, Geometry):
     r"""Analytical Large Aspect Ratio Geometry of a circular device.
 
     Parameters
@@ -59,11 +59,11 @@ class LarGeometry(EquilibriumObject, Geometry):
 
     def __init__(self, baxis: float, raxis: float, rlast: float) -> None:
         self._r = _PyGeometry.build_lar(baxis, raxis, rlast)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Geometry, self).__init__()
 
 
-class NcGeometry(EquilibriumObject, Geometry):
+class NcGeometry(MachineObject, Geometry):
     r"""Geometry of a realistic configuration.
 
     Stores fluxes, angles and lab variables’ data, and provides interpolation methods between them.
@@ -94,7 +94,7 @@ class NcGeometry(EquilibriumObject, Geometry):
         interp2d_type: Interpolation2dType,
     ) -> None:
         self._r = _PyGeometry.build_nc(path, interp1d_type, interp2d_type)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Geometry, self).__init__()
 
     @property

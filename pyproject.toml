@@ -1,7 +1,7 @@
 [project]
 name = "dexter"
-version = "0.2.0-pre.9"
-description = "Calculations and simulations in analytical and reconstructed equilibria of toroidal fusion devices."
+version = "0.2.0-pre.10"
+description = "Calculations and simulations in analytical and reconstructed configurations of toroidal fusion devices."
 readme = "README.md"
 authors = [
     { name = "George-Tsiamasiotis", email = "gt.develop@protonmail.com" }
@@ -47,13 +47,13 @@ test = [
 ]
 docs = [
     "mkdocstrings-python>=2.0.5",
-    "zensical==0.0.57",
+    "zensical==0.0.58",
 ]
 
 [tool.pytest.ini_options]
 testpaths = [ # Run from workspace root
     "./py-dexter/pytests",
-    "./py-dexter/dexter/equilibrium/*",
+    "./py-dexter/dexter/machine/*",
     "./py-dexter/dexter/simulate/*",
 ]
 addopts = """

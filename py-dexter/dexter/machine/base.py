@@ -1,6 +1,6 @@
-"""Equilibrium objects' base classes.
+"""Machine objects' base classes.
 
-Equilibrium objects define evaluations over equilibrium quantities, provide information about the
+Equilibrium objects define evaluations over machine quantities, provide information about the
 [`state`][dexter.types.FluxCoordinateState] of each magnetic flux coordinate, as well as useful
 scalar quantities and data arrays.
 
@@ -8,8 +8,8 @@ Each parent class corresponds to an evaluation Trait on the Rust API.
 
 Classes
 -------
-EquilibriumObject
-    Common attributes in all equilibrium objects.
+MachineObject
+    Common attributes in all machine objects.
 FluxCommute
     Methods for converting from one magnetic flux to the other.
 Qfactor
@@ -30,18 +30,18 @@ from typing import Any
 
 from dexter._core import _PyQfactor, _PyCurrent, _PyBfield, _PyGeometry, _PyMode
 from dexter._utils import _ReprStrImpl
-from dexter.types import ArrayLike, Array, Array1, FluxCoordinateState, ObjectType
+from dexter.types import ArrayLike, Array, Array1, FluxCoordinateState, MachineType
 
 
-class EquilibriumObject(_ReprStrImpl):
-    """Common attributes in all equilibrium objects."""
+class MachineObject(_ReprStrImpl):
+    """Common attributes in all machine objects."""
 
     _r: Any
 
     @property
-    def object_type(self) -> ObjectType:
-        """The object’s equilibrium type."""
-        return self._r.object_type
+    def machine_type(self) -> MachineType:
+        """The type of the machine."""
+        return self._r.machine_type
 
     @property
     def psi_state(self) -> FluxCoordinateState:

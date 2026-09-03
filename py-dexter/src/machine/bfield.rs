@@ -6,7 +6,7 @@ use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 
@@ -53,7 +53,7 @@ impl PyBfield {
 
 /// References to the trait object and variants
 impl PyBfield {
-    pub fn bfield(&self) -> &dyn Bfield {
+    pub fn inner(&self) -> &dyn Bfield {
         match self {
             PyBfield::Lar(bfield) => bfield.0.as_ref(),
             PyBfield::Nc(bfield) => bfield.0.as_ref(),
@@ -86,18 +86,18 @@ impl PyBfield {
 #[pymethods] // EquilibriumObject Trait
 impl PyBfield {
     #[getter]
-    pub fn object_type(&self) -> String {
-        format!("{:?}", self.bfield().object_type())
+    pub fn machine_type(&self) -> String {
+        format!("{:?}", self.inner().machine_type())
     }
 
     #[getter]
     pub fn psi_state(&self) -> String {
-        format!("{:?}", self.bfield().psi_state())
+        format!("{:?}", self.inner().psi_state())
     }
 
     #[getter]
     pub fn psip_state(&self) -> String {
-        format!("{:?}", self.bfield().psip_state())
+        format!("{:?}", self.inner().psip_state())
     }
 }
 
@@ -105,27 +105,27 @@ impl PyBfield {
 #[rustfmt::skip]
 impl PyBfield {
     pub fn b_of_psi(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().b_of_psi(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().b_of_psi(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn b_of_psip(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().b_of_psip(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().b_of_psip(psip, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn db_dpsi(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().db_dpsi(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().db_dpsi(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn db_dpsip(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().db_dpsip(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().db_dpsip(psip, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn db_of_psi_dtheta(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().db_of_psi_dtheta(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().db_of_psi_dtheta(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn db_of_psip_dtheta(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.bfield().db_of_psip_dtheta(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().db_of_psip_dtheta(psip, theta, &mut Accelerator2d::new())?)
     }
 }
 

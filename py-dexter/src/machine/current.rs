@@ -6,7 +6,7 @@ use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 
@@ -46,7 +46,7 @@ impl PyCurrent {
 
 /// References to the trait object and variants
 impl PyCurrent {
-    pub fn current(&self) -> &dyn Current {
+    pub fn inner(&self) -> &dyn Current {
         match self {
             PyCurrent::Lar(current) => current.0.as_ref(),
             PyCurrent::Nc(current) => current.0.as_ref(),
@@ -79,53 +79,53 @@ impl PyCurrent {
 #[pymethods] // EquilibriumObject Trait
 impl PyCurrent {
     #[getter]
-    pub fn object_type(&self) -> String {
-        format!("{:?}", self.current().object_type())
+    pub fn machine_type(&self) -> String {
+        format!("{:?}", self.inner().machine_type())
     }
 
     #[getter]
     pub fn psi_state(&self) -> String {
-        format!("{:?}", self.current().psi_state())
+        format!("{:?}", self.inner().psi_state())
     }
 
     #[getter]
     pub fn psip_state(&self) -> String {
-        format!("{:?}", self.current().psip_state())
+        format!("{:?}", self.inner().psip_state())
     }
 }
 
 #[pymethods] // Current Trait
 impl PyCurrent {
     pub fn g_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.current().g_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().g_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn g_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.current().g_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().g_of_psip(psip, &mut Accelerator::new())?)
     }
 
     pub fn i_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.current().i_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().i_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn i_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.current().i_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().i_of_psip(psip, &mut Accelerator::new())?)
     }
 
     pub fn dg_dpsi(&self, q: f64) -> Result<f64> {
-        Ok(self.current().dg_dpsi(q, &mut Accelerator::new())?)
+        Ok(self.inner().dg_dpsi(q, &mut Accelerator::new())?)
     }
 
     pub fn dg_dpsip(&self, q: f64) -> Result<f64> {
-        Ok(self.current().dg_dpsip(q, &mut Accelerator::new())?)
+        Ok(self.inner().dg_dpsip(q, &mut Accelerator::new())?)
     }
 
     pub fn di_dpsi(&self, psi: f64) -> Result<f64> {
-        Ok(self.current().di_dpsi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().di_dpsi(psi, &mut Accelerator::new())?)
     }
 
     pub fn di_dpsip(&self, psip: f64) -> Result<f64> {
-        Ok(self.current().di_dpsip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().di_dpsip(psip, &mut Accelerator::new())?)
     }
 }
 
@@ -197,6 +197,6 @@ wrapper_debug_export!(PyNcCurrent);
 #[pymethods]
 impl PyCurrent {
     pub fn __repr__(&self) -> String {
-        format!("{:#?}", self.current())
+        format!("{:#?}", self.inner())
     }
 }

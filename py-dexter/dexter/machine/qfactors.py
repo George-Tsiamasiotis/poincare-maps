@@ -6,11 +6,11 @@ from semver import Version
 from dexter._core import _PyQfactor
 
 from .utils import LastClosedFluxSurface
-from .base import EquilibriumObject, FluxCommute, Qfactor
+from .base import MachineObject, FluxCommute, Qfactor
 from dexter.types import Array1, FluxCoordinateState, Interpolation1dType, NetCDFVersion
 
 
-class UnityQfactor(EquilibriumObject, FluxCommute, Qfactor):
+class UnityQfactor(MachineObject, FluxCommute, Qfactor):
     r"""Analytical q-factor profile of $q=1$ and $\psi=\psi_p$.
 
     Parameters
@@ -31,12 +31,12 @@ class UnityQfactor(EquilibriumObject, FluxCommute, Qfactor):
 
     def __init__(self, lcfs: LastClosedFluxSurface) -> None:
         self._r = _PyQfactor.build_unity(lcfs._r)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(FluxCommute, self).__init__()
         super(Qfactor, self).__init__()
 
 
-class ParabolicQfactor(EquilibriumObject, FluxCommute, Qfactor):
+class ParabolicQfactor(MachineObject, FluxCommute, Qfactor):
     r"""Analytical parabolic q-factor profile.
 
     Parameters
@@ -59,12 +59,12 @@ class ParabolicQfactor(EquilibriumObject, FluxCommute, Qfactor):
 
     def __init__(self, qaxis: float, qwall: float, lcfs: LastClosedFluxSurface) -> None:
         self._r = _PyQfactor.build_parabolic(qaxis, qwall, lcfs._r)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(FluxCommute, self).__init__()
         super(Qfactor, self).__init__()
 
 
-class NcQfactor(EquilibriumObject, FluxCommute, Qfactor):
+class NcQfactor(MachineObject, FluxCommute, Qfactor):
     r"""Numerical q-factor profile reconstructed from a netCDF file.
 
     Related quantities are computed by interpolating over the data arrays.
@@ -92,7 +92,7 @@ class NcQfactor(EquilibriumObject, FluxCommute, Qfactor):
 
     def __init__(self, path: str, interp_type: Interpolation1dType) -> None:
         self._r = _PyQfactor.build_nc(path, interp_type)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(FluxCommute, self).__init__()
         super(Qfactor, self).__init__()
 

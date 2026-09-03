@@ -6,7 +6,7 @@ from semver import Version
 from dexter._core import _PyBfield
 
 from .utils import LastClosedFluxSurface
-from .base import EquilibriumObject, Bfield
+from .base import MachineObject, Bfield
 from dexter.types import (
     Array1,
     Array2,
@@ -18,7 +18,7 @@ from dexter.types import (
 )
 
 
-class LarBfield(EquilibriumObject, Bfield):
+class LarBfield(MachineObject, Bfield):
     r"""Analytical Large Aspect Ratio magnetic field with
     $B(\psi,\theta) = 1-\sqrt{2\psi}\cos\theta$.
 
@@ -34,11 +34,11 @@ class LarBfield(EquilibriumObject, Bfield):
 
     def __init__(self) -> None:
         self._r = _PyBfield.build_lar()
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Bfield, self).__init__()
 
 
-class NcBfield(EquilibriumObject, Bfield):
+class NcBfield(MachineObject, Bfield):
     r"""Numerical magnetic field profile reconstructed from a netCDF file.
 
     Related quantities are computed by interpolating over the data arrays.
@@ -83,7 +83,7 @@ class NcBfield(EquilibriumObject, Bfield):
         padding: int = 15,
     ) -> None:
         self._r = _PyBfield.build_nc(path, interp_type, padding)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Bfield, self).__init__()
 
     @property

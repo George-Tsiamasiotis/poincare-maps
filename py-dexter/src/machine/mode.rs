@@ -6,7 +6,7 @@ use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 
@@ -69,7 +69,7 @@ impl PyMode {
 
 /// References to the trait object and variants
 impl PyMode {
-    pub fn mode(&self) -> &dyn Mode {
+    pub fn inner(&self) -> &dyn Mode {
         match self {
             PyMode::Flute(mode) => mode.0.as_ref(),
             PyMode::Nc(mode) => mode.0.as_ref(),
@@ -109,18 +109,18 @@ impl PyMode {
 #[pymethods] // EquilibriumObject Trait
 impl PyMode {
     #[getter]
-    pub fn object_type(&self) -> String {
-        format!("{:?}", self.mode().object_type())
+    pub fn machine_type(&self) -> String {
+        format!("{:?}", self.inner().machine_type())
     }
 
     #[getter]
     pub fn psi_state(&self) -> String {
-        format!("{:?}", self.mode().psi_state())
+        format!("{:?}", self.inner().psi_state())
     }
 
     #[getter]
     pub fn psip_state(&self) -> String {
-        format!("{:?}", self.mode().psip_state())
+        format!("{:?}", self.inner().psip_state())
     }
 }
 
@@ -129,7 +129,7 @@ impl PyMode {
 impl PyMode {
     #[getter]
     pub fn psi_last(&self) -> Result<f64> {
-        self.mode().psi_last().ok_or(DexterError::AttributeError {
+        self.inner().psi_last().ok_or(DexterError::AttributeError {
             obj: "Mode".into(),
             attr: "psi_last".into(),
         })
@@ -137,7 +137,7 @@ impl PyMode {
 
     #[getter]
     pub fn psip_last(&self) -> Result<f64> {
-        self.mode().psip_last().ok_or(DexterError::AttributeError {
+        self.inner().psip_last().ok_or(DexterError::AttributeError {
             obj: "Mode".into(),
             attr: "psip_last".into(),
         })
@@ -145,68 +145,68 @@ impl PyMode {
 
     #[getter]
     pub fn m(&self) -> Result<i64> {
-        Ok(self.mode().m())
+        Ok(self.inner().m())
     }
 
     #[getter]
     pub fn n(&self) -> Result<i64> {
-        Ok(self.mode().n())
+        Ok(self.inner().n())
     }
 
     pub fn ampl_of_psi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().ampl_of_psi(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().ampl_of_psi(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn ampl_of_psip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().ampl_of_psip(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().ampl_of_psip(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn phase_of_psi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().phase_of_psi(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().phase_of_psi(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn phase_of_psip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().phase_of_psip(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().phase_of_psip(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn m_of_psi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().m_of_psi(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().m_of_psi(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn m_of_psip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().m_of_psip(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().m_of_psip(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_dpsi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_dpsi(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_dpsi(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_dpsip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_dpsip(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_dpsip(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psi_dtheta(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psi_dtheta(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psi_dtheta(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psip_dtheta(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psip_dtheta(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psip_dtheta(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psi_dzeta(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psi_dzeta(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psi_dzeta(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psip_dzeta(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psip_dzeta(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psip_dzeta(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psi_dt(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psi_dt(psi, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psi_dt(psi, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 
     pub fn dm_of_psip_dt(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
-        Ok(self.mode().dm_of_psip_dt(psip, theta, zeta, t, &mut self.mode().generate_cache())?)
+        Ok(self.inner().dm_of_psip_dt(psip, theta, zeta, t, &mut self.inner().generate_cache())?)
     }
 }
 
@@ -297,6 +297,6 @@ wrapper_debug_export!(PyNcFluteMode);
 #[pymethods]
 impl PyMode {
     pub fn __repr__(&self) -> String {
-        format!("{:#?}", self.mode())
+        format!("{:#?}", self.inner())
     }
 }

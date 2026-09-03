@@ -7,7 +7,7 @@
 # ]
 # ///
 
-"""Creates a test netCDF file with a LAR equilibrium.
+"""Creates a test netCDF file with a LAR configuration.
 
 Flux coordinates behavior:
 
@@ -371,11 +371,11 @@ VARIABLES = {
 
 match args.coord:
     case "both":
-        description = "LAR testing equilibrium with monotonic ψ and ψp"
+        description = "LAR testing configuration with monotonic ψ and ψp"
     case "toroidal":
-        description = "LAR testing equilibrium with monotonic ψ and non-monotonic ψp"
+        description = "LAR testing configuration with monotonic ψ and non-monotonic ψp"
     case "poloidal":
-        description = "LAR testing equilibrium with non-monotonic ψ and monotonic ψp"
+        description = "LAR testing configuration with non-monotonic ψ and monotonic ψp"
     case _:
         assert_never(args.coord)
 

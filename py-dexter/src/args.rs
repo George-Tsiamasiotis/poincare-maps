@@ -1,7 +1,7 @@
 use pyo3::types::PyTuple;
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 pub fn resolve_interpolation_1d_type(interp_type: String) -> Result<Interpolation1dType> {
     use Interpolation1dType::*;

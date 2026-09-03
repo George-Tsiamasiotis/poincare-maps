@@ -1,6 +1,6 @@
 [project]
 site_name = "DEXTER"
-site_description = "A code for performing calculations and simulations of particles and magnetic field lines, with reconstructed equilibria from experimental data."
+site_description = "A code for performing calculations and simulations of particles and magnetic field lines on analytical and reconstructed configurations."
 site_author = "Giorgos Tsiamasiotis"
 site_url = "https://dexter.tsiamasiotis.gr/"
 repo_url = "https://github.com/George-Tsiamasiotis/DEXTER"
@@ -11,15 +11,15 @@ nav = [
     {"Home" = "index.md"},
     {"NetCDF" = "netcdf.md"},
     {"Types" = "reference/types.md"},
-    {"Equilibrium" = [
-        "reference/equilibrium/helpers.md",
-        "reference/equilibrium/base.md",
-        "reference/equilibrium/geometries.md",
-        "reference/equilibrium/qfactors.md",
-        "reference/equilibrium/currents.md",
-        "reference/equilibrium/bfields.md",
-        "reference/equilibrium/modes.md",
-        "reference/equilibrium/perturbation.md",
+    {"Machine" = [
+        "reference/machine/helpers.md",
+        "reference/machine/base.md",
+        "reference/machine/geometries.md",
+        "reference/machine/qfactors.md",
+        "reference/machine/currents.md",
+        "reference/machine/bfields.md",
+        "reference/machine/modes.md",
+        "reference/machine/perturbation.md",
     ]},
     {"Simulate" = [
         "reference/simulate/initial.md",

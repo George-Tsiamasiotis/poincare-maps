@@ -6,7 +6,7 @@ from semver import Version
 from dexter._core import _PyMode
 
 from .utils import LastClosedFluxSurface
-from .base import EquilibriumObject, Mode
+from .base import MachineObject, Mode
 from dexter.types import (
     Array1,
     FluxCoordinateState,
@@ -16,7 +16,7 @@ from dexter.types import (
 )
 
 
-class FluteMode(EquilibriumObject, Mode):
+class FluteMode(MachineObject, Mode):
     r"""A simple analytical flute mode.
 
     Parameters
@@ -48,7 +48,7 @@ class FluteMode(EquilibriumObject, Mode):
         self, epsilon: float, lcfs: LastClosedFluxSurface, m: int, n: int, phase: float
     ) -> None:
         self._r = _PyMode.build_flute(epsilon, lcfs._r, m, n, phase)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Mode, self).__init__()
 
     @property
@@ -67,7 +67,7 @@ class FluteMode(EquilibriumObject, Mode):
         return self._r.phase
 
 
-class NcFluteMode(EquilibriumObject, Mode):
+class NcFluteMode(MachineObject, Mode):
     r"""Single perturbation flute mode from a netCDF file.
 
     Related quantities are computed by interpolating over the data arrays.
@@ -139,7 +139,7 @@ class NcFluteMode(EquilibriumObject, Mode):
         self._r = _PyMode.build_nc(
             path, interp_type, m, n, phase_method, analytical_threshold_index
         )
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Mode, self).__init__()
 
     @property

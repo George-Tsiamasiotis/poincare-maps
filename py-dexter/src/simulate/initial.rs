@@ -39,7 +39,7 @@ impl PyInitialFlux {
 // ===============================================================================================
 
 #[pyclass(name = "_PyInitialConditions", frozen, immutable_type)]
-pub struct PyInitialConditions(InitialConditions);
+pub struct PyInitialConditions(pub(crate) InitialConditions);
 
 #[pymethods]
 impl PyInitialConditions {

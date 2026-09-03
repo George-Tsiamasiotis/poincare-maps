@@ -41,7 +41,7 @@ def _test_geometry_base(geometry: dex.GeometryObject):
     geometry.__repr__()
     geometry.__str__()
 
-    assert geometry.object_type in ["Numerical", "Analytical"]
+    assert geometry.machine_type in ["Numerical", "Analytical"]
     assert geometry.psi_state in ["Good", "Bad"]
     assert geometry.psip_state in ["Good", "Bad"]
 

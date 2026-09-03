@@ -7,4 +7,4 @@ hide:
 
 # Base Objects
 
-::: dexter.equilibrium.base
+::: dexter.machine.base

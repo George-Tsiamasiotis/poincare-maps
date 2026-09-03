@@ -1,4 +1,4 @@
-//! Defines `dexter-equilibrium` helper objects and exports equilibrium objects.
+//! Defines `dexter-machine` helper objects and exports machine objects and helper types
 
 mod bfield;
 mod current;
@@ -15,7 +15,7 @@ pub use perturbation::*;
 pub use qfactor::*;
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 use pyo3::{prelude::*, types::PyType};
 
 #[pyclass(name = "_PyLastClosedFluxSurface", frozen, immutable_type)]

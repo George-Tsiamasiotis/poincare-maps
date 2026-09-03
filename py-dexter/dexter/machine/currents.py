@@ -6,11 +6,11 @@ from semver import Version
 from dexter._core import _PyCurrent
 
 from .utils import LastClosedFluxSurface
-from .base import EquilibriumObject, Current
+from .base import MachineObject, Current
 from dexter.types import Array1, FluxCoordinateState, Interpolation1dType, NetCDFVersion
 
 
-class LarCurrent(EquilibriumObject, Current):
+class LarCurrent(MachineObject, Current):
     r"""Analytical Large Aspect Ratio Current with $g=1$ and $I=0$.
 
     Notes
@@ -29,11 +29,11 @@ class LarCurrent(EquilibriumObject, Current):
 
     def __init__(self) -> None:
         self._r = _PyCurrent.build_lar()
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Current, self).__init__()
 
 
-class NcCurrent(EquilibriumObject, Current):
+class NcCurrent(MachineObject, Current):
     r"""Numerical plasma current profile reconstructed from a netCDF file.
 
     Related quantities are computed by interpolating over the data arrays.
@@ -57,7 +57,7 @@ class NcCurrent(EquilibriumObject, Current):
 
     def __init__(self, path: str, interp_type: Interpolation1dType) -> None:
         self._r = _PyCurrent.build_nc(path, interp_type)
-        super(EquilibriumObject, self).__init__()
+        super(MachineObject, self).__init__()
         super(Current, self).__init__()
 
     @property

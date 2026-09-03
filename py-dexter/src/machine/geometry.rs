@@ -6,7 +6,7 @@ use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 
@@ -59,7 +59,7 @@ impl PyGeometry {
 
 /// References to the trait object and variants
 impl PyGeometry {
-    pub fn geometry(&self) -> &dyn Geometry {
+    pub fn inner(&self) -> &dyn Geometry {
         match self {
             PyGeometry::Lar(geometry) => geometry.0.as_ref(),
             PyGeometry::Nc(geometry) => geometry.0.as_ref(),
@@ -101,18 +101,18 @@ impl PyGeometry {
 #[pymethods] // EquilibriumObject Trait
 impl PyGeometry {
     #[getter]
-    pub fn object_type(&self) -> String {
-        format!("{:?}", self.geometry().object_type())
+    pub fn machine_type(&self) -> String {
+        format!("{:?}", self.inner().machine_type())
     }
 
     #[getter]
     pub fn psi_state(&self) -> String {
-        format!("{:?}", self.geometry().psi_state())
+        format!("{:?}", self.inner().psi_state())
     }
 
     #[getter]
     pub fn psip_state(&self) -> String {
-        format!("{:?}", self.geometry().psip_state())
+        format!("{:?}", self.inner().psip_state())
     }
 }
 
@@ -136,32 +136,32 @@ impl PyGeometry {
 impl PyGeometry {
     #[getter]
     pub fn baxis(&self) -> f64 {
-        self.geometry().baxis()
+        self.inner().baxis()
     }
 
     #[getter]
     pub fn raxis(&self) -> f64 {
-        self.geometry().raxis()
+        self.inner().raxis()
     }
 
     #[getter]
     pub fn zaxis(&self) -> f64 {
-        self.geometry().zaxis()
+        self.inner().zaxis()
     }
 
     #[getter]
     pub fn rgeo(&self) -> f64 {
-        self.geometry().rgeo()
+        self.inner().rgeo()
     }
 
     #[getter]
     pub fn rlast(&self) -> f64 {
-        self.geometry().rlast()
+        self.inner().rlast()
     }
 
     #[getter]
     pub fn psi_last(&self) -> Result<f64> {
-        self.geometry().psi_last().ok_or(DexterError::AttributeError {
+        self.inner().psi_last().ok_or(DexterError::AttributeError {
             obj: "Geometry".into(),
             attr: "psi_last".into(),
         })
@@ -169,60 +169,60 @@ impl PyGeometry {
 
     #[getter]
     pub fn psip_last(&self) -> Result<f64> {
-        self.geometry().psip_last().ok_or(DexterError::AttributeError {
+        self.inner().psip_last().ok_or(DexterError::AttributeError {
             obj: "Geometry".into(),
             attr: "psip_last".into(),
         })
     }
 
     pub fn r_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.geometry().r_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().r_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn r_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.geometry().r_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().r_of_psip(psip, &mut Accelerator::new())?)
     }
 
     pub fn psi_of_r(&self, r: f64) -> Result<f64> {
-        Ok(self.geometry().psi_of_r(r, &mut Accelerator::new())?)
+        Ok(self.inner().psi_of_r(r, &mut Accelerator::new())?)
     }
 
     pub fn psip_of_r(&self, r: f64) -> Result<f64> {
-        Ok(self.geometry().psip_of_r(r, &mut Accelerator::new())?)
+        Ok(self.inner().psip_of_r(r, &mut Accelerator::new())?)
     }
 
     pub fn rlab_of_psi(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().rlab_of_psi(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().rlab_of_psi(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn rlab_of_psip(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().rlab_of_psip(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().rlab_of_psip(psip, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn zlab_of_psi(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().zlab_of_psi(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().zlab_of_psi(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn zlab_of_psip(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().zlab_of_psip(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().zlab_of_psip(psip, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn jacobian_of_psi(&self, psi: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().jacobian_of_psi(psi, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().jacobian_of_psi(psi, theta, &mut Accelerator2d::new())?)
     }
 
     pub fn jacobian_of_psip(&self, psip: f64, theta: f64) -> Result<f64> {
-        Ok(self.geometry().jacobian_of_psip(psip, theta, &mut Accelerator2d::new())?)
+        Ok(self.inner().jacobian_of_psip(psip, theta, &mut Accelerator2d::new())?)
     }
 
     #[getter]
     pub fn rlab_last<'py>(&self, py: Python<'py>)  -> Result<Bound<'py, PyArray1<f64>>> {
-        Ok(self.geometry().rlab_last().into_pyarray(py))
+        Ok(self.inner().rlab_last().into_pyarray(py))
     }
 
     #[getter]
     pub fn zlab_last<'py>(&self, py: Python<'py>)  -> Result<Bound<'py, PyArray1<f64>>> {
-        Ok(self.geometry().zlab_last().into_pyarray(py))
+        Ok(self.inner().zlab_last().into_pyarray(py))
     }
 }
 
@@ -306,6 +306,6 @@ wrapper_debug_export!(PyNcGeometry);
 #[pymethods]
 impl PyGeometry {
     pub fn __repr__(&self) -> String {
-        format!("{:#?}", self.geometry())
+        format!("{:#?}", self.inner())
     }
 }

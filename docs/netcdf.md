@@ -2,7 +2,7 @@
 
 Version 0.0.1
 
-DEXTER reads equilibrium data from a [netCDF] file. The variables must follow the following conventions:
+DEXTER reads configuration data from a [netCDF] file. The variables must follow the following conventions:
 
 ## Scalars
 

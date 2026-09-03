@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 

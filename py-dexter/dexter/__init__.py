@@ -6,7 +6,7 @@ from dexter.types import (
     Array2,
     ArrayLike,
     ArrayShape,
-    ObjectType,
+    MachineType,
     NetCDFVersion,
     FluxCoordinate,
     FluxCoordinateState,
@@ -17,14 +17,14 @@ from dexter.types import (
 )
 
 
-from dexter.equilibrium.utils import LastClosedFluxSurface
+from dexter.machine.utils import LastClosedFluxSurface
 
-from dexter.equilibrium.geometries import LarGeometry, NcGeometry
-from dexter.equilibrium.qfactors import UnityQfactor, ParabolicQfactor, NcQfactor
-from dexter.equilibrium.currents import LarCurrent, NcCurrent
-from dexter.equilibrium.bfields import LarBfield, NcBfield
-from dexter.equilibrium.modes import FluteMode, NcFluteMode
-from dexter.equilibrium.perturbation import Perturbation
+from dexter.machine.geometries import LarGeometry, NcGeometry
+from dexter.machine.qfactors import UnityQfactor, ParabolicQfactor, NcQfactor
+from dexter.machine.currents import LarCurrent, NcCurrent
+from dexter.machine.bfields import LarBfield, NcBfield
+from dexter.machine.modes import FluteMode, NcFluteMode
+from dexter.machine.perturbation import Perturbation
 
 from dexter.simulate.initial import InitialFlux, InitialConditions
 
@@ -41,7 +41,7 @@ __all__ = [
     "Array2",
     "ArrayLike",
     "ArrayShape",
-    "ObjectType",
+    "MachineType",
     "NetCDFVersion",
     "FluxCoordinate",
     "FluxCoordinateState",
@@ -49,7 +49,7 @@ __all__ = [
     "Interpolation2dType",
     "PhaseMethod",
     "CoordinateSet",
-    # Equilibrium
+    # Machine
     "GeometryObject",
     "QfactorObject",
     "CurrentObject",

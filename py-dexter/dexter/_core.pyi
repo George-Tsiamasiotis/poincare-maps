@@ -1,6 +1,6 @@
 """This file mirrors all the definitions made in the `py-dexter` Rust API.
 
-Each class representing a dexter-equilibrium trait also provides all possible getters of all
+Each class representing a dexter-machine trait also provides all possible getters of all
 implementors. The higher level wrappers are responsible for re-exporting the correct ones. An
 `InvalidVariant` Exception is raised when python accesses a field that the wrapped type does not
 have. It should not be visible to the user unless the call `._r` explicitly.
@@ -15,7 +15,7 @@ from dexter.types import (
     Interpolation1dType,
     Interpolation2dType,
     PhaseMethod,
-    ObjectType,
+    MachineType,
     CoordinateSet,
 )
 
@@ -32,7 +32,7 @@ class _PyLastClosedFluxSurface:
     def __str__(self) -> str: ...
 
 class _PyGeometry:  # Trait and all possible getters
-    object_type: ObjectType
+    machine_type: MachineType
     psi_state: FluxCoordinateState
     psip_state: FluxCoordinateState
     baxis: float
@@ -77,7 +77,7 @@ class _PyGeometry:  # Trait and all possible getters
     def __str__(self) -> str: ...
 
 class _PyQfactor:  # Trait and all possible getters
-    object_type: ObjectType
+    machine_type: MachineType
     psi_state: FluxCoordinateState
     psip_state: FluxCoordinateState
     psi_last: float
@@ -111,7 +111,7 @@ class _PyQfactor:  # Trait and all possible getters
     def __str__(self) -> str: ...
 
 class _PyCurrent:  # Trait and all possible getters
-    object_type: ObjectType
+    machine_type: MachineType
     psi_state: FluxCoordinateState
     psip_state: FluxCoordinateState
     psi_last: float
@@ -137,7 +137,7 @@ class _PyCurrent:  # Trait and all possible getters
     def __str__(self) -> str: ...
 
 class _PyBfield:  # Trait and all possible getters
-    object_type: ObjectType
+    machine_type: MachineType
     psi_state: FluxCoordinateState
     psip_state: FluxCoordinateState
     path: str
@@ -171,7 +171,7 @@ class _PyBfield:  # Trait and all possible getters
     def __str__(self) -> str: ...
 
 class _PyMode:  # Trait and all possible getters
-    object_type: ObjectType
+    machine_type: MachineType
     psi_state: FluxCoordinateState
     psip_state: FluxCoordinateState
     psi_last: float

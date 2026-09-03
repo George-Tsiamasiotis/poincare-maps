@@ -38,7 +38,7 @@ def _test_mode_base(mode: dex.ModeObject):
     mode.__repr__()
     mode.__str__()
 
-    assert mode.object_type in ["Numerical", "Analytical"]
+    assert mode.machine_type in ["Numerical", "Analytical"]
     assert mode.psi_state in ["Good", "Bad"]
     assert mode.psip_state in ["Good", "Bad"]
 

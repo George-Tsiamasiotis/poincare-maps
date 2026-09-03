@@ -3,9 +3,9 @@ import pytest
 import matplotlib
 import dexter as dex
 
-TEST_NETCDF_PATH = "./crates/dexter-equilibrium/test_netcdf.nc"
-TOROIDAL_TEST_NETCDF_PATH = "./crates/dexter-equilibrium/toroidal_test_netcdf.nc"
-POLOIDAL_TEST_NETCDF_PATH = "./crates/dexter-equilibrium/poloidal_test_netcdf.nc"
+TEST_NETCDF_PATH = "./crates/dexter-machine/test_netcdf.nc"
+TOROIDAL_TEST_NETCDF_PATH = "./crates/dexter-machine/toroidal_test_netcdf.nc"
+POLOIDAL_TEST_NETCDF_PATH = "./crates/dexter-machine/poloidal_test_netcdf.nc"
 
 
 @pytest.fixture(autouse=True)

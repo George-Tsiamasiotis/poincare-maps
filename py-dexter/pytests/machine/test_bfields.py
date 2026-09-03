@@ -37,7 +37,7 @@ def _test_bfield_base(bfield: dex.BfieldObject):
     bfield.__repr__()
     bfield.__str__()
 
-    assert bfield.object_type in ["Numerical", "Analytical"]
+    assert bfield.machine_type in ["Numerical", "Analytical"]
     assert bfield.psi_state in ["Good", "Bad"]
     assert bfield.psip_state in ["Good", "Bad"]
 

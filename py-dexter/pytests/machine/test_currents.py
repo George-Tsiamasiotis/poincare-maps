@@ -29,7 +29,7 @@ def _test_current_base(current: dex.CurrentObject):
     current.__repr__()
     current.__str__()
 
-    assert current.object_type in ["Numerical", "Analytical"]
+    assert current.machine_type in ["Numerical", "Analytical"]
     assert current.psi_state in ["Good", "Bad"]
     assert current.psip_state in ["Good", "Bad"]
 

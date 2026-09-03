@@ -26,14 +26,14 @@ ArrayLike: TypeAlias = float | Array | Sequence
 
 # =================== Equilibrium
 
-ObjectType: TypeAlias = Literal["Analytical", "Numerical"]
-""" Describes the type of equilibrium the object represents.
+MachineType: TypeAlias = Literal["Analytical", "Numerical"]
+""" Describes the type of machine the object represents.
 
 # Numerical
-Equilibrium reconstructed from numerical data. Evaluations are calculated by interpolation.
+Configuration reconstructed from numerical data. Evaluations are calculated by interpolation.
 
 # Analytical
-Equilibrium described by analytical formulas. Evaluations are calculated by simply evaluating
+Machine described by analytical formulas. Evaluations are calculated by simply evaluating
 the formulas.
 """
 

@@ -6,7 +6,7 @@ use numpy::{IntoPyArray, PyArray1};
 use pyo3::{prelude::*, types::PyType};
 
 use crate::*;
-use dexter::dexter_equilibrium::*;
+use dexter::dexter_machine::*;
 
 // ===============================================================================================
 
@@ -64,7 +64,7 @@ impl PyQfactor {
 
 /// References to the trait object and variants
 impl PyQfactor {
-    pub fn qfactor(&self) -> &dyn Qfactor {
+    pub fn inner(&self) -> &dyn Qfactor {
         match self {
             PyQfactor::Unity(qfactor) => qfactor.0.as_ref(),
             PyQfactor::Parabolic(qfactor) => qfactor.0.as_ref(),
@@ -108,29 +108,29 @@ impl PyQfactor {
 #[pymethods] // EquilibriumObject Trait
 impl PyQfactor {
     #[getter]
-    pub fn object_type(&self) -> String {
-        format!("{:?}", self.qfactor().object_type())
+    pub fn machine_type(&self) -> String {
+        format!("{:?}", self.inner().machine_type())
     }
 
     #[getter]
     pub fn psi_state(&self) -> String {
-        format!("{:?}", self.qfactor().psi_state())
+        format!("{:?}", self.inner().psi_state())
     }
 
     #[getter]
     pub fn psip_state(&self) -> String {
-        format!("{:?}", self.qfactor().psip_state())
+        format!("{:?}", self.inner().psip_state())
     }
 }
 
 #[pymethods] // FluxCommute Trait
 impl PyQfactor {
     pub fn psip_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.qfactor().psip_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().psip_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn psi_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.qfactor().psi_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().psi_of_psip(psip, &mut Accelerator::new())?)
     }
 }
 
@@ -138,54 +138,54 @@ impl PyQfactor {
 impl PyQfactor {
     #[getter]
     pub fn psi_last(&self) -> f64 {
-        self.qfactor().psi_last()
+        self.inner().psi_last()
     }
 
     #[getter]
     pub fn psip_last(&self) -> f64 {
-        self.qfactor().psip_last()
+        self.inner().psip_last()
     }
 
     #[getter]
     pub fn qlast(&self) -> f64 {
-        self.qfactor().qlast()
+        self.inner().qlast()
     }
 
     #[getter]
     pub fn qaxis(&self) -> f64 {
-        self.qfactor().qaxis()
+        self.inner().qaxis()
     }
 
     pub fn q_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.qfactor().q_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().q_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn q_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.qfactor().q_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().q_of_psip(psip, &mut Accelerator::new())?)
     }
 
     pub fn dpsip_dpsi(&self, psi: f64) -> Result<f64> {
-        Ok(self.qfactor().dpsip_dpsi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().dpsip_dpsi(psi, &mut Accelerator::new())?)
     }
 
     pub fn dpsi_dpsip(&self, psip: f64) -> Result<f64> {
-        Ok(self.qfactor().dpsi_dpsip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().dpsi_dpsip(psip, &mut Accelerator::new())?)
     }
 
     pub fn psi_of_q(&self, q: f64) -> Result<f64> {
-        Ok(self.qfactor().psi_of_q(q, &mut Accelerator::new())?)
+        Ok(self.inner().psi_of_q(q, &mut Accelerator::new())?)
     }
 
     pub fn psip_of_q(&self, q: f64) -> Result<f64> {
-        Ok(self.qfactor().psip_of_q(q, &mut Accelerator::new())?)
+        Ok(self.inner().psip_of_q(q, &mut Accelerator::new())?)
     }
 
     pub fn iota_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.qfactor().iota_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().iota_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn iota_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.qfactor().iota_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().iota_of_psip(psip, &mut Accelerator::new())?)
     }
 }
 
@@ -244,6 +244,6 @@ wrapper_debug_export!(PyNcQfactor);
 #[pymethods]
 impl PyQfactor {
     pub fn __repr__(&self) -> String {
-        format!("{:#?}", self.qfactor())
+        format!("{:#?}", self.inner())
     }
 }
