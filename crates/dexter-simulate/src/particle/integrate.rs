@@ -2,13 +2,12 @@
 
 use std::time::Instant;
 
-use dexter_equilibrium::Equilibrium;
+use dexter_machine::Machine;
 
+use crate::IntegrationStatus;
 use crate::particle::{IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
-
-use super::IntegrationStatus;
 
 // ===============================================================================================
 
@@ -16,7 +15,7 @@ use super::IntegrationStatus;
 /// [`IntegrationStatus`] variant for each possible error.
 pub(super) fn integrate(
     particle: &mut Particle,
-    equilibrium: &Equilibrium,
+    machine: Machine,
     teval: (f64, f64),
     solver_params: &SolverParams,
 ) {
@@ -25,7 +24,7 @@ pub(super) fn integrate(
     let start = Instant::now();
     particle.evolution.reset();
     let mut caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
 
@@ -34,12 +33,11 @@ pub(super) fn integrate(
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     }
-    if particle.initial_conditions.finalize(equilibrium).is_err() {
+    if particle.initial_conditions.finalize(machine).is_err() {
         particle.integration_status = IntegrationStatus::InvalidInitialConditions;
         return;
     }
-    let Ok(mut state1) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches)
-    else {
+    let Ok(mut state1) = GCState::new(&particle.initial_conditions, machine, &mut caches) else {
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     };
@@ -63,9 +61,9 @@ pub(super) fn integrate(
         // Perform a step
         let mut stepper = Stepper::new(&state1);
         state2 = if let Ok(state) = stepper
-            .start(dt, equilibrium, &mut caches)
+            .start(dt, machine, &mut caches)
             .inspect(|_| dt = stepper.calculate_optimal_step(dt, solver_params))
-            .and_then(|_| stepper.next_state(dt, equilibrium, &mut caches))
+            .and_then(|_| stepper.next_state(dt, machine, &mut caches))
         {
             state
         } else {

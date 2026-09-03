@@ -2,10 +2,11 @@
 
 #![expect(clippy::unwrap_used, reason = "not important")]
 
-use dexter_equilibrium::extract::TOROIDAL_TEST_NETCDF_PATH;
-use dexter_equilibrium::{
-    Equilibrium, Interpolation1dType::Steffen, Interpolation2dType::Bicubic, NcBfieldBuilder,
-    NcCurrentBuilder, NcFluteModeBuilder, NcQfactorBuilder, Perturbation, PhaseMethod,
+use dexter_machine::MachineBuilder;
+use dexter_machine::extract::TOROIDAL_TEST_NETCDF_PATH;
+use dexter_machine::{
+    Interpolation1dType::Steffen, Interpolation2dType::Bicubic, NcBfieldBuilder, NcCurrentBuilder,
+    NcFluteModeBuilder, NcQfactorBuilder, Perturbation, PhaseMethod,
 };
 use dexter_simulate::{InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams};
 use std::path::Path;
@@ -30,14 +31,9 @@ fn main() {
                 .unwrap(),
         ),
     ]);
-
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(qfactor),
-        bfield: Box::new(bfield),
-        current: Box::new(current),
-        perturbation,
-    };
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 1.0, 0.0, 1e-4, 1e-6);
@@ -45,7 +41,7 @@ fn main() {
 
     // Integrate
     let teval = (0.0, 1e10);
-    particle.integrate(&equilibrium, teval, &SolverParams::default());
+    particle.integrate(machine, teval, &SolverParams::default());
     particle.print_caches();
     dbg!(&particle);
     assert!(

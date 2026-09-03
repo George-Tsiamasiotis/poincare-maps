@@ -5,7 +5,7 @@
 mod common;
 
 use approx::assert_relative_eq as ar;
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 use std::f64::consts::TAU;
 
@@ -20,17 +20,14 @@ use std::f64::consts::TAU;
 #[test]
 #[rustfmt::skip]
 fn field_line_single_period_uniQ() {
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5))),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::zero(),
-    };
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.3), 1.0, 0.0, 1e-12, 0.0);
     let mut particle = Particle::new(&initial);
-    particle.close( &equilibrium, 1, &SolverParams::default());
+    particle.close(machine, 1, &SolverParams::default());
     assert!(matches!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1)));
 
     let expected_dt = 17085113170546.295;
@@ -54,18 +51,15 @@ fn field_line_single_period_uniQ() {
 #[test]
 #[rustfmt::skip]
 fn trapped_particle_single_period_uniQ() {
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1))),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::zero(),
-    };
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.1));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.02), 1.0, 0.0, 1e-6, 1e-6);
     let mut particle = Particle::new(&initial);
-    particle.close(&equilibrium, 1, &SolverParams::default());
-    particle.classify(&equilibrium);
+    particle.close(machine, 1, &SolverParams::default());
+    particle.classify(machine);
     assert!(matches!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1)));
     assert_eq!(particle.orbit_type(), OrbitType::TrappedConfined);
 

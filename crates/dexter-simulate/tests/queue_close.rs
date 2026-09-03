@@ -1,9 +1,9 @@
-//! Test `Queue::integrate` routine.
+//! Test `Queue::close` routine.
 
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 use ndarray::Array1;
 
@@ -11,24 +11,20 @@ use ndarray::Array1;
 fn queue_close_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
     // Equilibrium setup
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(
-            1.1,
-            1.9,
-            LastClosedFluxSurface::Toroidal(0.45),
-        )),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
-        ]),
-    };
+    let qfactor = ParabolicQfactor::new(1.1, 1.9, LastClosedFluxSurface::Toroidal(0.45));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let perturbation = Perturbation::new(vec![
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Initial Conditions setup
     let particle_count = 10;
-    let psis = equilibrium.qfactor.psi_last() * Array1::linspace(0.001, 0.5, particle_count);
+    let psis = machine.qfactor().psi_last() * Array1::linspace(0.001, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::boozer(
         &vec![0.0; particle_count],
@@ -51,7 +47,7 @@ fn queue_close_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
         particle_count
     );
 
-    queue.close(&equilibrium, 1, &SolverParams::default());
+    queue.close(machine, 1, &SolverParams::default());
 
     assert_eq!(
         queue

@@ -3,7 +3,7 @@
 mod common;
 
 use crate::common::check_integrated_particle_arrays;
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 use ndarray::Axis;
 
@@ -11,16 +11,14 @@ use ndarray::Axis;
 #[rustfmt::skip]
 fn different_stepping_methods() {
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(UnityQfactor::new(lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
-        ]),
-    };
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let perturbation = Perturbation::new(vec![
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).with_perturbation(&perturbation).build();
 
     let energy_params =  SolverParams{
             method: SteppingMethod::EnergyAdaptiveStep,
@@ -47,9 +45,9 @@ fn different_stepping_methods() {
     let mut fixed_particle = Particle::new(&initial);
 
     let teval = (0.0, 1e5);
-    energy_particle.integrate(&equilibrium, teval, &energy_params);
-    error_particle.integrate(&equilibrium, teval, &error_params);
-    fixed_particle.integrate(&equilibrium, teval, &fixed_params);
+    energy_particle.integrate(machine, teval, &energy_params);
+    error_particle.integrate(machine, teval, &error_params);
+    fixed_particle.integrate(machine, teval, &fixed_params);
 
     dbg!(&energy_particle);
     dbg!(&error_particle);

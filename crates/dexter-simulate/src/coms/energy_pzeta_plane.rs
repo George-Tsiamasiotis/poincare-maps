@@ -1,18 +1,20 @@
 //! Representation of the COM space `(E, Pζ, μ=const)`.
 
+#![expect(unreachable_pub, reason = "api needs re-write")]
 #![expect(clippy::min_ident_chars, reason = "parabola a, b, c coefficients")]
 
-use dexter_equilibrium::Equilibrium;
 use ndarray::Array1;
 use parabola::Parabola;
 use rsl_interpolation::Accelerator2d;
 
-use crate::{COMError, COMs, TrappedPassingBoundary};
+use dexter_machine::Machine;
+
+use crate::COMError;
+use crate::coms::{COMs, TrappedPassingBoundary};
 
 /// Representation of the COM space `(E, Pζ, μ=const)`.
 #[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct EnergyPzetaPlane {
+pub(crate) struct EnergyPzetaPlane {
     /// The magnetic axis (MA) parabola.
     axis_parabola: Parabola,
     /// The left wall (LW) parabola.
@@ -27,21 +29,21 @@ pub struct EnergyPzetaPlane {
 
 impl EnergyPzetaPlane {
     /// Creates a new `EnergyPzetaPlane` from a set of [`COMs`], in a given equilibrium.
-    pub(crate) fn from_coms(equilibrium: &Equilibrium, coms: &COMs) -> Result<Self, COMError> {
+    pub(crate) fn from_coms(machine: Machine, coms: &COMs) -> Result<Self, COMError> {
         let Some(mu) = coms.mu else {
             return Err(COMError::UndefinedMu);
         };
 
-        Ok(Self::from_mu(equilibrium, mu))
+        Ok(Self::from_mu(machine, mu))
     }
 
     /// Creates a new `EnergyPzetaPlane` from a set magnetic moment `μ=const` value.
-    pub(crate) fn from_mu(equilibrium: &Equilibrium, mu: f64) -> Self {
+    pub(crate) fn from_mu(objects: Machine, mu: f64) -> Self {
         Self {
-            axis_parabola: Self::build_magnetic_axis_parabola(equilibrium, mu),
-            left_wall_parabola: Self::build_left_wall_parabola(equilibrium, mu),
-            right_wall_parabola: Self::build_right_wall_parabola(equilibrium, mu),
-            tp_boundary: TrappedPassingBoundary::new(equilibrium, mu),
+            axis_parabola: Self::build_magnetic_axis_parabola(objects, mu),
+            left_wall_parabola: Self::build_left_wall_parabola(objects, mu),
+            right_wall_parabola: Self::build_right_wall_parabola(objects, mu),
+            tp_boundary: TrappedPassingBoundary::new(objects, mu),
             mu,
         }
     }
@@ -52,25 +54,25 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (0, 0)`.
     #[must_use]
-    fn build_magnetic_axis_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
+    fn build_magnetic_axis_parabola(objects: Machine, mu: f64) -> Parabola {
         let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let gaxis = equilibrium
-            .current
+        let gaxis = objects
+            .current()
             .g_of_psi(0.0, acc.xacc())
             .unwrap_or_else(|_| {
-                equilibrium
-                    .current
+                objects
+                    .current()
                     .g_of_psip(0.0, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
-        let baxis = equilibrium
-            .bfield // This might be redundant
+        let baxis = objects
+            .bfield() // This might be redundant
             .b_of_psi(0.0, 0.0, acc)
             .unwrap_or_else(|_| {
-                equilibrium
-                    .bfield
+                objects
+                    .bfield()
                     .b_of_psip(0.0, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
@@ -88,28 +90,28 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (ψlast/ψplast, π)`.
     #[must_use]
-    fn build_left_wall_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
+    fn build_left_wall_parabola(objects: Machine, mu: f64) -> Parabola {
         use std::f64::consts::PI;
-        let psi_last = equilibrium.qfactor.psi_last();
-        let psip_last = equilibrium.qfactor.psip_last();
+        let psi_last = objects.qfactor().psi_last();
+        let psip_last = objects.qfactor().psip_last();
         let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let glast = equilibrium
-            .current
+        let glast = objects
+            .current()
             .g_of_psi(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
-                equilibrium
-                    .current
+                objects
+                    .current()
                     .g_of_psip(psip_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
-        let blast = equilibrium
-            .bfield
+        let blast = objects
+            .bfield()
             .b_of_psi(psi_last, PI, acc)
             .unwrap_or_else(|_| {
-                equilibrium
-                    .bfield
+                objects
+                    .bfield()
                     .b_of_psip(psip_last, PI, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
@@ -126,27 +128,27 @@ impl EnergyPzetaPlane {
     ///
     /// where all values are evaluated at `(ψ/ψp, θ) = (ψlast/ψplast, 0)`.
     #[must_use]
-    fn build_right_wall_parabola(equilibrium: &Equilibrium, mu: f64) -> Parabola {
-        let psi_last = equilibrium.qfactor.psi_last();
-        let psip_last = equilibrium.qfactor.psip_last();
+    fn build_right_wall_parabola(objects: Machine, mu: f64) -> Parabola {
+        let psi_last = objects.qfactor().psi_last();
+        let psip_last = objects.qfactor().psip_last();
         let acc = &mut Accelerator2d::new();
 
         // Use `unwrap_or_else` for lazy evaluation.
-        let glast = equilibrium
-            .current
+        let glast = objects
+            .current()
             .g_of_psi(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
-                equilibrium
-                    .current
+                objects
+                    .current()
                     .g_of_psip(psip_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
-        let blast = equilibrium
-            .bfield
+        let blast = objects
+            .bfield()
             .b_of_psi(psi_last, 0.0, acc)
             .unwrap_or_else(|_| {
-                equilibrium
-                    .bfield
+                objects
+                    .bfield()
                     .b_of_psip(psip_last, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });

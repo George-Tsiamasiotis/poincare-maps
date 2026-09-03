@@ -1,6 +1,6 @@
-//! Simulations of charged particles inside an [`Equilibrium`](dexter_equilibrium).
+//! Simulations of charged particles inside a toroidal magnetic confinement machine.
 //!
-//! ### [`Particle`]: A charged particle inside an [`Equilibrium`](dexter_equilibrium)
+//! ### [`Particle`]: A charged particle inside a machine.
 //!
 //! The Particle corresponds to a proton with `m=q=1`. All its related quantities and calculated
 //! time series are in *Normalized Units*.
@@ -32,19 +32,6 @@
 //! + [`Queue::classify_common_mu`]: An optimization to [`Queue::classify`] for classifying
 //!   particles with common `μ`. Results to about 5-8 times better performance.
 //!
-//! ### COMs space
-//!
-//! The container type [`COMs`] provides methods and constructors for calculations on the `(E, Pζ, μ)`
-//! space:
-//!
-//! + [`EnergyPzetaPlane`]: Representation of the COM space `(E, Pζ, μ=const)`.
-//! + [`TrappedPassingBoundary`]: Representation of the Trapped-Passing boundary curves on the
-//!   `(E, Pζ, μ=const)` space.
-//! + [`energy_of_psi_grid`](COMs::energy_of_psi_grid): Calculation of the unperturbed Hamiltonian's
-//!   value in a 2x2 `θ-ψ` grid
-//! + [`energy_of_psip_grid`](COMs::energy_of_psip_grid): Calculation of the unperturbed Hamiltonian's
-//!   value in a 2x2 `θ-ψp` grid
-//!
 //! ### Parallelism
 //!
 //! Using the [`rayon`] crate, particle routines can run in parallel. The number of threads to be
@@ -59,15 +46,6 @@
 //! The integration is done with the RKF4(5) method. The step size can be adaptive by minimizing
 //! the energy difference from step to step or minimizing the local truncation error (classic
 //! RKF4(5)), or simple set to be constant.
-//!
-//! ### Constants of motion
-//!
-//! Calculations involving the Constants of Motion.
-//!
-//! + [`COMs`]: A container struct for the constants of motion in an unperturbed equilibrium.
-//!   + [`COMs::energy_of_psi_grid`]: Calculation of the Energy in a 2D `θ-ψ` grid
-//!   + [`COMs::energy_of_psip_grid`]: Calculation of the Energy in a 2D `θ-ψp` grid
-//!
 
 mod coms;
 mod error;
@@ -91,8 +69,6 @@ pub use particle::{
 
 pub use queue::{Queue, QueueInitialConditions, Routine};
 pub use queue::{poloidal_fluxes, toroidal_fluxes};
-
-pub use coms::{COMs, EnergyPzetaPlane, TrappedPassingBoundary};
 
 // ============== Configuration constants
 

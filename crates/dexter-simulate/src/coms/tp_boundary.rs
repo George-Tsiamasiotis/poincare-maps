@@ -2,7 +2,7 @@
 
 use std::f64::consts::PI;
 
-use dexter_equilibrium::{Equilibrium, FluxCoordinateState};
+use dexter_machine::{FluxCoordinateState, Machine};
 use ndarray::Array1;
 use rsl_interpolation::{
     Accelerator, Accelerator2d, AkimaInterpolator, BuildInterpolator, Interpolation,
@@ -34,7 +34,7 @@ use crate::constants::TRAPPED_PASSING_BOUNDARY_DENSITY;
 /// `pzeta_interval` is no longer a linspace.
 ///
 #[derive(Clone)]
-pub struct TrappedPassingBoundary {
+pub(crate) struct TrappedPassingBoundary {
     /// The `Pζ = [-ψp_last, 0]` interval array.
     pub(crate) pzeta_interval: Box<[f64]>,
     /// The curve corresponding to the lower part of the boundary, defined by `θ=0` (eq. 1).
@@ -50,12 +50,12 @@ pub struct TrappedPassingBoundary {
 impl TrappedPassingBoundary {
     /// Calculates the two curves.
     #[must_use]
-    pub fn new(equilibrium: &Equilibrium, mu: f64) -> Self {
+    pub(crate) fn new(machine: Machine, mu: f64) -> Self {
         // try `psip` first, since its faster.
-        if equilibrium.bfield.psip_state() == FluxCoordinateState::Good {
-            Self::from_good_psip(equilibrium, mu)
-        } else if equilibrium.bfield.psi_state() == FluxCoordinateState::Good {
-            Self::from_good_psi(equilibrium, mu)
+        if machine.bfield().psip_state() == FluxCoordinateState::Good {
+            Self::from_good_psip(machine, mu)
+        } else if machine.bfield().psi_state() == FluxCoordinateState::Good {
+            Self::from_good_psi(machine, mu)
         } else {
             unreachable!()
         }
@@ -63,19 +63,19 @@ impl TrappedPassingBoundary {
 
     /// Returns the [`TrappedPassingBoundary`]'s `Pζ = [-ψp_last, 0]` interval array.
     #[must_use]
-    pub fn pzeta_interval(&self) -> Array1<f64> {
+    pub(crate) fn pzeta_interval(&self) -> Array1<f64> {
         Array1::from(self.pzeta_interval.clone())
     }
 
     /// Returns the [`TrappedPassingBoundary`]'s upper curve.
     #[must_use]
-    pub fn upper(&self) -> Array1<f64> {
+    pub(crate) fn upper(&self) -> Array1<f64> {
         Array1::from(self.upper.clone())
     }
 
     /// Returns the [`TrappedPassingBoundary`]'s lower curve.
     #[must_use]
-    pub fn lower(&self) -> Array1<f64> {
+    pub(crate) fn lower(&self) -> Array1<f64> {
         Array1::from(self.lower.clone())
     }
 }
@@ -83,13 +83,13 @@ impl TrappedPassingBoundary {
 impl TrappedPassingBoundary {
     /// Returns `true` if an `(E, Pζ)` is inside the Trapped-Passing boundary.
     #[must_use]
-    pub fn contains(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
+    pub(crate) fn contains(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
         !self.is_below(energy, pzeta, acc) && !self.is_above(energy, pzeta, acc)
     }
 
     /// Returns `true` if an `(E, Pζ)` is below the Trapped-Passing boundary's lower curve.
     #[must_use]
-    pub fn is_below(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
+    pub(crate) fn is_below(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
         let Some(lower_energy) = self
             .lower_interp
             .eval(&self.pzeta_interval, &self.lower, pzeta, acc)
@@ -102,7 +102,7 @@ impl TrappedPassingBoundary {
 
     /// Returns `true` if an `(E, Pζ)` is above the Trapped-Passing boundary's above curve.
     #[must_use]
-    pub fn is_above(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
+    pub(crate) fn is_above(&self, energy: f64, pzeta: f64, acc: &mut Accelerator) -> bool {
         let Some(upper) = self
             .upper_interp
             .eval(&self.pzeta_interval, &self.upper, pzeta, acc)
@@ -118,23 +118,23 @@ impl TrappedPassingBoundary {
     /// Creates the boundary in a `Good ψp` equilibrium.
     ///
     /// This method cannot fail since `FluxState` is already checked and `ψp` is always in-bounds.
-    fn from_good_psip(equilibrium: &Equilibrium, mu: f64) -> Self {
-        let psip_last = equilibrium.qfactor.psip_last();
+    fn from_good_psip(machine: Machine, mu: f64) -> Self {
+        let psip_last = machine.qfactor().psip_last();
         let psip_interval = Array1::linspace(psip_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
 
         let acc = &mut Accelerator2d::new();
 
         let lower_array = mu
             * psip_interval.mapv(|psip| {
-                equilibrium
-                    .bfield
+                machine
+                    .bfield()
                     .b_of_psip(psip, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psip_interval.mapv(|psip| {
-                equilibrium
-                    .bfield
+                machine
+                    .bfield()
                     .b_of_psip(psip, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
@@ -164,30 +164,30 @@ impl TrappedPassingBoundary {
     /// We define the `psi_interval` first and the `psip_interval` second, since it is not
     /// guaranteed that `qfactor` defines `ψ(ψp)`. This results in a non-linspace `pzeta_interval`,
     /// but the values are correct.
-    fn from_good_psi(equilibrium: &Equilibrium, mu: f64) -> Self {
-        let psi_last = equilibrium.qfactor.psi_last();
+    fn from_good_psi(machine: Machine, mu: f64) -> Self {
+        let psi_last = machine.qfactor().psi_last();
         let psi_interval = Array1::linspace(psi_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
 
         let acc = &mut Accelerator2d::new();
 
         let lower_array = mu
             * psi_interval.mapv(|psi| {
-                equilibrium
-                    .bfield
+                machine
+                    .bfield()
                     .b_of_psi(psi, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psi_interval.mapv(|psi| {
-                equilibrium
-                    .bfield
+                machine
+                    .bfield()
                     .b_of_psi(psi, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
 
         let psip_interval = psi_interval.mapv(|psi| {
-            equilibrium
-                .qfactor
+            machine
+                .qfactor()
                 .psip_of_psi(psi, acc.xacc())
                 .expect("psi is always inbound and evaluation is defined")
         });

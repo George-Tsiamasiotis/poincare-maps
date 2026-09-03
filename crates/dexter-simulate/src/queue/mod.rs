@@ -8,7 +8,7 @@ pub use initials::QueueInitialConditions;
 pub use initials::{poloidal_fluxes, toroidal_fluxes};
 
 use ndarray::Array1;
-use pbars::{ClosePbar, IntegratePbar, IntersectPbar};
+use pbars::{ClassifyPbar, ClosePbar, IntegratePbar, IntersectPbar};
 use stats::QueueStats;
 
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
@@ -16,11 +16,11 @@ use std::ops::{Index, Range};
 use std::slice::Iter;
 use std::time::Duration;
 
-use dexter_equilibrium::Equilibrium;
+use dexter_machine::Machine;
 
-use crate::queue::pbars::ClassifyPbar;
-use crate::{EnergyPzetaPlane, IntersectParams, Particle, SolverParams};
+use crate::coms::EnergyPzetaPlane;
 use crate::{EnergyPzetaPosition, OrbitType};
+use crate::{IntersectParams, Particle, SolverParams};
 
 /// Indicates the routine Queue's particles executed.
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
@@ -145,25 +145,24 @@ impl Queue {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
-    /// # use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
+    /// # use dexter_machine::*;
+    /// # use dexter_machine::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let path = PathBuf::from("./netcdf.nc");
     /// let qfactor = NcQfactorBuilder::new(&path, Akima).build()?;
     /// let lcfs = LastClosedFluxSurface::Toroidal(qfactor.psi_last());
-    /// let equilibrium = Equilibrium {
-    ///     geometry: None,
-    ///     qfactor: Box::new(qfactor),
-    ///     current: Box::new(NcCurrentBuilder::new(&path, Akima).build()?),
-    ///     bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build()?),
-    ///     perturbation: Perturbation::new(vec![
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
-    ///     ]),
-    /// };
+    /// let current = NcCurrentBuilder::new(&path, Akima).build()?;
+    /// let bfield = NcBfieldBuilder::new(&path, Bicubic).build()?;
+    /// let perturbation = Perturbation::new(vec![
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
+    /// ]);
+    /// let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+    ///     .with_perturbation(&perturbation)
+    ///     .build();
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -175,24 +174,15 @@ impl Queue {
     ///     &[7e-6, 7e-6],
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.integrate(
-    ///     &equilibrium,
-    ///     (0.0, 1e3),
-    ///     &SolverParams::default(),
-    /// );
+    /// queue.integrate(machine, (0.0, 1e3), &SolverParams::default());
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn integrate(
-        &mut self,
-        equilibrium: &Equilibrium,
-        teval: (f64, f64),
-        solver_params: &SolverParams,
-    ) {
+    pub fn integrate(&mut self, machine: Machine, teval: (f64, f64), solver_params: &SolverParams) {
         let pbar = IntegratePbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.integrate(equilibrium, teval, solver_params);
+            particle.integrate(machine, teval, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
         });
@@ -210,22 +200,22 @@ impl Queue {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let equilibrium = Equilibrium {
-    ///     geometry: None,
-    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
-    ///     current: Box::new(LarCurrent::new()),
-    ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::new(vec![
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-    ///         Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
-    ///     ]),
-    /// };
+    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
+    /// let current = LarCurrent::new();
+    /// let bfield = LarBfield::new();
+    /// let perturbation = Perturbation::new(vec![
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 1, 0.0)),
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+    ///     Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
+    /// ]);
+    /// let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+    ///     .with_perturbation(&perturbation)
+    ///     .build();
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -238,17 +228,13 @@ impl Queue {
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
     /// let intersect_params = IntersectParams::new(Intersection::ConstTheta, 0.0, 100);
-    /// queue.intersect(
-    ///     &equilibrium,
-    ///     &intersect_params,
-    ///     &SolverParams::default(),
-    /// );
+    /// queue.intersect(machine, &intersect_params, &SolverParams::default());
     /// # Ok::<_, SimulationError>(())
     /// ```
     #[doc(alias = "poincare_map")]
     pub fn intersect(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         intersect_params: &IntersectParams,
         solver_params: &SolverParams,
     ) {
@@ -256,7 +242,7 @@ impl Queue {
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.intersect(equilibrium, intersect_params, solver_params);
+            particle.intersect(machine, intersect_params, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
         });
@@ -271,18 +257,15 @@ impl Queue {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.06);
-    /// let equilibrium = Equilibrium {
-    ///     geometry: None,
-    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
-    ///     current: Box::new(LarCurrent::new()),
-    ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::zero(),
-    /// };
+    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
+    /// let current = LarCurrent::new();
+    /// let bfield = LarBfield::new();
+    /// let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -295,20 +278,15 @@ impl Queue {
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
     /// dbg!(&queue);
-    /// queue.close(&equilibrium, 1, &SolverParams::default());
+    /// queue.close(machine, 1, &SolverParams::default());
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn close(
-        &mut self,
-        equilibrium: &Equilibrium,
-        periods: usize,
-        solver_params: &SolverParams,
-    ) {
+    pub fn close(&mut self, machine: Machine, periods: usize, solver_params: &SolverParams) {
         let pbar = ClosePbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.close(equilibrium, periods, solver_params);
+            particle.close(machine, periods, solver_params);
             pbar.inc(&particle.integration_status());
             pbar.print_stats();
             particle.discard_vecs();
@@ -329,18 +307,15 @@ impl Queue {
     ///
     /// # Example
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let equilibrium = Equilibrium {
-    ///     geometry: None,
-    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
-    ///     current: Box::new(LarCurrent::new()),
-    ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::zero(),
-    /// };
+    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
+    /// let current = LarCurrent::new();
+    /// let bfield = LarBfield::new();
+    /// let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -352,15 +327,15 @@ impl Queue {
     ///     &[7e-6, 7e-6],
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.classify(&equilibrium);
+    /// queue.classify(machine);
     /// # Ok::<_, SimulationError>(())
     /// ```
-    pub fn classify(&mut self, equilibrium: &Equilibrium) {
+    pub fn classify(&mut self, machine: Machine) {
         let pbar = ClassifyPbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle.classify(equilibrium);
+            particle.classify(machine);
             pbar.inc(&particle.orbit_type());
             pbar.print_stats();
         });
@@ -374,7 +349,7 @@ impl Queue {
     /// plane without integrating.
     ///
     /// This method is an optimization to [`Self::classify`]. Since the most common scenario is to
-    /// classify particles with the same `μ`, we can generate the [`EnergyPzetaPlane`] only once
+    /// classify particles with the same `μ`, we can generate the `EnergyPzetaPlane` only once
     /// and use it for all particles. This improves performance by 5-8 times.
     ///
     /// # Note
@@ -389,18 +364,15 @@ impl Queue {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// #
     /// let lcfs = LastClosedFluxSurface::Toroidal(0.6);
-    /// let equilibrium = Equilibrium {
-    ///     geometry: None,
-    ///     qfactor: Box::new(ParabolicQfactor::new(1.1, 4.2, lcfs)),
-    ///     current: Box::new(LarCurrent::new()),
-    ///     bfield: Box::new(LarBfield::new()),
-    ///     perturbation: Perturbation::zero(),
-    /// };
+    /// let qfactor = ParabolicQfactor::new(1.1, 4.2, lcfs);
+    /// let current = LarCurrent::new();
+    /// let bfield = LarBfield::new();
+    /// let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
     ///
     /// use InitialFlux::*;
     /// let initial_conditions = QueueInitialConditions::boozer(
@@ -412,11 +384,11 @@ impl Queue {
     ///     &[7e-6, 7e-6], // must all be equal
     /// )?;
     /// let mut queue = Queue::new(&initial_conditions);
-    /// queue.classify_common_mu(&equilibrium);
+    /// queue.classify_common_mu(machine);
     /// # Ok::<_, SimulationError>(())
     /// ```
     #[expect(clippy::float_cmp, reason = "we need bit-to-bit equivalence")]
-    pub fn classify_common_mu(&mut self, equilibrium: &Equilibrium) {
+    pub fn classify_common_mu(&mut self, machine: Machine) {
         let mus = self.initial_conditions.mu_array_view();
         let mu = mus
             .first()
@@ -426,13 +398,13 @@ impl Queue {
             "All initial `mu0` must be equal"
         );
 
-        let plane = EnergyPzetaPlane::from_mu(equilibrium, *mu);
+        let plane = EnergyPzetaPlane::from_mu(machine, *mu);
 
         let pbar = ClassifyPbar::new(self);
         pbar.print_prelude();
 
         self.particles.par_iter_mut().for_each(|particle| {
-            particle._classify(equilibrium, Some(&plane));
+            particle._classify(machine, Some(&plane));
             pbar.inc(&particle.orbit_type());
             pbar.print_stats();
         });
@@ -451,7 +423,7 @@ impl Queue {
     /// # Example
     ///
     /// ```
-    /// # use dexter_equilibrium::*;
+    /// # use dexter_machine::*;
     /// # use dexter_simulate::*;
     /// # use std::path::PathBuf;
     /// # use ndarray::Array1;

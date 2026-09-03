@@ -1,10 +1,10 @@
 //! Integration of a [`Particle`] for a specific amound of full `θ-ψ` periods.
 
+use approx::relative_eq;
 use std::f64::consts::TAU;
 use std::time::Instant;
 
-use approx::relative_eq;
-use dexter_equilibrium::Equilibrium;
+use dexter_machine::Machine;
 
 use crate::constants::{FLUX_REL_TOL, SHORT_CIRCUIT_FLUX_REL_TOL};
 use crate::particle::intersect::{
@@ -14,9 +14,7 @@ use crate::particle::intersect::{
 use crate::particle::{IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
-use crate::{Frequencies, IntersectParams};
-
-use super::{IntegrationStatus, Intersection};
+use crate::{Frequencies, IntegrationStatus, IntersectParams, Intersection};
 
 // ===============================================================================================
 
@@ -24,7 +22,7 @@ use super::{IntegrationStatus, Intersection};
 /// [`IntegrationStatus`] variant for each possible error.
 pub(super) fn close(
     particle: &mut Particle,
-    equilibrium: &Equilibrium,
+    machine: Machine,
     periods: usize,
     solver_params: &SolverParams,
 ) {
@@ -33,11 +31,11 @@ pub(super) fn close(
     let start = Instant::now();
     particle.evolution.reset();
     let mut caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
     let mut mod_caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
 
@@ -46,11 +44,11 @@ pub(super) fn close(
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     }
-    if particle.initial_conditions.finalize(equilibrium).is_err() {
+    if particle.initial_conditions.finalize(machine).is_err() {
         particle.integration_status = IntegrationStatus::InvalidInitialConditions;
         return;
     }
-    let Ok(state0) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches) else {
+    let Ok(state0) = GCState::new(&particle.initial_conditions, machine, &mut caches) else {
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     };
@@ -81,9 +79,9 @@ pub(super) fn close(
         // Perform a step
         let mut stepper = Stepper::new(&state1);
         state2 = if let Ok(state) = stepper
-            .start(dt, equilibrium, &mut caches)
+            .start(dt, machine, &mut caches)
             .inspect(|_| dt = stepper.calculate_optimal_step(dt, solver_params))
-            .and_then(|_| stepper.next_state(dt, equilibrium, &mut caches))
+            .and_then(|_| stepper.next_state(dt, machine, &mut caches))
         {
             state
         } else {
@@ -94,7 +92,7 @@ pub(super) fn close(
 
         // This may only fail if an evaluation of the modified system fails
         let Ok(close_period_check) = closed_period(
-            equilibrium,
+            machine,
             &state0,
             &state1,
             &state2,
@@ -141,10 +139,10 @@ pub(super) fn close(
         //
         // If `mod_state2` was calculated correctly, switch back to the normal system, calculate
         // `intersection_state` and store it
-        match calculate_mod_state2(equilibrium, &mod_state1, dtau, &mut mod_caches) {
+        match calculate_mod_state2(machine, &mod_state1, dtau, &mut mod_caches) {
             Ok(mod_state2) => {
                 match calculate_intersection_state(
-                    equilibrium,
+                    machine,
                     &mod_state2,
                     intersect_params,
                     &mut mod_caches,
@@ -186,7 +184,7 @@ pub(super) fn close(
 /// This method returns an `Err(())` if an evaluation on the modified system fails, which is the
 /// only possible error.
 fn closed_period(
-    equilibrium: &Equilibrium,
+    objects: Machine,
     state0: &GCState,
     state1: &GCState,
     state2: &GCState,
@@ -212,11 +210,11 @@ fn closed_period(
     // `intersection_state` and check for closed period
     //
     // The two calculations can only fail if an evaluation of the modified system is out of bounds
-    let Ok(mod_state2) = calculate_mod_state2(equilibrium, &mod_state1, dtau, mod_caches) else {
+    let Ok(mod_state2) = calculate_mod_state2(objects, &mod_state1, dtau, mod_caches) else {
         return Err(());
     };
     let Ok(intersection_state) =
-        calculate_intersection_state(equilibrium, &mod_state2, intersect_params, mod_caches)
+        calculate_intersection_state(objects, &mod_state2, intersect_params, mod_caches)
     else {
         return Err(());
     };

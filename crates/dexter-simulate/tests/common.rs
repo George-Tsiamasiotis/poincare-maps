@@ -1,22 +1,6 @@
 //! Common testing utilities.
 
-use dexter_equilibrium::*;
 use dexter_simulate::*;
-
-#[allow(dead_code, reason = "used in tests")]
-pub(crate) fn lar_equilibrium() -> Equilibrium {
-    let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-4, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 3, 1, 0.0)),
-        ]),
-    }
-}
 
 /// Checks that the time series calculated from an integration routine are valid.
 #[allow(dead_code, reason = "used in tests")]

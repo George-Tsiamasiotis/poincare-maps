@@ -6,9 +6,9 @@ mod common;
 
 use crate::common::check_integrated_particle_arrays;
 use approx::*;
-use dexter_equilibrium::extract::{POLOIDAL_TEST_NETCDF_PATH, TEST_NETCDF_PATH};
-use dexter_equilibrium::*;
-use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
+use dexter_machine::extract::{POLOIDAL_TEST_NETCDF_PATH, TEST_NETCDF_PATH};
+use dexter_machine::*;
+use dexter_machine::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
 use dexter_simulate::*;
 use std::path::PathBuf;
 
@@ -17,13 +17,10 @@ use std::path::PathBuf;
 fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(UnityQfactor::new(lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::zero(),
-    };
+    let qfactor = UnityQfactor::new(lcfs);
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, Toroidal(0.02), 3.14, 0.0, 1e-4, 1e-6);
     let solver_params = SolverParams::default();
@@ -34,7 +31,7 @@ fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
     let mut particle = Particle::new(&initial);
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Intersected));
     assert_eq!(particle.steps_stored(), 10);
@@ -50,7 +47,7 @@ fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
     let mut particle = Particle::new(&initial);
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Intersected));
     assert_eq!(particle.steps_stored(), 10);
@@ -66,13 +63,10 @@ fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
 fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
     use InitialFlux::*;
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::zero(),
-    };
+    let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, Poloidal(0.1), 3.14, 0.0, 1e-4, 1e-6);
     let solver_params = SolverParams::default();
@@ -83,7 +77,7 @@ fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
     let mut particle = Particle::new(&initial);
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
     dbg!(&particle);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Intersected));
@@ -100,7 +94,7 @@ fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
     let mut particle = Particle::new(&initial);
     assert!(matches!(particle.integration_status(), IntegrationStatus::Initialized));
 
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
     dbg!(&particle);
 
     assert!(matches!(particle.integration_status(), IntegrationStatus::Intersected));
@@ -118,21 +112,19 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(vec![
-            Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
-        ]),
-    };
+    let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
+    let perturbation = Perturbation::new(vec![
+        Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
+        Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).with_perturbation(&perturbation).build();
 
     let solver_params = SolverParams::default();
 
     let psi0 = 0.2;
-    let psip0 = equilibrium.qfactor.psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
+    let psip0 = machine.qfactor().psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
     let tor_initial = InitialConditions::boozer(0.0, Toroidal(psi0), 0.0, 0.0, 1e-4, 0.0);
     let pol_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, 1e-4, 0.0);
 
@@ -143,8 +135,8 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
 
 
     let intersect_params = IntersectParams::new(Intersection::ConstTheta, 1.0, 10);
-    tor_particle.intersect(&equilibrium, &intersect_params, &solver_params);
-    pol_particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    tor_particle.intersect(machine, &intersect_params, &solver_params);
+    pol_particle.intersect(machine, &intersect_params, &solver_params);
     dbg!(&tor_particle);
     dbg!(&pol_particle);
 
@@ -177,21 +169,20 @@ fn gc_toroidal_poloidal_equivalence_const_zeta() {
     use InitialFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TEST_NETCDF_PATH);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(vec![
-            Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
-            Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
-        ]),
-    };
+    let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
+    let perturbation = Perturbation::new(vec![
+        Box::new(NcFluteModeBuilder::new(&path, Akima, 2, 1).with_phase_method(Interpolation).build().unwrap()),
+        Box::new(NcFluteModeBuilder::new(&path, Akima, 3, 2).with_phase_method(Interpolation).build().unwrap()),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).with_perturbation(&perturbation).build();
+
 
     let solver_params = SolverParams::default();
 
     let psi0 = 0.2;
-    let psip0 = equilibrium.qfactor.psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
+    let psip0 = machine.qfactor().psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
     let tor_initial = InitialConditions::boozer(0.0, Toroidal(psi0), 0.0, 0.0, 1e-4, 0.0);
     let pol_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, 1e-4, 0.0);
 
@@ -202,8 +193,8 @@ fn gc_toroidal_poloidal_equivalence_const_zeta() {
 
 
     let intersect_params = IntersectParams::new(Intersection::ConstZeta, 1.0, 10);
-    tor_particle.intersect(&equilibrium, &intersect_params, &solver_params);
-    pol_particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    tor_particle.intersect(machine, &intersect_params, &solver_params);
+    pol_particle.intersect(machine, &intersect_params, &solver_params);
     dbg!(&tor_particle);
     dbg!(&pol_particle);
 

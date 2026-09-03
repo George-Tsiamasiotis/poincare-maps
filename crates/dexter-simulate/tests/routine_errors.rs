@@ -1,12 +1,15 @@
 //! Tests corner cases for unwanted particle integration results
 
 mod common;
-use crate::common::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 
 #[test]
 fn time_out() {
-    let equilibrium = lar_equilibrium();
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 1e-6);
     let solver_params = SolverParams {
@@ -16,7 +19,7 @@ fn time_out() {
 
     // Particle integration
     let mut particle = Particle::new(&initial);
-    particle.integrate(&equilibrium, (0.0, 1e5), &solver_params);
+    particle.integrate(machine, (0.0, 1e5), &solver_params);
     assert!(matches!(
         particle.integration_status(),
         IntegrationStatus::TimedOut(..)
@@ -25,7 +28,7 @@ fn time_out() {
     // Particle intersection
     let mut particle = Particle::new(&initial);
     let intersect_params = IntersectParams::new(Intersection::ConstTheta, 1.0, 10);
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
     assert!(matches!(
         particle.integration_status(),
         IntegrationStatus::TimedOut(..)
@@ -35,13 +38,16 @@ fn time_out() {
 #[test]
 fn out_of_bounds_initialization() {
     use IntegrationStatus::OutOfBoundsInitialization;
-    let equilibrium = lar_equilibrium();
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, InitialFlux::Poloidal(1e10), 0.0, 0.0, 1e-4, 1e-6);
 
     // Particle integration
     let mut particle = Particle::new(&initial);
-    particle.integrate(&equilibrium, (0.0, 1e5), &SolverParams::default());
+    particle.integrate(machine, (0.0, 1e5), &SolverParams::default());
     assert!(matches!(
         particle.integration_status(),
         OutOfBoundsInitialization
@@ -50,7 +56,7 @@ fn out_of_bounds_initialization() {
     // Particle intersection
     let mut particle = Particle::new(&initial);
     let intersect_params = IntersectParams::new(Intersection::ConstTheta, 0.0, 10);
-    particle.intersect(&equilibrium, &intersect_params, &SolverParams::default());
+    particle.intersect(machine, &intersect_params, &SolverParams::default());
     assert!(matches!(
         particle.integration_status(),
         OutOfBoundsInitialization
@@ -59,7 +65,10 @@ fn out_of_bounds_initialization() {
 
 #[test]
 fn intersected_time_out() {
-    let equilibrium = lar_equilibrium();
+    let qfactor = UnityQfactor::new(LastClosedFluxSurface::Toroidal(0.5));
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 0.0);
     let solver_params = SolverParams {
@@ -70,7 +79,7 @@ fn intersected_time_out() {
     // Particle intersection
     let mut particle = Particle::new(&initial);
     let intersect_params = IntersectParams::new(Intersection::ConstTheta, 1.0, 10000);
-    particle.intersect(&equilibrium, &intersect_params, &solver_params);
+    particle.intersect(machine, &intersect_params, &solver_params);
     dbg!(&particle);
     assert!(matches!(
         particle.integration_status(),

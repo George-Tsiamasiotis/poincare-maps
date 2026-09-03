@@ -2,7 +2,7 @@
 
 #![allow(non_snake_case)]
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 use ndarray::Array1;
 
@@ -10,20 +10,20 @@ use ndarray::Array1;
 fn queue_integrate_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
     // Equilibrium setup
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(1.1, 1.9, lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
-        ]),
-    };
+    let qfactor = ParabolicQfactor::new(1.1, 1.9, lcfs);
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let perturbation = Perturbation::new(vec![
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Initial Conditions setup
     let particle_count = 10;
-    let psis = equilibrium.qfactor.psi_last() * Array1::linspace(0.0, 0.5, particle_count);
+    let psis = machine.qfactor().psi_last() * Array1::linspace(0.0, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::boozer(
         &vec![0.0; particle_count],
@@ -46,7 +46,7 @@ fn queue_integrate_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
         particle_count
     );
 
-    queue.integrate(&equilibrium, (0.0, 1e4), &SolverParams::default());
+    queue.integrate(machine, (0.0, 1e4), &SolverParams::default());
 
     // All but the first at `ψ=0` should be integrated.
     assert!(queue[0].integration_status() == IntegrationStatus::OutOfBoundsInitialization);

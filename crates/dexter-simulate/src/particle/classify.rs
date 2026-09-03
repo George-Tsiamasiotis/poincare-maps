@@ -1,12 +1,14 @@
 //! Classification of a particle's orbit by projection on the `(E, Pζ, μ)` space.
 
-use dexter_equilibrium::Equilibrium;
 use parabola::Point;
 use rsl_interpolation::Accelerator;
 
+use dexter_machine::Machine;
+
+use crate::OrbitType;
+use crate::coms::EnergyPzetaPlane;
 use crate::particle::{IntegrationCaches, Particle};
 use crate::state::GCState;
-use crate::{EnergyPzetaPlane, OrbitType};
 
 /// The position of an `(E-Pζ)` point on the `(E-Pζ)` plane, relative to the orbit
 /// classification curves.
@@ -150,14 +152,14 @@ impl EnergyPzetaPosition {
 /// need for generating a new one. See [`Particle::_classify`].
 pub(super) fn classify(
     particle: &mut Particle,
-    equilibrium: &Equilibrium,
+    machine: Machine,
     _plane: Option<&EnergyPzetaPlane>,
 ) {
     // =============== Particle Setup
 
     // Do not alter the `evolution` or `integration_status`
     let mut caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
 
@@ -166,12 +168,11 @@ pub(super) fn classify(
         particle.orbit_type = OrbitType::Undefined;
         return;
     }
-    if particle.initial_conditions.finalize(equilibrium).is_err() {
+    if particle.initial_conditions.finalize(machine).is_err() {
         particle.orbit_type = OrbitType::Undefined;
         return;
     }
-    let Ok(initial_state) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches)
-    else {
+    let Ok(initial_state) = GCState::new(&particle.initial_conditions, machine, &mut caches) else {
         particle.orbit_type = OrbitType::Undefined;
         return;
     };
@@ -190,7 +191,7 @@ pub(super) fn classify(
             }
             plane
         }
-        None => &EnergyPzetaPlane::from_mu(equilibrium, mu),
+        None => &EnergyPzetaPlane::from_mu(machine, mu),
     };
 
     check_parabola_alphas(plane);

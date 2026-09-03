@@ -1,7 +1,7 @@
 //! Integration of a particle for a long time, useful for profiling.
 
-use dexter_equilibrium::{
-    Equilibrium, FluteMode, LarBfield, LarCurrent, LastClosedFluxSurface, ParabolicQfactor,
+use dexter_machine::{
+    FluteMode, LarBfield, LarCurrent, LastClosedFluxSurface, MachineBuilder, ParabolicQfactor,
     Perturbation,
 };
 use dexter_simulate::{
@@ -18,14 +18,9 @@ fn main() {
         Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
         Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
     ]);
-
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(qfactor),
-        bfield: Box::new(bfield),
-        current: Box::new(current),
-        perturbation,
-    };
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Particle setup
     let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
@@ -40,7 +35,7 @@ fn main() {
         max_steps: 10_000_000,
         ..Default::default()
     };
-    particle.integrate(&equilibrium, teval, &solver_params);
+    particle.integrate(machine, teval, &solver_params);
     dbg!(&particle);
     assert!(
         matches!(

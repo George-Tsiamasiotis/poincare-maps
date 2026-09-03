@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use dexter_equilibrium::{
+use dexter_machine::{
     Interpolation1dType::Akima, Interpolation2dType::Bicubic, extract::TOROIDAL_TEST_NETCDF_PATH, *,
 };
 use dexter_simulate::*;
@@ -11,27 +11,27 @@ use dexter_simulate::*;
 fn integration_cache_analytical_eq_flute_mode() {
     use InitialFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 2, 1, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 2, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 2, 3, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 2, 4, 0.0)),
-        ]),
-    };
+    let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let perturbation = Perturbation::new(vec![
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 3, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 2, 1, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 2, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 2, 3, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 2, 4, 0.0)),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     let initial = InitialConditions::boozer(0.0, Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
 
     let mut particle = Particle::new(&initial);
 
-    particle.integrate(&equilibrium, (0.0, 1e5), &SolverParams::default());
+    particle.integrate(machine, (0.0, 1e5), &SolverParams::default());
     assert!(matches!(
         particle.integration_status(),
         IntegrationStatus::Integrated
@@ -55,32 +55,32 @@ fn integration_cache_analytical_eq_flute_mode() {
 fn integration_cache_nc_eq_nc_flute_mode() {
     use InitialFlux::*;
     let path = PathBuf::from(TOROIDAL_TEST_NETCDF_PATH);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(vec![
-            Box::new(
-                NcFluteModeBuilder::new(&path, Akima, 2, 1)
-                    .with_phase_method(PhaseMethod::Interpolation)
-                    .build()
-                    .unwrap(),
-            ),
-            Box::new(
-                NcFluteModeBuilder::new(&path, Akima, 3, 2)
-                    .with_phase_method(PhaseMethod::Interpolation)
-                    .build()
-                    .unwrap(),
-            ),
-        ]),
-    };
+    let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
+    let perturbation = Perturbation::new(vec![
+        Box::new(
+            NcFluteModeBuilder::new(&path, Akima, 2, 1)
+                .with_phase_method(PhaseMethod::Interpolation)
+                .build()
+                .unwrap(),
+        ),
+        Box::new(
+            NcFluteModeBuilder::new(&path, Akima, 3, 2)
+                .with_phase_method(PhaseMethod::Interpolation)
+                .build()
+                .unwrap(),
+        ),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     let initial = InitialConditions::boozer(0.0, Toroidal(0.2), 0.0, 0.0, 1e-8, 1e-10);
     let mut particle = Particle::new(&initial);
 
     particle.integrate(
-        &equilibrium,
+        machine,
         (0.0, 1e7),
         &SolverParams {
             method: SteppingMethod::FixedStep(2000.0),

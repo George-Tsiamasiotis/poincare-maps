@@ -1,18 +1,16 @@
 //! Calculation of a particle's intersections with a constant angle surface.
 
+use approx::abs_diff_eq;
 use std::f64::consts::{PI, TAU};
 use std::time::Instant;
 
-use approx::abs_diff_eq;
-use dexter_equilibrium::Equilibrium;
+use dexter_machine::Machine;
 
 use crate::constants::ANGLE_INTERSECTION_THRESHOLD;
 use crate::particle::{Evolution, IntegrationCaches, Particle};
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
-use crate::{FluxCoordinate, SimulationError};
-
-use super::IntegrationStatus;
+use crate::{FluxCoordinate, IntegrationStatus, SimulationError};
 
 /// Defines the surface of the Poincare section.
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +50,7 @@ impl IntersectParams {
 /// [`IntegrationStatus`] variant for each possible error.
 pub(super) fn intersect(
     particle: &mut Particle,
-    equilibrium: &Equilibrium,
+    machine: Machine,
     intersect_params: &IntersectParams,
     solver_params: &SolverParams,
 ) {
@@ -61,12 +59,12 @@ pub(super) fn intersect(
     let start = Instant::now();
     particle.evolution.reset();
     let mut caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
     // Create caches for the modified system to avoid invalidating the real caches.
     let mut mod_caches = IntegrationCaches {
-        mode_caches: equilibrium.perturbation.generate_caches(),
+        mode_caches: machine.perturbation().generate_caches(),
         ..Default::default()
     };
 
@@ -75,12 +73,11 @@ pub(super) fn intersect(
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     }
-    if particle.initial_conditions.finalize(equilibrium).is_err() {
+    if particle.initial_conditions.finalize(machine).is_err() {
         particle.integration_status = IntegrationStatus::InvalidInitialConditions;
         return;
     }
-    let Ok(mut state1) = GCState::new(&particle.initial_conditions, equilibrium, &mut caches)
-    else {
+    let Ok(mut state1) = GCState::new(&particle.initial_conditions, machine, &mut caches) else {
         particle.integration_status = IntegrationStatus::OutOfBoundsInitialization;
         return;
     };
@@ -104,9 +101,9 @@ pub(super) fn intersect(
         // Perform a step
         let mut stepper = Stepper::new(&state1);
         state2 = if let Ok(state) = stepper
-            .start(dt, equilibrium, &mut caches)
+            .start(dt, machine, &mut caches)
             .inspect(|_| dt = stepper.calculate_optimal_step(dt, solver_params))
-            .and_then(|_| stepper.next_state(dt, equilibrium, &mut caches))
+            .and_then(|_| stepper.next_state(dt, machine, &mut caches))
         {
             state
         } else {
@@ -130,8 +127,7 @@ pub(super) fn intersect(
             let dtau = calculate_mod_step(&state1, intersect_params);
 
             // Perform the step on the modified system
-            let Ok(mod_state2) =
-                calculate_mod_state2(equilibrium, &mod_state1, dtau, &mut mod_caches)
+            let Ok(mod_state2) = calculate_mod_state2(machine, &mod_state1, dtau, &mut mod_caches)
             else {
                 // `start()` and `next_state()` can only fail if an evaluation is out of bounds.
                 particle.integration_status = IntegrationStatus::ModStateEscaped;
@@ -140,7 +136,7 @@ pub(super) fn intersect(
 
             // Switch back to the normal system
             let Ok(intersection_state) = calculate_intersection_state(
-                equilibrium,
+                machine,
                 &mod_state2,
                 intersect_params,
                 &mut mod_caches,
@@ -265,13 +261,13 @@ pub(crate) fn calculate_mod_step(state1: &GCState, intersect_params: &IntersectP
 /// Performs 1 step on the modified system (6) to calculate `mod_state2`, which sits exactly on the
 /// intersection surface, **but corresponds to the modified system**.
 pub(crate) fn calculate_mod_state2(
-    equilibrium: &Equilibrium,
+    objects: Machine,
     mod_state1: &GCState,
     dtau: f64,
     mod_caches: &mut IntegrationCaches,
 ) -> Result<GCState, SimulationError> {
     let mut mod_stepper = Stepper::new(mod_state1);
-    mod_stepper.start(dtau, equilibrium, mod_caches)?;
+    mod_stepper.start(dtau, objects, mod_caches)?;
     // NOTE: This is equivalent to adjusting the step-size for the modified system.
     {
         mod_stepper.weights[0] = match mod_state1.coordinate {
@@ -283,13 +279,13 @@ pub(crate) fn calculate_mod_state2(
         mod_stepper.weights[3] = mod_state1.rho_dot;
         mod_stepper.weights[4] = mod_state1.mu_dot;
     }
-    mod_stepper.next_state(dtau, equilibrium, mod_caches)
+    mod_stepper.next_state(dtau, objects, mod_caches)
 }
 
 /// Calculates the state of the original system exactly on the intersection surface, by converting
 /// `mod_state2` back on the original system.
 pub(crate) fn calculate_intersection_state(
-    equilibrium: &Equilibrium,
+    objects: Machine,
     mod_state2: &GCState,
     intersect_params: &IntersectParams,
     mod_caches: &mut IntegrationCaches,
@@ -333,7 +329,7 @@ pub(crate) fn calculate_intersection_state(
             intersection_state.mu_dot = dmu_dt;
         }
     };
-    intersection_state.into_evaluated(equilibrium, mod_caches)
+    intersection_state.into_evaluated(objects, mod_caches)
 }
 
 /// Checks when an angle has intersected with the surface at `angle`

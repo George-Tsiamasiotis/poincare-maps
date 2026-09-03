@@ -4,7 +4,7 @@
 
 use std::f64::consts::TAU;
 
-use dexter_equilibrium::{Equilibrium, EvalError};
+use dexter_machine::{EvalError, Machine};
 
 use crate::particle::IntegrationCaches;
 use crate::{FluxCoordinate, InitialConditions, InitialFlux, SimulationError};
@@ -93,7 +93,7 @@ impl GCState {
     /// Creates a new `GCState` from a set of [`InitialConditions`] and evaluates it.
     pub(crate) fn new(
         initial: &InitialConditions,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<Self, SimulationError> {
         let (psi, psip): (f64, f64);
@@ -121,22 +121,22 @@ impl GCState {
             coordinate,
             ..Default::default()
         }
-        .into_evaluated(equilibrium, caches)
+        .into_evaluated(machine, caches)
     }
 
     /// Performs all evaluations and calculation of intermediate quantities and final time derivatives.
     pub(crate) fn evaluate(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         // First do all the interpolations
         self.calculate_modulos();
-        self.calculate_other_flux(equilibrium, caches)?;
-        self.calculate_qfactor_quantities(equilibrium, caches)?;
-        self.calculate_current_quantities(equilibrium, caches)?;
-        self.calculate_bfield_quantities(equilibrium, caches)?;
-        self.calculate_perturbation_quantities(equilibrium, caches)?;
+        self.calculate_other_flux(machine, caches)?;
+        self.calculate_qfactor_quantities(machine, caches)?;
+        self.calculate_current_quantities(machine, caches)?;
+        self.calculate_bfield_quantities(machine, caches)?;
+        self.calculate_perturbation_quantities(machine, caches)?;
 
         // Multiply with `q` where needed, depending on the `FluxCoordinate`
         self.adjust_for_flux();
@@ -162,10 +162,10 @@ impl GCState {
     /// Returns the state evaluated, consuming self.
     pub(crate) fn into_evaluated(
         mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<Self, SimulationError> {
-        self.evaluate(equilibrium, caches)?;
+        self.evaluate(machine, caches)?;
         Ok(self)
     }
 }
@@ -180,10 +180,10 @@ impl GCState {
     /// Calculates the non-coordinate flux, if it is defined.
     fn calculate_other_flux(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
-        let qfactor = equilibrium.qfactor.as_ref();
+        let qfactor = machine.qfactor();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.psip = match qfactor.psip_of_psi(self.psi, caches.flux_acc()) {
                 Ok(psip) => psip,
@@ -202,10 +202,10 @@ impl GCState {
 
     fn calculate_qfactor_quantities(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
-        let qfactor = equilibrium.qfactor.as_ref();
+        let qfactor = machine.qfactor();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.q = qfactor.q_of_psi(self.psi, caches.flux_acc())?;
         } else {
@@ -216,10 +216,10 @@ impl GCState {
 
     fn calculate_current_quantities(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
-        let current = equilibrium.current.as_ref();
+        let current = machine.current();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.g = current.g_of_psi(self.psi, caches.flux_acc())?;
             self.i = current.i_of_psi(self.psi, caches.flux_acc())?;
@@ -237,11 +237,11 @@ impl GCState {
     #[rustfmt::skip]
     fn calculate_bfield_quantities(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError>
     {
-        let bfield = equilibrium.bfield.as_ref();
+        let bfield = machine.bfield();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.b          = bfield.b_of_psi           (self.psi, self.mod_theta,caches.acc())?;
             self.db_dflux   = bfield.db_dpsi            (self.psi, self.mod_theta,caches.acc())?;
@@ -258,11 +258,11 @@ impl GCState {
     #[rustfmt::skip]
     fn calculate_perturbation_quantities(
         &mut self,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError>
     {
-        let perturbation = &equilibrium.perturbation;
+        let perturbation = machine.perturbation();
         let mode_caches = caches.mode_caches();
         if self.coordinate == FluxCoordinate::Toroidal {
             self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;

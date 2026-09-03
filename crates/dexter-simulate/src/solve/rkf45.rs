@@ -2,7 +2,7 @@
 
 #![expect(clippy::missing_docs_in_private_items, reason = "unnecessary")]
 
-use dexter_equilibrium::Equilibrium;
+use dexter_machine::Machine;
 
 use crate::particle::IntegrationCaches;
 use crate::state::GCState;
@@ -96,15 +96,15 @@ impl Stepper {
     pub(crate) fn start(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         self.calculate_k1();
-        self.calculate_state_k2(dt, equilibrium, caches)?;
-        self.calculate_state_k3(dt, equilibrium, caches)?;
-        self.calculate_state_k4(dt, equilibrium, caches)?;
-        self.calculate_state_k5(dt, equilibrium, caches)?;
-        self.calculate_state_k6(dt, equilibrium, caches)?;
+        self.calculate_state_k2(dt, machine, caches)?;
+        self.calculate_state_k3(dt, machine, caches)?;
+        self.calculate_state_k4(dt, machine, caches)?;
+        self.calculate_state_k5(dt, machine, caches)?;
+        self.calculate_state_k6(dt, machine, caches)?;
         self.calculate_embedded_weights();
         self.calculate_errors();
         Ok(())
@@ -117,7 +117,7 @@ impl Stepper {
     pub(crate) fn calculate_state_k2(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         let coef = [
@@ -137,7 +137,7 @@ impl Stepper {
         self.state2.rho = self.state1.rho + dt * coef[3];
         self.state2.mu = self.state1.mu + dt * coef[4];
 
-        self.state2.evaluate(equilibrium, caches)?;
+        self.state2.evaluate(machine, caches)?;
         self.k2 = self.state2.dots();
         Ok(())
     }
@@ -145,7 +145,7 @@ impl Stepper {
     pub(crate) fn calculate_state_k3(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         let coef = [
@@ -165,7 +165,7 @@ impl Stepper {
         self.state3.rho = self.state1.rho + dt * coef[3];
         self.state3.mu = self.state1.mu + dt * coef[4];
 
-        self.state3.evaluate(equilibrium, caches)?;
+        self.state3.evaluate(machine, caches)?;
         self.k3 = self.state3.dots();
         Ok(())
     }
@@ -173,7 +173,7 @@ impl Stepper {
     pub(crate) fn calculate_state_k4(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         let coef = [
@@ -193,7 +193,7 @@ impl Stepper {
         self.state4.rho = self.state1.rho + dt * coef[3];
         self.state4.mu = self.state1.mu + dt * coef[4];
 
-        self.state4.evaluate(equilibrium, caches)?;
+        self.state4.evaluate(machine, caches)?;
         self.k4 = self.state4.dots();
         Ok(())
     }
@@ -201,7 +201,7 @@ impl Stepper {
     pub(crate) fn calculate_state_k5(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         #[rustfmt::skip]
@@ -221,7 +221,7 @@ impl Stepper {
         self.state5.rho = self.state1.rho + dt * coef[3];
         self.state5.mu = self.state1.mu + dt * coef[4];
 
-        self.state5.evaluate(equilibrium, caches)?;
+        self.state5.evaluate(machine, caches)?;
         self.k5 = self.state5.dots();
         Ok(())
     }
@@ -229,7 +229,7 @@ impl Stepper {
     pub(crate) fn calculate_state_k6(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         #[rustfmt::skip]
@@ -250,7 +250,7 @@ impl Stepper {
         self.state6.rho = self.state1.rho + dt * coef[3];
         self.state6.mu = self.state1.mu + dt * coef[4];
 
-        self.state6.evaluate(equilibrium, caches)?;
+        self.state6.evaluate(machine, caches)?;
         self.k6 = self.state6.dots();
         Ok(())
     }
@@ -341,7 +341,7 @@ impl Stepper {
     pub(crate) fn next_state(
         &mut self,
         dt: f64,
-        equilibrium: &Equilibrium,
+        machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<GCState, SimulationError> {
         {
@@ -355,7 +355,7 @@ impl Stepper {
             next.rho = self.state1.rho + dt * self.weights[3];
             next.mu = self.state1.mu + dt * self.weights[4];
 
-            next.into_evaluated(equilibrium, caches)
+            next.into_evaluated(machine, caches)
         }
     }
 }

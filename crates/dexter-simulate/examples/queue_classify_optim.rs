@@ -1,29 +1,23 @@
 //! Compare `Queue::classify` and `Queue::classify_common_mu` routines
 
-#![allow(non_snake_case)]
-#![allow(unused_variables)]
-
 use std::time::Instant;
 
-use dexter_equilibrium::*;
+use dexter_machine::*;
 use dexter_simulate::*;
 use ndarray::Array1;
 
 fn main() -> Result<(), SimulationError> {
     // Equilibrium setup
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(1.1, 3.9, lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::zero(),
-    };
+    let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
     // Initial Conditions setup
-    let particle_count = 1000000;
-    let pzetas = equilibrium.qfactor.psip_last() * Array1::linspace(-1.4, 0.2, particle_count);
-    let psis = equilibrium.qfactor.psi_last() * Array1::linspace(0.001, 0.5, particle_count);
+    let particle_count = 1_000_000;
+    let pzetas = machine.qfactor().psip_last() * Array1::linspace(-1.4, 0.2, particle_count);
+    let psis = machine.qfactor().psi_last() * Array1::linspace(0.001, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::mixed(
         Array1::zeros(particle_count).as_slice().unwrap(),
@@ -38,19 +32,20 @@ fn main() -> Result<(), SimulationError> {
 
     let mut no_common_queue = Queue::new(&initial_conditions);
     let no_common_start = Instant::now();
-    no_common_queue.classify(&equilibrium);
+    no_common_queue.classify(machine);
     let no_common_elapsed = no_common_start.elapsed();
 
     let mut common_queue = Queue::new(&initial_conditions);
     let common_start = Instant::now();
-    common_queue.classify_common_mu(&equilibrium);
+    common_queue.classify_common_mu(machine);
     let common_elapsed = common_start.elapsed();
 
     // Sanity check
-    for i in 0..no_common_queue.particle_count() {
+    for particle_index in 0..no_common_queue.particle_count() {
         assert_eq!(
-            no_common_queue[i].orbit_type(),
-            common_queue[i].orbit_type()
+            no_common_queue[particle_index].orbit_type(),
+            common_queue[particle_index].orbit_type(),
+            "orbit types must be the same"
         );
     }
 

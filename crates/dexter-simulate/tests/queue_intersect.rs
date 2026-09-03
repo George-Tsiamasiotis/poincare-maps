@@ -2,9 +2,9 @@
 
 #![allow(non_snake_case)]
 
-use dexter_equilibrium::extract::POLOIDAL_TEST_NETCDF_PATH;
-use dexter_equilibrium::*;
-use dexter_equilibrium::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
+use dexter_machine::extract::POLOIDAL_TEST_NETCDF_PATH;
+use dexter_machine::*;
+use dexter_machine::{Interpolation1dType::Akima, Interpolation2dType::Bicubic};
 use dexter_simulate::*;
 use ndarray::Array1;
 use std::path::PathBuf;
@@ -13,20 +13,20 @@ use std::path::PathBuf;
 fn queue_intersect_const_theta_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
     // Equilibrium setup
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(ParabolicQfactor::new(1.1, 1.9, lcfs)),
-        current: Box::new(LarCurrent::new()),
-        bfield: Box::new(LarBfield::new()),
-        perturbation: Perturbation::new(vec![
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
-            Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
-        ]),
-    };
+    let qfactor = ParabolicQfactor::new(1.1, 1.9, lcfs);
+    let current = LarCurrent::new();
+    let bfield = LarBfield::new();
+    let perturbation = Perturbation::new(vec![
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 2, 0.0)),
+        Box::new(FluteMode::new(1e-3, lcfs, 1, 4, 0.0)),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Initial Conditions setup
     let particle_count = 10;
-    let psis = equilibrium.qfactor.psi_last() * Array1::linspace(0.0, 0.5, particle_count);
+    let psis = machine.qfactor().psi_last() * Array1::linspace(0.0, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::boozer(
         &vec![0.0; particle_count],
@@ -50,7 +50,7 @@ fn queue_intersect_const_theta_parQ_larC_larB_cosP() -> Result<(), SimulationErr
     );
 
     let intersect_params = IntersectParams::new(Intersection::ConstTheta, 0.0, 10);
-    queue.intersect(&equilibrium, &intersect_params, &SolverParams::default());
+    queue.intersect(machine, &intersect_params, &SolverParams::default());
 
     // All but the first at `ψ=0` should be intersected.
     assert!(queue[0].integration_status() == IntegrationStatus::OutOfBoundsInitialization);
@@ -71,30 +71,30 @@ fn queue_poloidal_intersect_const_zeta_ncdQ_ncdC_ncdB_ncdP() -> Result<(), Simul
     // Equilibrium setup
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
-    let equilibrium = Equilibrium {
-        geometry: None,
-        qfactor: Box::new(NcQfactorBuilder::new(&path, Akima).build().unwrap()),
-        current: Box::new(NcCurrentBuilder::new(&path, Akima).build().unwrap()),
-        bfield: Box::new(NcBfieldBuilder::new(&path, Bicubic).build().unwrap()),
-        perturbation: Perturbation::new(vec![
-            Box::new(
-                NcFluteModeBuilder::new(&path, Akima, 2, 1)
-                    .with_phase_method(Interpolation)
-                    .build()
-                    .unwrap(),
-            ),
-            Box::new(
-                NcFluteModeBuilder::new(&path, Akima, 3, 2)
-                    .with_phase_method(Interpolation)
-                    .build()
-                    .unwrap(),
-            ),
-        ]),
-    };
+    let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
+    let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
+    let bfield = NcBfieldBuilder::new(&path, Bicubic).build().unwrap();
+    let perturbation = Perturbation::new(vec![
+        Box::new(
+            NcFluteModeBuilder::new(&path, Akima, 2, 1)
+                .with_phase_method(Interpolation)
+                .build()
+                .unwrap(),
+        ),
+        Box::new(
+            NcFluteModeBuilder::new(&path, Akima, 3, 2)
+                .with_phase_method(Interpolation)
+                .build()
+                .unwrap(),
+        ),
+    ]);
+    let machine = MachineBuilder::new(&qfactor, &current, &bfield)
+        .with_perturbation(&perturbation)
+        .build();
 
     // Initial Conditions setup
     let particle_count = 10;
-    let psips = equilibrium.qfactor.psip_last() * Array1::linspace(0.0, 0.3, particle_count);
+    let psips = machine.qfactor().psip_last() * Array1::linspace(0.0, 0.3, particle_count);
     let psips = poloidal_fluxes(&psips.to_vec());
     let initial_conditions = QueueInitialConditions::boozer(
         &vec![0.0; particle_count],
@@ -118,7 +118,7 @@ fn queue_poloidal_intersect_const_zeta_ncdQ_ncdC_ncdB_ncdP() -> Result<(), Simul
     );
 
     let intersect_params = IntersectParams::new(Intersection::ConstZeta, 0.0, 10);
-    queue.intersect(&equilibrium, &intersect_params, &SolverParams::default());
+    queue.intersect(machine, &intersect_params, &SolverParams::default());
 
     // All but the first at `ψ=0` should be intersected.
     assert!(queue[0].integration_status() == IntegrationStatus::OutOfBoundsInitialization);
