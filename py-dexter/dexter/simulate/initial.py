@@ -115,10 +115,10 @@ class InitialConditions(_ReprStrImpl):
 
         Example
         -------
-        ```python title="InitialConditions definition in Boozer coordinates"
+        ```python title="InitialConditions definition in Boozer-Toroidal coordinates"
         >>> initial_conditions = dex.InitialConditions.Boozer(
         ...     t0=0,
-        ...     flux0=dex.InitialFlux.Toroidal(0.01), # ψ0 = 0.1
+        ...     flux0=dex.InitialFlux.Toroidal(0.01),  # ψ0 = 0.01
         ...     theta0=3.14,
         ...     zeta0=0,
         ...     rho0=1e-4,
@@ -165,8 +165,8 @@ class InitialConditions(_ReprStrImpl):
 
         Example
         -------
-        ```python title="InitialConditions definition in Mixed coordinates"
-        >>> flux0=dex.InitialFlux.Poloidal(0.01) # ψp0 = 0.1
+        ```python title="InitialConditions definition in Mixed-Poloidal coordinates"
+        >>> flux0=dex.InitialFlux.Poloidal(0.02)  # ψ0 = 0.02
         >>> initial_conditions = dex.InitialConditions.Mixed(
         ...     t0=0,
         ...     flux0=flux0,

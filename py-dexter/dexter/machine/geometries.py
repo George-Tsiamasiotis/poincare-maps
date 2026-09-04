@@ -2,6 +2,7 @@
 
 import numpy as np
 from semver import Version
+from typing import TypeAlias
 
 from dexter._core import _PyGeometry
 
@@ -156,3 +157,11 @@ class NcGeometry(MachineObject, Geometry):
     def jacobian_array(self) -> Array2:
         r"""The Jacobian $J$ values, in $[m]$."""
         return self._r.get_array2d("jacobian_array")
+
+
+GeometryObject: TypeAlias = LarGeometry | NcGeometry
+r"""Available [`Geometry`][dexter.machine.base.Geometry] objects.
+
++ [`LarGeometry`][dexter.LarGeometry]: Analytical Large Aspect Ratio Geometry of a circular device.
++ [`NcGeometry`][dexter.NcGeometry]: Geometry of a realistic configuration.
+"""

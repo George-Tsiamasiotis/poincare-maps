@@ -1,6 +1,6 @@
 [project]
 name = "dexter"
-version = "0.2.0-pre.10"
+version = "0.2.0-pre.11"
 description = "Calculations and simulations in analytical and reconstructed configurations of toroidal fusion devices."
 readme = "README.md"
 authors = [
@@ -63,6 +63,7 @@ addopts = """
     --doctest-glob='*.py'
     --doctest-modules
     --cov=dexter --cov-report term --cov-report html
+    --log-disable=pint.util
 """
 filterwarnings = [
     "ignore:.*Figure.*", # matplotlib non-interactive

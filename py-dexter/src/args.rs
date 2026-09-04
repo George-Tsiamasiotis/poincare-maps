@@ -2,6 +2,7 @@ use pyo3::types::PyTuple;
 
 use crate::*;
 use dexter::dexter_machine::*;
+use dexter::dexter_simulate::SteppingMethod;
 
 pub fn resolve_interpolation_1d_type(interp_type: String) -> Result<Interpolation1dType> {
     use Interpolation1dType::*;
@@ -44,5 +45,22 @@ pub fn resolve_phase_method<'py>(arg: Bound<'py, PyAny>) -> Result<PhaseMethod> 
     match string.as_str() {
         "custom" if value.is_finite() => Ok(Custom(value)),
         _ => Err(DexterError::InvalidPhaseMethod),
+    }
+}
+
+pub fn resolve_stepping_method<'py>(arg: Bound<'py, PyAny>) -> PyResult<SteppingMethod> {
+    use SteppingMethod::*;
+    match arg.to_string().to_lowercase().as_str() {
+        "energyadaptivestep" => return Ok(EnergyAdaptiveStep),
+        "erroradaptivestep" => return Ok(ErrorAdaptiveStep),
+        _ => (),
+    };
+    // Fixed step
+    let tuple = arg.cast::<PyTuple>()?;
+    let string = tuple.get_item(0)?.extract::<String>()?;
+    let value = tuple.get_item(1)?.extract::<f64>()?;
+    match string.to_lowercase().as_str() {
+        "fixedstep" if value.is_finite() => Ok(FixedStep(value)),
+        _ => Err(PyErr::from(DexterError::InvalidSteppingMethod)),
     }
 }

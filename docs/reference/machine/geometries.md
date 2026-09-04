@@ -1,7 +1,6 @@
 # Geometry Objects
 
-+ [`LarGeometry`](#dexter.LarGeometry): Analytical Large Aspect Ratio Geometry of a circular device.
-+ [`NcGeometry`](#dexter.NcGeometry): Geometry of a realistic configuration.
+::: dexter.GeometryObject
 
 ---
 

@@ -18,7 +18,9 @@ pub enum DexterError {
     InvalidInterpolation1dType,
     InvalidInterpolation2dType,
     InvalidPhaseMethod,
-    EqError(String),
+    InvalidSteppingMethod,
+    InvalidIntersection,
+    MachineError(String),
     EvalError(String),
 }
 
@@ -56,7 +58,21 @@ impl std::fmt::Display for DexterError {
                     "'Zero', 'Average', 'Interpolation' and '('Custom', <value>)'",
                 )
             ),
-            Self::EqError(err) => write!(f, "[D] EqError: '{err}'"),
+            Self::InvalidSteppingMethod => write!(
+                f,
+                concat!(
+                    "[D] Supported phase methods are ",
+                    "'EnergyAdaptiveStep', 'ErrorAdaptiveStep' and '('FixedStep', <value>)'",
+                )
+            ),
+            Self::InvalidIntersection => write!(
+                f,
+                concat!(
+                    "[D] Supported intersection options are ",
+                    "'ConstTheta' and 'ConstZeta'",
+                )
+            ),
+            Self::MachineError(err) => write!(f, "[D] MachineError: '{err}'"),
             Self::EvalError(err) => write!(f, "[D] EvalError: '{err}'"),
         }
     }
@@ -82,7 +98,7 @@ impl<'a, 'py> From<CastError<'a, 'py>> for DexterError {
 
 impl From<MachineError> for DexterError {
     fn from(err: MachineError) -> Self {
-        DexterError::EqError(err.to_string())
+        DexterError::MachineError(err.to_string())
     }
 }
 

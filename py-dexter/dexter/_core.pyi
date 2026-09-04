@@ -17,6 +17,8 @@ from dexter.types import (
     PhaseMethod,
     MachineType,
     CoordinateSet,
+    SteppingMethod,
+    Intersection,
 )
 
 class _PyLastClosedFluxSurface:
@@ -288,5 +290,66 @@ class _PyInitialConditions:
         pzeta0: float,
         mu0: float,
     ) -> _PyInitialConditions: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+class _PySolverParams:
+    def __init__(
+        self,
+        stepping_method: SteppingMethod | None,
+        max_steps: int | None,
+        first_step: float | None,
+        safety_factor: float | None,
+        energy_rel_tol: float | None,
+        energy_abs_tol: float | None,
+        error_rel_tol: float | None,
+        error_abs_tol: float | None,
+    ) -> None: ...
+
+class _PyIntersectParams:
+    def __init__(
+        self,
+        intersection: Intersection,
+        angle: float,
+        turns: int,
+    ) -> None: ...
+
+class _PyParticle:
+    steps_taken: int
+
+    def __init__(self, initial: _PyInitialConditions) -> None: ...
+    def integrate(
+        self,
+        qfactor: _PyQfactor,
+        current: _PyCurrent,
+        bfield: _PyBfield,
+        perturbation: _PyPerturbation,
+        teval: tuple[float, float],
+        solver_params: _PySolverParams,
+    ) -> None: ...
+    def intersect(
+        self,
+        qfactor: _PyQfactor,
+        current: _PyCurrent,
+        bfield: _PyBfield,
+        perturbation: _PyPerturbation,
+        intersect_params: _PyIntersectParams,
+        solver_params: _PySolverParams,
+    ) -> None: ...
+    def close(
+        self,
+        qfactor: _PyQfactor,
+        current: _PyCurrent,
+        bfield: _PyBfield,
+        perturbation: _PyPerturbation,
+        periods: int,
+        solver_params: _PySolverParams,
+    ) -> None: ...
+    def classify(
+        self,
+        qfactor: _PyQfactor,
+        current: _PyCurrent,
+        bfield: _PyBfield,
+    ) -> None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...

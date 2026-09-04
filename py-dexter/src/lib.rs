@@ -24,5 +24,8 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<machine::PyPerturbation>()?;
     m.add_class::<simulate::PyInitialFlux>()?;
     m.add_class::<simulate::PyInitialConditions>()?;
+    m.add_class::<simulate::PySolverParams>()?;
+    m.add_class::<simulate::PyIntersectParams>()?;
+    m.add_class::<simulate::PyParticle>()?;
     Ok(())
 }

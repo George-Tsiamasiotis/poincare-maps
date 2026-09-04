@@ -35,6 +35,12 @@ impl PyPerturbation {
     }
 }
 
+impl PyPerturbation {
+    pub fn inner(&self) -> &Perturbation {
+        &self.0
+    }
+}
+
 // ===============================================================================================
 
 #[pymethods] // Evaluations

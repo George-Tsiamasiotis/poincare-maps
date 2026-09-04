@@ -1,8 +1,6 @@
 # Current Objects
 
-+ [`LarCurrent`](#dexter.LarCurrent): Analytical Large Aspect Ratio Current with $g=1$ and $I=0$.
-+ [`NcCurrent`](#dexter.NcCurrent): Numerical plasma current profile reconstructed from a netCDF file.
-
+::: dexter.CurrentObject
 
 ---
 

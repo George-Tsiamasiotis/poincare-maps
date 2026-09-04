@@ -2,6 +2,7 @@
 
 import numpy as np
 from semver import Version
+from typing import TypeAlias
 
 from dexter._core import _PyQfactor
 
@@ -57,8 +58,8 @@ class ParabolicQfactor(MachineObject, FluxCommute, Qfactor):
 
     _r: _PyQfactor
 
-    def __init__(self, qaxis: float, qwall: float, lcfs: LastClosedFluxSurface) -> None:
-        self._r = _PyQfactor.build_parabolic(qaxis, qwall, lcfs._r)
+    def __init__(self, qaxis: float, qlast: float, lcfs: LastClosedFluxSurface) -> None:
+        self._r = _PyQfactor.build_parabolic(qaxis, qlast, lcfs._r)
         super(MachineObject, self).__init__()
         super(FluxCommute, self).__init__()
         super(Qfactor, self).__init__()
@@ -125,3 +126,12 @@ class NcQfactor(MachineObject, FluxCommute, Qfactor):
     def q_array(self) -> Array1:
         """The q-factor's values."""
         return self._r.get_array("q_array")
+
+
+QfactorObject: TypeAlias = UnityQfactor | ParabolicQfactor | NcQfactor
+r"""Available [`Qfactor`][dexter.machine.base.Qfactor] objects.
+
++ [`UnityQfactor`][dexter.UnityQfactor]: Analytical q-factor profile of $q=1$ and $\psi=\psi_p$.
++ [`ParabolicQfactor`][dexter.ParabolicQfactor]: Analytical parabolic q-factor profile.
++ [`NcQfactor`][dexter.NcQfactor]: Numerical q-factor profile reconstructed from a netCDF file.
+"""

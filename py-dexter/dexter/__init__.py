@@ -14,25 +14,28 @@ from dexter.types import (
     Interpolation2dType,
     PhaseMethod,
     CoordinateSet,
+    SteppingMethod,
+    ParticleSpecies,
 )
 
 
 from dexter.machine.utils import LastClosedFluxSurface
 
-from dexter.machine.geometries import LarGeometry, NcGeometry
-from dexter.machine.qfactors import UnityQfactor, ParabolicQfactor, NcQfactor
-from dexter.machine.currents import LarCurrent, NcCurrent
-from dexter.machine.bfields import LarBfield, NcBfield
-from dexter.machine.modes import FluteMode, NcFluteMode
+from dexter.machine.geometries import GeometryObject, LarGeometry, NcGeometry
+from dexter.machine.qfactors import (
+    QfactorObject,
+    UnityQfactor,
+    ParabolicQfactor,
+    NcQfactor,
+)
+from dexter.machine.currents import CurrentObject, LarCurrent, NcCurrent
+from dexter.machine.bfields import BfieldObject, LarBfield, NcBfield
+from dexter.machine.modes import ModeObject, FluteMode, NcFluteMode
 from dexter.machine.perturbation import Perturbation
+from dexter.machine.machine import Machine
 
 from dexter.simulate.initial import InitialFlux, InitialConditions
-
-GeometryObject: TypeAlias = LarGeometry | NcGeometry
-QfactorObject: TypeAlias = UnityQfactor | ParabolicQfactor | NcQfactor
-CurrentObject: TypeAlias = LarCurrent | NcCurrent
-BfieldObject: TypeAlias = LarBfield | NcBfield
-ModeObject: TypeAlias = FluteMode | NcFluteMode
+from dexter.simulate.particle import Particle
 
 __all__ = [
     # Type Aliases
@@ -49,6 +52,8 @@ __all__ = [
     "Interpolation2dType",
     "PhaseMethod",
     "CoordinateSet",
+    "SteppingMethod",
+    "ParticleSpecies",
     # Machine
     "GeometryObject",
     "QfactorObject",
@@ -68,7 +73,9 @@ __all__ = [
     "FluteMode",
     "NcFluteMode",
     "Perturbation",
+    "Machine",
     # Simulate
     "InitialFlux",
     "InitialConditions",
+    "Particle",
 ]

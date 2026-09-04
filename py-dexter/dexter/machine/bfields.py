@@ -2,6 +2,7 @@
 
 import numpy as np
 from semver import Version
+from typing import TypeAlias
 
 from dexter._core import _PyBfield
 
@@ -160,3 +161,11 @@ class NcBfield(MachineObject, Bfield):
     def b_array_padded(self) -> Array2:
         r"""The **padded** $B$ values."""
         return self._r.get_array2d("b_array_padded")
+
+
+BfieldObject: TypeAlias = LarBfield | NcBfield
+r"""Available [`Bfield`][dexter.machine.base.Bfield] objects.
+
++ [`LarBfield`][dexter.LarBfield]: Analytical Large Aspect Ratio magnetic field with $B(\psi,\theta) = 1-\sqrt{2\psi}\cos\theta$.
++ [`NcBfield`][dexter.NcBfield]: Numerical magnetic field profile reconstructed from a netCDF file.
+"""

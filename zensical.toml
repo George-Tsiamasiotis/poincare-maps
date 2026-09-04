@@ -20,9 +20,11 @@ nav = [
         "reference/machine/bfields.md",
         "reference/machine/modes.md",
         "reference/machine/perturbation.md",
+        "reference/machine/machine.md",
     ]},
     {"Simulate" = [
         "reference/simulate/initial.md",
+        "reference/simulate/particle.md",
     ]}
 ]
 

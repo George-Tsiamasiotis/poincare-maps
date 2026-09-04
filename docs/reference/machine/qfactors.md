@@ -1,8 +1,6 @@
 # q-factor Objects
 
-+ [`UnityQfactor`](#dexter.UnityQfactor): Analytical q-factor profile of $q=1$ and $\psi=\psi_p$.
-+ [`ParabolicQfactor`](#dexter.ParabolicQfactor): Analytical parabolic q-factor profile.
-+ [`NcQfactor`](#dexter.NcQfactor): Numerical q-factor profile reconstructed from a netCDF file.
+::: dexter.QfactorObject
 
 ---
 

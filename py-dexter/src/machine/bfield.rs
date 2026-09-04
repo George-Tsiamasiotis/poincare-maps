@@ -225,3 +225,15 @@ impl PyBfield {
         })
     }
 }
+
+// ===============================================================================================
+
+wrapper_debug_export!(PyLarBfield);
+wrapper_debug_export!(PyNcBfield);
+
+#[pymethods]
+impl PyBfield {
+    pub fn __repr__(&self) -> String {
+        format!("{:#?}", self.inner())
+    }
+}

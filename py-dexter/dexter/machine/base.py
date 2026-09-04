@@ -266,7 +266,7 @@ class Geometry(_ReprStrImpl):
     @property
     def rlast(self) -> float:
         r"""The $r$ coordinate's value at the last closed flux surface in $[m]$."""
-        return self._r.rgeo
+        return self._r.rlast
 
     @property
     def psi_last(self) -> float:

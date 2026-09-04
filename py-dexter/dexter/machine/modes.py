@@ -2,6 +2,7 @@
 
 import numpy as np
 from semver import Version
+from typing import TypeAlias
 
 from dexter._core import _PyMode
 
@@ -18,6 +19,13 @@ from dexter.types import (
 
 class FluteMode(MachineObject, Mode):
     r"""A simple analytical flute mode.
+
+
+    A flute mode is defined as:
+
+    $$
+    m(\psi, \theta, \zeta) = \epsilon\sqrt{\dfrac{\psi}{\psi_{LCFS}}}\cos(m\theta-n\zeta+\phi)
+    $$
 
     Parameters
     ----------
@@ -71,6 +79,12 @@ class NcFluteMode(MachineObject, Mode):
     r"""Single perturbation flute mode from a netCDF file.
 
     Related quantities are computed by interpolating over the data arrays.
+
+    A numerical flute mode is defined as:
+
+    $$
+    m(\psi, \theta, \zeta) = \sum_{m,n} \alpha(\psi, \theta, \zeta)\cos\big(m\theta-n\zeta+\phi(\psi)\big)
+    $$
 
     Parameters
     ----------
@@ -191,3 +205,11 @@ class NcFluteMode(MachineObject, Mode):
     def phase_array(self) -> Array1:
         r"""The $\phase$ values."""
         return self._r.get_array("phase_array")
+
+
+ModeObject: TypeAlias = FluteMode | NcFluteMode
+r"""Available [`Mode`][dexter.machine.base.Mode] objects.
+
++ [`FluteMode`][dexter.FluteMode]: A simple analytical flute mode.
++ [`NcFluteMode`][dexter.NcFluteMode]: Single perturbation flute mode from a netCDF file.
+"""

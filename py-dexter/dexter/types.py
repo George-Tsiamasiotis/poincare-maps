@@ -24,7 +24,29 @@ Array2: TypeAlias = np.ndarray[tuple[int, int], np.dtype[np.float64]]
 ArrayLike: TypeAlias = float | Array | Sequence
 """Objects that can be converted to arrays, i.e. float, np.ndarray, sequences, ..."""
 
-# =================== Equilibrium
+ParticleSpecies: TypeAlias = Literal[
+    "Electron",
+    "Proton",
+    "Deuterium",
+    "Tritium",
+    "Alpha",
+    "He3",
+]
+""" The particle species under study. This only affects unit conversions to SI."""
+
+Unit: TypeAlias = (
+    Literal[
+        "NormMeter",
+        "NormTesla",
+        "NormSecond",
+        "NormHertz",
+        "NormJoule",
+    ]
+    | str
+)
+"""Strings parsed by `pint` as units, with the normalized units added."""
+
+# =================== Machine
 
 MachineType: TypeAlias = Literal["Analytical", "Numerical"]
 """ Describes the type of machine the object represents.
@@ -140,4 +162,26 @@ r""" The kind of InitialConditions set.
     - `BoozerPoloidal`: Initial conditions set in the $(t, \psi_p, \theta, \zeta, \rho, \mu)$ space.
     - `MixedToroidal`: Initial conditions set in the $(t, P_\zeta, \psi, \theta, \zeta, \mu)$ space.
     - `MixedPoloidal`: Initial conditions set in the $(t, P_\zeta, \psi_p, \theta, \zeta, \mu)$ space.
+"""
+
+SteppingMethod = (
+    Literal["EnergyAdaptiveStep", "ErrorAdaptiveStep"]
+    | tuple[Literal["FixedStep"], float]
+)
+"""The stepping method of the solver.
+
+- `EnergyAdaptiveStep`: Forces the step size to be small enough so that the Energy difference
+    from step to step is under a certain threshold. The tolerances can be adjusted with the
+    energy_rel_tol and energy_abs_tol fields.
+- `ErrorAdaptiveStep`: Classic RK error estimation : Adjust the step size to minimize the
+    local truncation error.
+- `FixedStep(float)`: Fixed step size.
+"""
+
+
+Intersection: TypeAlias = Literal["ConstZeta", "ConstTheta"]
+r""" Defines the surface of the Poincare section.
+
+- `ConstTheta`: Defines a surface of $\theta = const$.
+- `ConstZeta`: Defines a surface of $\zeta = const$.
 """

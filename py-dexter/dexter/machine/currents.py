@@ -2,6 +2,7 @@
 
 import numpy as np
 from semver import Version
+from typing import TypeAlias
 
 from dexter._core import _PyCurrent
 
@@ -104,3 +105,11 @@ class NcCurrent(MachineObject, Current):
     def i_array(self) -> Array1:
         """The toroidal plasma current $I$ values."""
         return self._r.get_array("i_array")
+
+
+CurrentObject: TypeAlias = LarCurrent | NcCurrent
+"""Available [`Current`][dexter.machine.base.Current] objects.
+
++ [`LarCurrent`][dexter.LarCurrent]: Analytical Large Aspect Ratio Current with $g=1$ and $I=0$.
++ [`NcCurrent`][dexter.NcCurrent]: Numerical plasma current profile reconstructed from a netCDF file.
+"""
