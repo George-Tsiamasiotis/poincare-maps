@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "dexter-simulate"
-version = "0.1.6-pre.2"
+version = "0.1.6-pre.3"
 dependencies = [
  "approx",
  "dexter-common",
@@ -969,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "py-dexter"
-version = "0.2.0-pre.11"
+version = "0.2.0-pre.12"
 dependencies = [
  "dexter",
  "ndarray",

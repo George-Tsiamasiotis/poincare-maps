@@ -4,6 +4,7 @@ use crate::*;
 use dexter::dexter_machine::*;
 use dexter::dexter_simulate::*;
 
+use numpy::{IntoPyArray, PyArray1};
 use pyo3::prelude::*;
 
 #[pyclass(name = "_PyParticle")]
@@ -73,8 +74,127 @@ impl PyParticle {
 #[pymethods] // Getters
 impl PyParticle {
     #[getter]
+    pub fn initial_conditions(&self) -> PyInitialConditions {
+        PyInitialConditions(self.0.initial_conditions())
+    }
+
+    #[getter]
+    pub fn integration_status(&self) -> String {
+        format!("{:?}", self.0.integration_status())
+    }
+
+    #[getter]
     pub fn steps_taken(&self) -> usize {
         self.0.steps_taken()
+    }
+
+    #[getter]
+    pub fn steps_stored(&self) -> usize {
+        self.0.steps_stored()
+    }
+
+    #[getter]
+    pub fn duration(&self) -> String {
+        format!("{:?}", self.0.duration())
+    }
+
+    #[getter]
+    pub fn initial_energy(&self) -> Option<f64> {
+        self.0.initial_energy()
+    }
+
+    #[getter]
+    pub fn final_energy(&self) -> Option<f64> {
+        self.0.final_energy()
+    }
+
+    #[getter]
+    pub fn energy_var(&self) -> Option<f64> {
+        self.0.energy_var()
+    }
+
+    #[getter]
+    pub fn energy_pzeta_position(&self) -> String {
+        format!("{:?}", self.0.energy_pzeta_position())
+    }
+
+    #[getter]
+    pub fn orbit_type(&self) -> String {
+        format!("{:?}", self.0.orbit_type())
+    }
+
+    #[getter]
+    pub fn omega_theta(&self) -> Option<f64> {
+        self.0.omega_theta()
+    }
+
+    #[getter]
+    pub fn omega_zeta(&self) -> Option<f64> {
+        self.0.omega_zeta()
+    }
+
+    #[getter]
+    pub fn qkinetic(&self) -> Option<f64> {
+        self.0.qkinetic()
+    }
+
+    pub fn print_caches(&self) {
+        self.0.print_caches()
+    }
+
+    pub fn discard_arrays(&mut self) {
+        self.0.discard_vecs()
+    }
+
+    #[getter]
+    pub fn flux_cache_hits(&self) -> usize {
+        dbg!(self.0.flux_cache_hits())
+    }
+
+    #[getter]
+    pub fn flux_cache_misses(&self) -> usize {
+        self.0.flux_cache_misses()
+    }
+
+    #[getter]
+    pub fn theta_cache_hits(&self) -> usize {
+        self.0.theta_cache_hits()
+    }
+
+    #[getter]
+    pub fn theta_cache_misses(&self) -> usize {
+        self.0.theta_cache_misses()
+    }
+
+    #[getter]
+    pub fn mode_cache_hits(&self) -> usize {
+        self.0.mode_cache_hits()
+    }
+
+    #[getter]
+    pub fn mode_cache_misses(&self) -> usize {
+        self.0.mode_cache_misses()
+    }
+
+    #[rustfmt::skip]
+    pub fn get_array<'py>(&self, py: Python<'py>, name: &str) -> Result<Bound<'py, PyArray1<f64>>> {
+        let array = match name {
+            "t_array"      => self.0.t_array(),
+            "psi_array"    => self.0.psi_array(),
+            "psip_array"   => self.0.psip_array(),
+            "theta_array"  => self.0.theta_array(),
+            "zeta_array"   => self.0.zeta_array(),
+            "rho_array"    => self.0.rho_array(),
+            "mu_array"     => self.0.mu_array(),
+            "ptheta_array" => self.0.ptheta_array(),
+            "pzeta_array"  => self.0.pzeta_array(),
+            "energy_array" => self.0.energy_array(),
+            _ => return Err(DexterError::AttributeError {
+                obj: "NcQfactor".into(),
+                attr: name.into(),
+            }),
+        };
+        Ok(array.into_pyarray(py))
     }
 }
 

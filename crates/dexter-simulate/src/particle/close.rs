@@ -148,6 +148,7 @@ pub(super) fn close(
                     &mut mod_caches,
                 ) {
                     Ok(intersection_state) => {
+                        particle.evolution.steps_taken += 1;
                         particle.evolution.push_state(&intersection_state);
                         particle.integration_status =
                             IntegrationStatus::ClosedPeriods(closed_periods)

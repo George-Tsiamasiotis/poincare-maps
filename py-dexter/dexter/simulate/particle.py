@@ -3,7 +3,14 @@ from collections.abc import Sequence
 from dexter.machine.machine import Machine
 from dexter.simulate.initial import InitialConditions
 
-from dexter.types import Intersection, SteppingMethod
+from dexter.types import (
+    Array1,
+    EnergyPzetaPosition,
+    IntegrationStatus,
+    Intersection,
+    OrbitType,
+    SteppingMethod,
+)
 
 from dexter._core import _PyParticle, _PySolverParams, _PyIntersectParams
 from dexter._utils import _ReprStrImpl
@@ -415,8 +422,172 @@ class Particle(_ReprStrImpl):
         )
 
     @property
+    def initial_conditions(self) -> InitialConditions:
+        """The Particle's [`InitialConditions`][dexter.InitialConditions]."""
+        return InitialConditions._wrap(self._r.initial_conditions)
+
+    @property
+    def integration_status(self) -> IntegrationStatus:
+        """The Particle's [`IntegrationStatus`][dexter.IntegrationStatus]."""
+        return self._r.integration_status
+
+    @property
     def steps_taken(self) -> int:
         """The total number of steps taken during the integration.
 
         This number is not necessarily the same as the number of steps stored."""
         return self._r.steps_taken
+
+    @property
+    def steps_stored(self) -> int:
+        """The total number of steps stored in the time arrays."""
+        return self._r.steps_stored
+
+    @property
+    def duration(self) -> str:
+        """The duration of the integration routine in Normalized Units."""
+        return self._r.duration
+
+    @property
+    def initial_energy(self) -> float:
+        """The Particle's initial energy in Normalized Units."""
+        if self._r.initial_energy is None:
+            raise AttributeError("`initial_energy` has not been calculated")
+        return self._r.initial_energy
+
+    @property
+    def final_energy(self) -> float:
+        """The Particle's final energy in Normalized Units."""
+        if self._r.final_energy is None:
+            raise AttributeError("`final_energy` has not been calculated")
+        return self._r.final_energy
+
+    @property
+    def energy_var(self) -> float:
+        """The variance of the Particle's energy array in Normalized Units."""
+        if self._r.energy_var is None:
+            raise AttributeError("`energy_var` has not been calculated")
+        return self._r.energy_var
+
+    @property
+    def energy_pzeta_position(self) -> EnergyPzetaPosition:
+        """The Particle's [`EnergyPzetaPosition`][dexter.EnergyPzetaPosition]."""
+        if self._r.energy_pzeta_position is None:
+            raise AttributeError("`energy_pzeta_position` has not been calculated")
+        return self._r.energy_pzeta_position
+
+    @property
+    def orbit_type(self) -> OrbitType:
+        """The Particle's [`OrbitType`][dexter.OrbitType]."""
+        if self._r.orbit_type is None:
+            raise AttributeError("`orbit_rype` has not been calculated")
+        return self._r.orbit_type
+
+    @property
+    def omega_theta(self) -> float:
+        r"""The Particle's $\omega_\theta$ frequency in Normalized Units."""
+        if self._r.omega_theta is None:
+            raise AttributeError("`omega_rheta` has not been calculated")
+        return self._r.omega_theta
+
+    @property
+    def omega_zeta(self) -> float:
+        r"""The Particle's $\omega_\zeta$ frequency in Normalized Units."""
+        if self._r.omega_zeta is None:
+            raise AttributeError("`omega_zeta` has not been calculated")
+        return self._r.omega_zeta
+
+    @property
+    def qkinetic(self) -> float:
+        r"""The Particle's $q_{kin}$."""
+        if self._r.qkinetic is None:
+            raise AttributeError("`qkinetic` has not been calculated")
+        return self._r.qkinetic
+
+    def print_caches(self):
+        r"""Prints the Particle's accelerators' hits and misses."""
+        self._r.print_caches()
+
+    def discard_arrays(self):
+        """Discards the time series arrays."""
+        self._r.discard_arrays()
+
+    @property
+    def flux_cache_hits(self) -> int:
+        """The magnetic flux' Accelerator cache hits."""
+        return self._r.flux_cache_hits
+
+    @property
+    def flux_cache_misses(self) -> int:
+        """The magnetic flux' Accelerator cache misses."""
+        return self._r.flux_cache_misses
+
+    @property
+    def theta_cache_hits(self) -> int:
+        r"""The $\theta$ coordinate's Accelerator cache misses."""
+        return self._r.theta_cache_hits
+
+    @property
+    def theta_cache_misses(self) -> int:
+        r"""The $\theta$ coordinate's Accelerator cache misses."""
+        return self._r.theta_cache_misses
+
+    @property
+    def mode_cache_hits(self) -> int:
+        """The modes' Accelerator cache hits."""
+        return self._r.mode_cache_hits
+
+    @property
+    def mode_cache_misses(self) -> int:
+        """The modes' Accelerator cache misses."""
+        return self._r.mode_cache_misses
+
+    @property
+    def t_array(self) -> Array1:
+        r"""The $t$ array."""
+        return self._r.get_array("t_array")
+
+    @property
+    def psi_array(self) -> Array1:
+        r"""The $\psi$ array."""
+        return self._r.get_array("psi_array")
+
+    @property
+    def psip_array(self) -> Array1:
+        r"""The $\psi_p$ array."""
+        return self._r.get_array("psip_array")
+
+    @property
+    def theta_array(self) -> Array1:
+        r"""The $\theta$ array."""
+        return self._r.get_array("theta_array")
+
+    @property
+    def zeta_array(self) -> Array1:
+        r"""The $\zeta$ array."""
+        return self._r.get_array("zeta_array")
+
+    @property
+    def rho_array(self) -> Array1:
+        r"""The $\rho_{||}$ array."""
+        return self._r.get_array("rho_array")
+
+    @property
+    def mu_array(self) -> Array1:
+        r"""The $\mu$ array."""
+        return self._r.get_array("mu_array")
+
+    @property
+    def ptheta_array(self) -> Array1:
+        r"""The $P_\theta$ array."""
+        return self._r.get_array("ptheta_array")
+
+    @property
+    def pzeta_array(self) -> Array1:
+        r"""The $P_\zeta$ array."""
+        return self._r.get_array("pzeta_array")
+
+    @property
+    def energy_array(self) -> Array1:
+        r"""The energy array."""
+        return self._r.get_array("energy_array")

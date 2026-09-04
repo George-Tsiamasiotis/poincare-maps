@@ -16,6 +16,9 @@ from dexter.types import (
     CoordinateSet,
     SteppingMethod,
     ParticleSpecies,
+    IntegrationStatus,
+    EnergyPzetaPosition,
+    OrbitType,
 )
 
 
@@ -54,6 +57,9 @@ __all__ = [
     "CoordinateSet",
     "SteppingMethod",
     "ParticleSpecies",
+    "IntegrationStatus",
+    "EnergyPzetaPosition",
+    "OrbitType",
     # Machine
     "GeometryObject",
     "QfactorObject",

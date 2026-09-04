@@ -185,3 +185,97 @@ r""" Defines the surface of the Poincare section.
 - `ConstTheta`: Defines a surface of $\theta = const$.
 - `ConstZeta`: Defines a surface of $\zeta = const$.
 """
+
+IntegrationStatus: TypeAlias = Literal[
+    "Initialized",
+    "PartlyInitialized",
+    "InvalidInitialConditions",
+    "OutOfBoundsInitialization",
+    "Integrated",
+    "Intersected",
+    "ClosedPeriods(..)",
+    "Escaped",
+    "ModStateEscaped",
+    "IntersectedTimedOut",
+    "InvalidIntersections",
+    "TimedOut(...)",
+    "Failed(...)",
+]
+r"""The integration status of a Particle.
+
+- `Initialized`: Initialized by InitialConditions, not integrated.
+- `PartlyInitialized`: InitialConditions have not been fully calculated yet.
+- `InvalidInitialConditions`: Invalid InitialConditions. May occur when using Mixed variables
+    with objects that cannot define them, for example Mixed Toroidal coordinates when $g(\psi)$ is
+    not defined.
+- `OutOfBoundsInitialization`: InitialConditions where out of bounds.
+- `Integrated`: Reached the end of the integration successfully.
+- `Intersected`: Intersections calculation successful.
+- `ClosedPeriods(..)`: Integrated for a certain amount of θ-ψ periods.
+- `Escaped`: Escaped the last closed flux surface (LCFS).
+- `ModStateEscaped`: Escaped when performing a step on the modified system. This indicates that
+    something is wrong in Hénon’s trick implementation.
+- `IntersectedTimedOut`: Calculated some intersections correctly but also timed out.
+- `InvalidIntersections`: Calculated invalid intersections.
+- `TimedOut(...)`: Timed out after a maximum number of steps.
+- `Failed(...)`: Simulation failed for unknown reasons.
+"""
+
+EnergyPzetaPosition = Literal[
+    "Alpha",
+    "Beta",
+    "Gamma",
+    "Delta",
+    "Epsilon",
+    "Zeta",
+    "Eta",
+    "Theta",
+    "Iota",
+    "Kappa",
+    "Lambda",
+    "Mu",
+    "Unclassified",
+]
+r"""The position of an $(E, P_\zeta)$ point on the $(E, P_\zeta)$ plane, relative to the orbit
+classification curves.
+
+See the diagram for explanation.
+"""
+
+OrbitType: TypeAlias = Literal[
+    "Undefined",
+    "TrappedLost",
+    "TrappedConfined",
+    "CoPassingLost",
+    "CoPassingConfined",
+    "CuPassingLost",
+    "CuPassingConfined",
+    "Potato",
+    "Stagnated",
+    "Unclassified",
+    "Failed(..)",
+]
+r"""A particle's orbit type, calculated through the [`dexter.Particle.close()`] routine.
+
+- `Undefined`: Particle has not been classified.
+- `TrappedLost`: A Trapped-Lost particle. A particle is called trapped if there exists a
+    mirror point where $\rho=0$.
+- `TrappedConfined`: A Trapped-Confined particle. A particle is called trapped if there
+    exists a mirror point where $\rho=0$.
+- `CoPassingLost`: A CoPassing-Lost particle. A particle is called co-passing if it is not
+    trapped and it holds that $\dot\theta>0$.
+- `CoPassingConfined`: A CoPassing-Confined particle. A particle is called co-passing if it
+    is not trapped and it holds that $\dot\theta>0$.
+- `CuPassingLost`: A CounterPassing-Lost particle. A particle is called counter-passing if it is
+    not trapped and it holds that $\dot\theta<0$.
+- `CuPassingConfined`: A CounterPassing-Confined particle. A particle is called counter-passing
+    if it is not trapped and it holds that $\dot\theta<0$.
+- `Potato`: A Potato particle. A particle’s orbit is called a potato orbit if it is trapped
+    but still circles the magnetic axis due to its drift. In the $(E, P_\zeta)$ plane, those
+    lie inside the intersection of the trapped-passing boundary and the magnetic axis parabola.
+- `Stagnated`: A Potato particle. A particle is called stagnated if it always has positive
+    parallel velocity but does not circle the magnetic axis. In the $(E, P_\zeta)$ plane,
+    those lie to the right of the trapped-passing boundary and above the magnetic axis parabola.
+- `Unclassified`: Not falling under any of the other categories.
+- `Failed(..)`: Error classifying the orbit.
+"""

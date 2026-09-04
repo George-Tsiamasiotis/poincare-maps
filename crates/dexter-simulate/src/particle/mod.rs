@@ -161,25 +161,25 @@ pub enum OrbitType {
     ///
     /// # Definition
     ///
-    /// A particle is called *passing* if it is not trapped and it holds that `ρ>0`.
+    /// A particle is called *co-passing* if it is not trapped and it holds that `dot(θ)>0`.
     CoPassingLost,
     /// A CoPassing-Confined particle.
     ///
     /// # Definition
     ///
-    /// A particle is called *passing* if it is not trapped and it holds that `ρ>0`.
+    /// A particle is called *co-passing* if it is not trapped and it holds that `dot(θ)>0`.
     CoPassingConfined,
     /// A CounterPassing-Lost particle.
     ///
     /// # Definition
     ///
-    /// A particle is called *passing* if it is not trapped and it holds that `ρ<0`.
+    /// A particle is called *counter-passing* if it is not trapped and it holds that `dot(θ)<0`.
     CuPassingLost,
     /// A CounterPassing-Confined particle.
     ///
     /// # Definition
     ///
-    /// A particle is called *passing* if it is not trapped and it holds that `ρ<0`.
+    /// A particle is called *counter-passing* if it is not trapped and it holds that `dot(θ)<0`.
     CuPassingConfined,
     /// A Potato particle.
     ///

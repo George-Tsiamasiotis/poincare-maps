@@ -10,10 +10,13 @@ from dexter.types import (
     Array1,
     Array2,
     ArrayShape,
+    EnergyPzetaPosition,
     FluxCoordinate,
     FluxCoordinateState,
+    IntegrationStatus,
     Interpolation1dType,
     Interpolation2dType,
+    OrbitType,
     PhaseMethod,
     MachineType,
     CoordinateSet,
@@ -315,7 +318,25 @@ class _PyIntersectParams:
     ) -> None: ...
 
 class _PyParticle:
+    initial_conditions: _PyInitialConditions
+    integration_status: IntegrationStatus
     steps_taken: int
+    steps_stored: int
+    duration: str
+    initial_energy: float | None
+    final_energy: float | None
+    energy_var: float | None
+    energy_pzeta_position: EnergyPzetaPosition
+    orbit_type: OrbitType
+    omega_theta: float | None
+    omega_zeta: float | None
+    qkinetic: float | None
+    flux_cache_hits: int
+    flux_cache_misses: int
+    theta_cache_hits: int
+    theta_cache_misses: int
+    mode_cache_hits: int
+    mode_cache_misses: int
 
     def __init__(self, initial: _PyInitialConditions) -> None: ...
     def integrate(
@@ -351,5 +372,8 @@ class _PyParticle:
         current: _PyCurrent,
         bfield: _PyBfield,
     ) -> None: ...
+    def print_caches(self) -> None: ...
+    def discard_arrays(self) -> None: ...
+    def get_array(self, name: str) -> Array1: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...

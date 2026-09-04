@@ -2,7 +2,7 @@
 
 from dexter.types import FluxCoordinate, CoordinateSet
 
-from dexter._utils import _ReprStrImpl
+from dexter._utils import _ReprStrImpl, _RustTypeWrapper
 from dexter._core import _PyInitialFlux, _PyInitialConditions
 
 
@@ -69,7 +69,7 @@ class InitialFlux(_ReprStrImpl):
         return self._r.kind
 
 
-class InitialConditions(_ReprStrImpl):
+class InitialConditions(_ReprStrImpl, _RustTypeWrapper):
     r"""Initial conditions set for a Particle.
 
     This type is instantiated through the [`Boozer`][dexter.InitialConditions.Boozer] and
