@@ -1,10 +1,11 @@
 //! Representation of a machines's q-factor profile.
 
 use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    fluxes_values_array_getter_impl, interp_type_getter_impl, netcdf_path_getter_impl,
-    netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_flux, debug_assert_non_negative_psi,
+    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
+    netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
+use core::hint::cold_path;
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
 use std::path::{Path, PathBuf};
@@ -14,6 +15,7 @@ use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{EvalError, MachineError};
 use crate::{FluxCommute, LastClosedFluxSurface, MachineObject, MachineType, Qfactor};
+use crate::{MagneticFlux, MagneticFlux::*};
 use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
@@ -62,30 +64,34 @@ impl MachineObject for UnityQfactor {
 }
 
 impl FluxCommute for UnityQfactor {
-    fn psip_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
+    fn eval_other(
+        &self,
+        flux: MagneticFlux,
+        _: &mut Accelerator,
+    ) -> Result<MagneticFlux, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let last = match flux {
+            Toroidal(_) => self.psi_last,
+            Poloidal(_) => self.psip_last,
+        };
+        let value = flux.value();
+        if value > last {
             return Err(EvalError::AnalyticalDomainError);
         };
-        Ok(psi)
-    }
-
-    fn psi_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        Ok(psip)
+        match flux {
+            Toroidal(_) => Ok(Poloidal(value)),
+            Poloidal(_) => Ok(Toroidal(value)),
+        }
     }
 }
 
 impl Qfactor for UnityQfactor {
-    fn psi_last(&self) -> f64 {
-        self.psi_last
+    fn psi_last(&self) -> MagneticFlux {
+        Toroidal(self.psi_last)
     }
 
-    fn psip_last(&self) -> f64 {
-        self.psip_last
+    fn psip_last(&self) -> MagneticFlux {
+        Poloidal(self.psip_last)
     }
 
     fn qlast(&self) -> f64 {
@@ -96,44 +102,56 @@ impl Qfactor for UnityQfactor {
         1.0
     }
 
-    fn q_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
+    fn eval_q(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let last = match flux {
+            Toroidal(_) => self.psi_last,
+            Poloidal(_) => self.psip_last,
+        };
+        if flux.value() > last {
             return Err(EvalError::AnalyticalDomainError);
         };
         Ok(1.0)
     }
 
-    fn q_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        Ok(1.0)
-    }
-
-    fn dpsip_dpsi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        Ok(1.0)
-    }
-
-    fn dpsi_dpsip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        Ok(1.0)
-    }
-
-    fn psi_of_q(&self, _: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psi_of_q(&self, _: f64, _: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         Err(EvalError::UndefinedEvaluation("ψ(q)".into()))
     }
 
-    fn psip_of_q(&self, _: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psip_of_q(&self, _: f64, _: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         Err(EvalError::UndefinedEvaluation("ψp(q)".into()))
+    }
+
+    fn eval_deriv_of_other(
+        &self,
+        flux: MagneticFlux,
+        _: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let last = match flux {
+            Toroidal(_) => self.psi_last,
+            Poloidal(_) => self.psip_last,
+        };
+        if flux.value() > last {
+            return Err(EvalError::AnalyticalDomainError);
+        };
+        Ok(1.0)
+    }
+
+    fn eval_deriv_wrt_other(
+        &self,
+        flux: MagneticFlux,
+        _: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let last = match flux {
+            Toroidal(_) => self.psi_last,
+            Poloidal(_) => self.psip_last,
+        };
+        if flux.value() > last {
+            return Err(EvalError::AnalyticalDomainError);
+        };
+        Ok(1.0)
     }
 }
 
@@ -191,8 +209,8 @@ impl ParabolicQfactor {
                     psip_last: f64::NAN,
                 };
                 psi_last = phony_q.psi_last;
-                psip_last = match phony_q.psip_of_psi(_psi_last, &mut Accelerator::new()) {
-                    Ok(value) => value,
+                psip_last = match phony_q.eval_other(Toroidal(_psi_last), &mut Accelerator::new()) {
+                    Ok(flux) => flux.value(),
                     Err(_) => unreachable!("Analytical formula, cannot fail"),
                 };
             }
@@ -247,34 +265,45 @@ impl MachineObject for ParabolicQfactor {
 }
 
 impl FluxCommute for ParabolicQfactor {
-    fn psip_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
+    fn eval_other(
+        &self,
+        flux: MagneticFlux,
+        _: &mut Accelerator,
+    ) -> Result<MagneticFlux, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        if flux.value()
+            > match flux {
+                Toroidal(_) => self.psi_last,
+                Poloidal(_) => self.psip_last,
+            }
+        {
+            cold_path();
             return Err(EvalError::AnalyticalDomainError);
         };
-        let atan_arg = psi * (self.qlast - self.qaxis).sqrt() / (self.psi_last * self.qaxis.sqrt());
-        let coef = self.psi_last / (self.qaxis * (self.qlast - self.qaxis)).sqrt();
-        Ok(debug_assert_is_finite!(coef * atan_arg.atan()))
-    }
-
-    fn psi_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        let tan_arg = (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
-        let coef = self.psi_last * self.qaxis.sqrt() / (self.qlast - self.qaxis).sqrt();
-        Ok(debug_assert_is_finite!(coef * tan_arg.tan()))
+        match flux {
+            Toroidal(psi) => {
+                let atan_arg =
+                    psi * (self.qlast - self.qaxis).sqrt() / (self.psi_last * self.qaxis.sqrt());
+                let coef = self.psi_last / (self.qaxis * (self.qlast - self.qaxis)).sqrt();
+                Ok(Poloidal(debug_assert_is_finite!(coef * atan_arg.atan())))
+            }
+            Poloidal(psip) => {
+                let tan_arg =
+                    (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
+                let coef = self.psi_last * self.qaxis.sqrt() / (self.qlast - self.qaxis).sqrt();
+                Ok(Toroidal(debug_assert_is_finite!(coef * tan_arg.tan())))
+            }
+        }
     }
 }
 
 impl Qfactor for ParabolicQfactor {
-    fn psi_last(&self) -> f64 {
-        self.psi_last
+    fn psi_last(&self) -> MagneticFlux {
+        Toroidal(self.psi_last)
     }
 
-    fn psip_last(&self) -> f64 {
-        self.psip_last
+    fn psip_last(&self) -> MagneticFlux {
+        Poloidal(self.psip_last)
     }
 
     fn qaxis(&self) -> f64 {
@@ -285,56 +314,41 @@ impl Qfactor for ParabolicQfactor {
         self.qlast
     }
 
-    fn q_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
+    fn eval_q(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        if flux.value()
+            > match flux {
+                Toroidal(_) => self.psi_last,
+                Poloidal(_) => self.psip_last,
+            }
+        {
+            cold_path();
             return Err(EvalError::AnalyticalDomainError);
         };
-        Ok(debug_assert_is_finite!(
-            (self.qaxis) + (self.qlast - self.qaxis) * (psi / self.psi_last).powi(2)
-        ))
-    }
-
-    fn q_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
+        let res = match flux {
+            Toroidal(psi) => {
+                (self.qaxis) + (self.qlast - self.qaxis) * (psi / self.psi_last).powi(2)
+            }
+            Poloidal(psip) => {
+                let tan_arg =
+                    (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
+                self.qaxis + self.qaxis * tan_arg.tan().powi(2)
+            }
         };
-        let tan_arg = (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
-        Ok(debug_assert_is_finite!(
-            self.qaxis + self.qaxis * tan_arg.tan().powi(2)
-        ))
+        Ok(debug_assert_is_finite!(res))
     }
 
-    fn dpsip_dpsi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if psi > self.psi_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        let denom = self.qaxis * self.psi_last.powi(2) + (self.qlast - self.qaxis) * psi.powi(2);
-        Ok(debug_assert_is_finite!(self.psi_last.powi(2) / denom))
-    }
-
-    fn dpsi_dpsip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if psip > self.psip_last {
-            return Err(EvalError::AnalyticalDomainError);
-        };
-        let cos_arg = (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
-        Ok(debug_assert_is_finite!(self.qaxis / cos_arg.cos().powi(2)))
-    }
-
-    fn psi_of_q(&self, q: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psi_of_q(&self, q: f64, _: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         if q > self.qlast {
             return Err(EvalError::AnalyticalDomainError);
         };
         let frac = (q - self.qaxis) / (self.qlast - self.qaxis);
         let psi = self.psi_last * frac.sqrt();
         debug_assert_non_negative_psi!(psi);
-        Ok(psi)
+        Ok(Toroidal(psi))
     }
 
-    fn psip_of_q(&self, q: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psip_of_q(&self, q: f64, _: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         if q > self.qlast {
             return Err(EvalError::AnalyticalDomainError);
         };
@@ -342,7 +356,46 @@ impl Qfactor for ParabolicQfactor {
         let coef = self.psi_last / (self.qaxis * (self.qlast - self.qaxis)).sqrt();
         let psip = coef * tan_arg.atan();
         debug_assert_non_negative_psip!(psip);
-        Ok(psip)
+        Ok(Poloidal(psip))
+    }
+
+    fn eval_deriv_of_other(
+        &self,
+        flux: MagneticFlux,
+        _: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        if flux.value()
+            > match flux {
+                Toroidal(_) => self.psi_last,
+                Poloidal(_) => self.psip_last,
+            }
+        {
+            cold_path();
+            return Err(EvalError::AnalyticalDomainError);
+        };
+        match flux {
+            Toroidal(psi) => {
+                let denom =
+                    self.qaxis * self.psi_last.powi(2) + (self.qlast - self.qaxis) * psi.powi(2);
+                Ok(debug_assert_is_finite!(self.psi_last.powi(2) / denom))
+            }
+            Poloidal(psip) => {
+                let cos_arg =
+                    (self.qaxis * (self.qlast - self.qaxis)).sqrt() * psip / self.psi_last;
+                Ok(debug_assert_is_finite!(self.qaxis / cos_arg.cos().powi(2)))
+            }
+        }
+    }
+
+    fn eval_deriv_wrt_other(
+        &self,
+        flux: MagneticFlux,
+        acc: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let other = self.eval_other(flux, acc)?;
+        self.eval_deriv_of_other(other, &mut Accelerator::new())
     }
 }
 
@@ -582,44 +635,61 @@ impl MachineObject for NcQfactor {
 }
 
 impl FluxCommute for NcQfactor {
-    fn psip_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.psip_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psi.uvalues(),
-                self.psip.uvalues(),
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("ψp(ψ)".into())),
+    fn eval_other(
+        &self,
+        flux: MagneticFlux,
+        acc: &mut Accelerator,
+    ) -> Result<MagneticFlux, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(_) if self.psip_of_psi_interp.is_none() => {
+                cold_path();
+                return Err(EvalError::UndefinedEvaluation("ψp(ψ)".into()));
+            }
+            Poloidal(_) if self.psi_of_psip_interp.is_none() => {
+                cold_path();
+                return Err(EvalError::UndefinedEvaluation("ψ(ψp)".into()));
+            }
+            _ => (),
         }
-    }
-
-    fn psi_of_psip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.psi_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psip.uvalues(),
-                self.psi.uvalues(),
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("ψ(ψp)".into())),
+        // SAFETY: the above check ensures the flux values exist.
+        #[rustfmt::skip]
+        let (x, xa, ya, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.psip.uvalues(), self.psip_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.psi.uvalues(), self.psi_of_psip_interp.as_ref()),
+        };
+        let value = if let Some(interp) = interp {
+            debug_assert_is_finite!(interp.eval(xa, ya, x, acc)?)
+        } else {
+            let msg = match flux {
+                Toroidal(_) => "ψp(ψ)",
+                Poloidal(_) => "ψ(ψp)",
+            };
+            cold_path();
+            return Err(EvalError::UndefinedEvaluation(msg.into()));
+        };
+        match flux {
+            Toroidal(_) => Ok(Poloidal(value)),
+            Poloidal(_) => Ok(Toroidal(value)),
         }
     }
 }
 
 impl Qfactor for NcQfactor {
-    fn psi_last(&self) -> f64 {
-        self.psi
-            .last_value()
-            .expect("'psi' values have been calculated at this point")
+    fn psi_last(&self) -> MagneticFlux {
+        Toroidal(
+            self.psi
+                .last_value()
+                .expect("'psi' values have been calculated at this point"),
+        )
     }
 
-    fn psip_last(&self) -> f64 {
-        self.psip
-            .last_value()
-            .expect("'psip' values have been calculated at this point")
+    fn psip_last(&self) -> MagneticFlux {
+        Poloidal(
+            self.psip
+                .last_value()
+                .expect("'psip' values have been calculated at this point"),
+        )
     }
 
     fn qlast(&self) -> f64 {
@@ -636,80 +706,86 @@ impl Qfactor for NcQfactor {
             .expect("'q' array is non-empty")
     }
 
-    fn q_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.q_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psi.uvalues(),
-                &self.q_values,
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("q(ψ)".into())),
+    fn eval_q(&self, flux: MagneticFlux, acc: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.q_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.q_of_psip_interp.as_ref()),
+        };
+        let ya = &self.q_values;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval(xa, ya, x, acc)?))
+        } else {
+            cold_path();
+            let msg = format!("q({})", flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 
-    fn q_of_psip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.q_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psip.uvalues(),
-                &self.q_values,
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("q(ψp)".into())),
-        }
-    }
-
-    fn dpsip_dpsi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.psip_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psi.uvalues(),
-                self.psip.uvalues(),
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dψp(ψ)/dψ".into())),
-        }
-    }
-
-    fn dpsi_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.psi_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psip.uvalues(),
-                self.psi.uvalues(),
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dψ(ψp)/dψp".into())),
-        }
-    }
-
-    fn psi_of_q(&self, q: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psi_of_q(&self, q: f64, acc: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         match self.psi_of_q_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
+            Some(interp) => Ok(Toroidal(debug_assert_is_finite!(interp.eval(
                 &self.q_values,
                 self.psi.uvalues(),
                 q,
                 acc
-            )?)),
+            )?))),
             None => Err(EvalError::UndefinedEvaluation("ψ(q)".into())),
         }
     }
 
-    fn psip_of_q(&self, q: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
+    fn eval_psip_of_q(&self, q: f64, acc: &mut Accelerator) -> Result<MagneticFlux, EvalError> {
         match self.psip_of_q_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
+            Some(interp) => Ok(Poloidal(debug_assert_is_finite!(interp.eval(
                 &self.q_values,
                 self.psip.uvalues(),
                 q,
                 acc
-            )?)),
+            )?))),
             None => Err(EvalError::UndefinedEvaluation("ψp(q)".into())),
         }
+    }
+
+    fn eval_deriv_of_other(
+        &self,
+        flux: MagneticFlux,
+        acc: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(_) if self.psi_of_psip_interp.is_none() => {
+                return Err(EvalError::UndefinedEvaluation("ψp(ψ)".into()));
+            }
+            Poloidal(_) if self.psip_of_psi_interp.is_none() => {
+                return Err(EvalError::UndefinedEvaluation("ψ(ψp)".into()));
+            }
+            _ => (),
+        }
+        // SAFETY: the above check ensures the flux values exist.
+        #[rustfmt::skip]
+        let (x, xa, ya, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.psip.uvalues(), self.psip_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.psi.uvalues(), self.psi_of_psip_interp.as_ref()),
+        };
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval_deriv(xa, ya, x, acc)?))
+        } else {
+            let msg = match flux {
+                Toroidal(_) => "ψp(ψ)",
+                Poloidal(_) => "ψ(ψp)",
+            };
+            Err(EvalError::UndefinedEvaluation(msg.into()))
+        }
+    }
+
+    fn eval_deriv_wrt_other(
+        &self,
+        flux: MagneticFlux,
+        acc: &mut Accelerator,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let other = self.eval_other(flux, acc)?;
+        self.eval_deriv_of_other(other, &mut Accelerator::new())
     }
 }
 
@@ -743,43 +819,106 @@ mod test_utils {
 
     pub(super) fn create_nc_qfactor(path_str: &str) -> NcQfactor {
         let path = PathBuf::from(&path_str);
-        let builder = NcQfactorBuilder::new(&path, Interpolation1dType::Steffen);
+        let builder = NcQfactorBuilder::new(&path, Interpolation1dType::Akima);
         builder.build().unwrap()
     }
 
     /// Make sure that dψ(ψp)/dψp and q(ψ) are close enough.
-    pub(super) fn test_dpsi_dpsip_q_closeness(qfactor: &impl Qfactor) {
+    pub(super) fn test_dpsi_dpsip_q_closeness<Q: Qfactor + FluxCommute>(qfactor: &Q) {
         // Do not go to close to the edges, since the interpolation might deviate a bit
-        let psips = Array1::linspace(0.02 * qfactor.psip_last(), 0.98 * qfactor.psip_last(), 100);
+        let psips = Array1::linspace(
+            0.02 * qfactor.psip_last().value(),
+            0.98 * qfactor.psip_last().value(),
+            100,
+        );
 
         let mut acc = Accelerator::new();
         for psip in psips.iter().copied() {
-            assert_relative_eq!(
-                qfactor.q_of_psip(psip, &mut acc).unwrap(),
-                qfactor.dpsi_dpsip(psip, &mut acc).unwrap(),
-                epsilon = qfactor.qlast() * 1e-4
-            )
+            let psip = Poloidal(psip);
+            let q = qfactor.eval_q(psip, &mut acc).unwrap();
+            let dpsi_dpsip = qfactor.eval_deriv_of_other(psip, &mut acc).unwrap();
+            assert_relative_eq!(q, dpsi_dpsip, epsilon = qfactor.qlast() * 1e-4)
         }
     }
 
     /// Make sure that dψp(ψ)/dψ and i(ψ) are close enough.
-    pub(super) fn test_dpsip_dpsi_iota_closeness(qfactor: &impl Qfactor) {
+    pub(super) fn test_dpsip_dpsi_iota_closeness<Q: Qfactor + FluxCommute>(qfactor: &Q) {
         // Do not go to close to the edges, since the interpolation might deviate a bit
-        let psis = Array1::linspace(0.02 * qfactor.psi_last(), 0.98 * qfactor.psi_last(), 100);
+        let psis = Array1::linspace(
+            0.02 * qfactor.psi_last().value(),
+            0.98 * qfactor.psi_last().value(),
+            100,
+        );
 
         let mut acc = Accelerator::new();
         for psi in psis.iter().copied() {
-            assert_relative_eq!(
-                qfactor.iota_of_psi(psi, &mut acc).unwrap(),
-                qfactor.dpsip_dpsi(psi, &mut acc).unwrap(),
-                epsilon = qfactor.qlast() * 1e-4
-            )
+            let psi = Toroidal(psi);
+            let iota = qfactor.eval_iota(psi, &mut acc).unwrap();
+            let dpsip_dpsi = qfactor.eval_deriv_of_other(psi, &mut acc).unwrap();
+            assert_relative_eq!(iota, dpsip_dpsi, epsilon = qfactor.qlast() * 1e-4)
+        }
+    }
+
+    pub(super) fn test_eval_deriv_methods<Q: Qfactor + FluxCommute>(qfactor: &Q) {
+        assert!(qfactor.psi_state() == FluxCoordinateState::Good);
+        assert!(qfactor.psip_state() == FluxCoordinateState::Good);
+
+        // Do not go to close to the edges, since the interpolation might deviate a bit
+        let psis = Array1::linspace(
+            0.02 * qfactor.psi_last().value(),
+            0.98 * qfactor.psi_last().value(),
+            100,
+        );
+
+        let mut acc = Accelerator::new();
+        for psi in psis.iter().copied() {
+            let psi = Toroidal(psi);
+            let psip = qfactor.eval_other(psi, &mut acc).unwrap();
+            let dpsip_dpsi_1 = qfactor.eval_deriv_of_other(psi, &mut acc).unwrap();
+            let dpsip_dpsi_2 = qfactor.eval_deriv_wrt_other(psip, &mut acc).unwrap();
+            assert_relative_eq!(dpsip_dpsi_1, dpsip_dpsi_2, epsilon = qfactor.qlast() * 1e-4)
+        }
+
+        // Do not go to close to the edges, since the interpolation might deviate a bit
+        let psips = Array1::linspace(
+            0.02 * qfactor.psip_last().value(),
+            0.98 * qfactor.psip_last().value(),
+            100,
+        );
+
+        let mut acc = Accelerator::new();
+        for psip in psips.iter().copied() {
+            let psip = Toroidal(psip);
+            let psi = qfactor.eval_other(psip, &mut acc).unwrap();
+            let dpsi_dpsip_1 = qfactor.eval_deriv_of_other(psip, &mut acc).unwrap();
+            let dpsi_dpsip_2 = qfactor.eval_deriv_wrt_other(psi, &mut acc).unwrap();
+            assert_relative_eq!(dpsi_dpsip_1, dpsi_dpsip_2, epsilon = qfactor.qlast() * 1e-4)
         }
     }
 }
 
 #[cfg(test)]
+mod test_unity_qfactor {
+    use crate::objects::qfactors::test_utils::test_eval_deriv_methods;
+
+    use super::*;
+
+    #[test]
+    fn domain_error() {
+        let lcfs = LastClosedFluxSurface::Toroidal(0.1);
+        let qfactor = UnityQfactor::new(lcfs);
+
+        let acc = &mut Accelerator::new();
+        assert!(qfactor.eval_q(Toroidal(0.2), acc).is_err());
+        assert!(qfactor.eval_q(Poloidal(0.2), acc).is_err());
+        test_eval_deriv_methods(&qfactor);
+    }
+}
+
+#[cfg(test)]
 mod test_parabolic_qfactor {
+    use crate::objects::qfactors::test_utils::test_eval_deriv_methods;
+
     use super::*;
     use approx::{assert_abs_diff_eq, assert_relative_eq};
 
@@ -787,8 +926,12 @@ mod test_parabolic_qfactor {
     /// Values calculated at a point where the ParabolicQfactor was defined correctly.
     fn instantiation_with_psi_last() {
         let qfactor = ParabolicQfactor::new(1.1, 3.9, LastClosedFluxSurface::Toroidal(0.45));
-        assert_abs_diff_eq!(qfactor.psi_last(), 0.45);
-        assert_relative_eq!(qfactor.psip_last(), 0.25921022097041035, epsilon = 1e-12);
+        assert_abs_diff_eq!(qfactor.psi_last().value(), 0.45);
+        assert_relative_eq!(
+            qfactor.psip_last().value(),
+            0.25921022097041035,
+            epsilon = 1e-12
+        );
 
         assert_eq!(qfactor.psi_state(), FluxCoordinateState::Good);
         assert_eq!(qfactor.psip_state(), FluxCoordinateState::Good);
@@ -802,8 +945,8 @@ mod test_parabolic_qfactor {
             3.9,
             LastClosedFluxSurface::Poloidal(0.25921022097041035),
         );
-        assert_abs_diff_eq!(qfactor.psip_last(), 0.25921022097041035);
-        assert_relative_eq!(qfactor.psi_last(), 0.45, epsilon = 1e-12);
+        assert_abs_diff_eq!(qfactor.psip_last().value(), 0.25921022097041035);
+        assert_relative_eq!(qfactor.psi_last().value(), 0.45, epsilon = 1e-12);
 
         assert_eq!(qfactor.psi_state(), FluxCoordinateState::Good);
         assert_eq!(qfactor.psip_state(), FluxCoordinateState::Good);
@@ -814,15 +957,21 @@ mod test_parabolic_qfactor {
         let qfactor = ParabolicQfactor::new(1.1, 3.9, LastClosedFluxSurface::Toroidal(0.45));
         let acc = &mut Accelerator::new();
 
-        let psi = 0.1;
-        let q_of_psi = qfactor.q_of_psi(psi, acc).unwrap();
-        let psi_inverse = qfactor.psi_of_q(q_of_psi, acc).unwrap();
-        assert_relative_eq!(psi, psi_inverse, epsilon = 1e-12);
+        let flux = Toroidal(0.01);
+        let q_of_psi = qfactor.eval_q(flux, acc).unwrap();
+        let psi_inverse = qfactor.eval_psi_of_q(q_of_psi, acc).unwrap();
+        assert_relative_eq!(flux.psi().unwrap(), psi_inverse.value(), epsilon = 1e-12);
 
-        let psip = 0.1;
-        let q_of_psip = qfactor.q_of_psip(psip, acc).unwrap();
-        let psip_inverse = qfactor.psip_of_q(q_of_psip, acc).unwrap();
-        assert_relative_eq!(psip, psip_inverse, epsilon = 1e-12);
+        let flux = Poloidal(0.1);
+        let q_of_psip = qfactor.eval_q(flux, acc).unwrap();
+        let psip_inverse = qfactor.eval_psip_of_q(q_of_psip, acc).unwrap();
+        assert_relative_eq!(flux.psip().unwrap(), psip_inverse.value(), epsilon = 1e-12);
+    }
+
+    #[test]
+    fn eval_derivative_methods() {
+        let qfactor = ParabolicQfactor::new(1.1, 3.9, LastClosedFluxSurface::Toroidal(0.45));
+        test_eval_deriv_methods(&qfactor);
     }
 }
 
@@ -872,10 +1021,16 @@ mod test_derivatives_closeness {
 
 #[cfg(test)]
 mod test_toroidal_nc_evals {
-    use crate::extract::TOROIDAL_TEST_NETCDF_PATH;
+    use crate::extract::{TEST_NETCDF_PATH, TOROIDAL_TEST_NETCDF_PATH};
 
     use super::test_utils::*;
     use super::*;
+
+    #[test]
+    fn eval_derivative_methods() {
+        let qfactor = create_nc_qfactor(TEST_NETCDF_PATH);
+        test_eval_deriv_methods(&qfactor);
+    }
 
     #[test]
     fn flux_and_interp_states() {
@@ -898,21 +1053,40 @@ mod test_toroidal_nc_evals {
     fn good_psi_evals() {
         let qfactor = create_nc_qfactor(TOROIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
-        assert!(qfactor.q_of_psi(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.iota_of_psi(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.psip_of_psi(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.dpsip_dpsi(0.01, &mut acc).unwrap().is_finite());
+        let psi = 0.01;
+        let flux = Toroidal(psi);
+        assert!(qfactor.eval_q(flux, &mut acc).unwrap().is_finite());
+        assert!(qfactor.eval_iota(flux, &mut acc).unwrap().is_finite());
+        assert!(
+            qfactor
+                .eval_other(flux, &mut acc)
+                .unwrap()
+                .value()
+                .is_finite()
+        );
+        // Need "good" poloidal flux
+        assert!(
+            qfactor
+                .eval_deriv_of_other(Toroidal(0.01), &mut acc)
+                .is_err()
+        );
+        assert!(
+            qfactor
+                .eval_deriv_of_other(Poloidal(0.01), &mut acc)
+                .is_err()
+        );
     }
 
     #[test]
     fn bad_psip_evals() {
         let qfactor = create_nc_qfactor(TOROIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
+        let flux = Poloidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(qfactor.q_of_psip(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.iota_of_psip(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.psi_of_psip(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.dpsi_dpsip(0.01, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_q(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_iota(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_other(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_deriv_of_other(flux, &mut acc), Err(err(..)));
     }
 }
 
@@ -944,20 +1118,38 @@ mod test_poloidal_nc_evals {
     fn good_psip_evals() {
         let qfactor = create_nc_qfactor(POLOIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
-        assert!(qfactor.q_of_psip(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.iota_of_psip(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.psi_of_psip(0.01, &mut acc).unwrap().is_finite());
-        assert!(qfactor.dpsi_dpsip(0.01, &mut acc).unwrap().is_finite());
+        let flux = Poloidal(0.01);
+        assert!(qfactor.eval_q(flux, &mut acc).unwrap().is_finite());
+        assert!(qfactor.eval_iota(flux, &mut acc).unwrap().is_finite());
+        assert!(
+            qfactor
+                .eval_other(flux, &mut acc)
+                .unwrap()
+                .value()
+                .is_finite()
+        );
+        // Need "good" toroidal flux
+        assert!(
+            qfactor
+                .eval_deriv_of_other(Toroidal(0.01), &mut acc)
+                .is_err()
+        );
+        assert!(
+            qfactor
+                .eval_deriv_of_other(Poloidal(0.01), &mut acc)
+                .is_err()
+        );
     }
 
     #[test]
     fn bad_psi_evals() {
         let qfactor = create_nc_qfactor(POLOIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
+        let flux = Toroidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(qfactor.q_of_psi(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.iota_of_psi(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.psip_of_psi(0.01, &mut acc), Err(err(..)));
-        matches!(qfactor.dpsip_dpsi(0.01, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_q(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_iota(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_other(flux, &mut acc), Err(err(..)));
+        matches!(qfactor.eval_deriv_of_other(flux, &mut acc), Err(err(..)));
     }
 }

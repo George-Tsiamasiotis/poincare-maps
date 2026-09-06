@@ -1,10 +1,10 @@
 //! Representation of a machine's plasma current.
 
 use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    fluxes_values_array_getter_impl, interp_type_getter_impl, lcfs_getter_impl,
-    netcdf_path_getter_impl, netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_flux, fluxes_values_array_getter_impl,
+    interp_type_getter_impl, lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
+use core::hint::cold_path;
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
 use std::path::{Path, PathBuf};
@@ -14,6 +14,7 @@ use crate::Interpolation1dType;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{Current, MachineObject, MachineType};
 use crate::{EvalError, MachineError};
+use crate::{MagneticFlux, MagneticFlux::*};
 use dexter_common::{DynInterpolator, array1D_getter_impl, make_interp};
 
 // ===============================================================================================
@@ -56,43 +57,23 @@ impl MachineObject for LarCurrent {
 }
 
 impl Current for LarCurrent {
-    fn g_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
+    fn eval_g(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
         Ok(1.0)
     }
 
-    fn g_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Ok(1.0)
-    }
-
-    fn i_of_psi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
+    fn eval_i(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
         Ok(0.0)
     }
 
-    fn i_of_psip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
+    fn eval_g_deriv(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
         Ok(0.0)
     }
 
-    fn dg_dpsi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(0.0)
-    }
-
-    fn dg_dpsip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Ok(0.0)
-    }
-
-    fn di_dpsi(&self, psi: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(0.0)
-    }
-
-    fn di_dpsip(&self, psip: f64, _: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
+    fn eval_i_deriv(&self, flux: MagneticFlux, _: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
         Ok(0.0)
     }
 }
@@ -263,107 +244,67 @@ impl MachineObject for NcCurrent {
 }
 
 impl Current for NcCurrent {
-    fn g_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.g_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psi.uvalues(),
-                &self.g_values,
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("g(ψ)".into())),
+    fn eval_g(&self, flux: MagneticFlux, acc: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.g_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.g_of_psip_interp.as_ref()),
+        };
+        let ya = &self.g_values;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval(xa, ya, x, acc)?))
+        } else {
+            cold_path();
+            let msg = format!("g({})", flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 
-    fn g_of_psip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.g_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psip.uvalues(),
-                &self.g_values,
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("g(ψp)".into())),
+    fn eval_i(&self, flux: MagneticFlux, acc: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.i_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.i_of_psip_interp.as_ref()),
+        };
+        let ya = &self.i_values;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval(xa, ya, x, acc)?))
+        } else {
+            cold_path();
+            let msg = format!("I({})", flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 
-    fn i_of_psi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.i_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psi.uvalues(),
-                &self.i_values,
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("I(ψ)".into())),
+    fn eval_g_deriv(&self, flux: MagneticFlux, acc: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.g_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.g_of_psip_interp.as_ref()),
+        };
+        let ya = &self.g_values;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval_deriv(xa, ya, x, acc)?))
+        } else {
+            cold_path();
+            let msg = format!("dg({})/d{}", flux.kind(), flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 
-    fn i_of_psip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.i_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psip.uvalues(),
-                &self.i_values,
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("I(ψp)".into())),
-        }
-    }
-
-    fn dg_dpsi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.g_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psi.uvalues(),
-                &self.g_values,
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dg(ψ)/dψ".into())),
-        }
-    }
-
-    fn dg_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.g_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psip.uvalues(),
-                &self.g_values,
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dg(ψp)/dψp".into())),
-        }
-    }
-
-    fn di_dpsi(&self, psi: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        match self.i_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psi.uvalues(),
-                &self.i_values,
-                psi,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dI(ψ)/dψ".into())),
-        }
-    }
-
-    fn di_dpsip(&self, psip: f64, acc: &mut Accelerator) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        match self.i_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv(
-                self.psip.uvalues(),
-                &self.i_values,
-                psip,
-                acc
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dI(ψp)/dψp".into())),
+    fn eval_i_deriv(&self, flux: MagneticFlux, acc: &mut Accelerator) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.i_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.i_of_psip_interp.as_ref()),
+        };
+        let ya = &self.i_values;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(interp.eval_deriv(xa, ya, x, acc)?))
+        } else {
+            cold_path();
+            let msg = format!("dI({})/d{}", flux.kind(), flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 }
@@ -430,21 +371,23 @@ mod test_toroidal_nc_evals {
     fn good_psi_evals() {
         let current = create_nc_current(TOROIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
-        assert!(current.g_of_psi(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.i_of_psi(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.dg_dpsi(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.di_dpsi(0.01, &mut acc).unwrap().is_finite());
+        let flux = Toroidal(0.01);
+        assert!(current.eval_g(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i_deriv(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i_deriv(flux, &mut acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psip_evals() {
         let current = create_nc_current(TOROIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
+        let flux = Poloidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(current.g_of_psip(0.01, &mut acc), Err(err(..)));
-        matches!(current.i_of_psip(0.01, &mut acc), Err(err(..)));
-        matches!(current.dg_dpsip(0.01, &mut acc), Err(err(..)));
-        matches!(current.di_dpsip(0.01, &mut acc), Err(err(..)));
+        matches!(current.eval_g(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i_deriv(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i_deriv(flux, &mut acc), Err(err(..)));
     }
 }
 
@@ -476,20 +419,22 @@ mod test_poloidal_nc_evals {
     fn good_psip_evals() {
         let current = create_nc_current(POLOIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
-        assert!(current.g_of_psip(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.i_of_psip(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.dg_dpsip(0.01, &mut acc).unwrap().is_finite());
-        assert!(current.di_dpsip(0.01, &mut acc).unwrap().is_finite());
+        let flux = Poloidal(0.01);
+        assert!(current.eval_g(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i_deriv(flux, &mut acc).unwrap().is_finite());
+        assert!(current.eval_i_deriv(flux, &mut acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psi_evals() {
         let current = create_nc_current(POLOIDAL_TEST_NETCDF_PATH);
         let mut acc = Accelerator::new();
+        let flux = Toroidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(current.g_of_psi(0.01, &mut acc), Err(err(..)));
-        matches!(current.i_of_psi(0.01, &mut acc), Err(err(..)));
-        matches!(current.dg_dpsi(0.01, &mut acc), Err(err(..)));
-        matches!(current.di_dpsi(0.01, &mut acc), Err(err(..)));
+        matches!(current.eval_g(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i_deriv(flux, &mut acc), Err(err(..)));
+        matches!(current.eval_i_deriv(flux, &mut acc), Err(err(..)));
     }
 }

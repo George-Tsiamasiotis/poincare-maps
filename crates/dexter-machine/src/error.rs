@@ -44,7 +44,11 @@ pub enum EvalError {
 
     /// Called undefined evaluation method.
     #[error("Call to undefined evaluation method '{0}'")]
-    UndefinedEvaluation(Box<str>),
+    UndefinedEvaluation(String),
+
+    /// [`MagneticFlux`](crate::MagneticFlux) passed to function with the wrong variant.
+    #[error("`MagneticFlux` is of the wrong variant")]
+    InvalidMagneticFlux,
 }
 
 /// netCDF handling errors.

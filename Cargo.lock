@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "dexter-machine"
-version = "0.1.8"
+version = "0.1.9-pre.1"
 dependencies = [
  "approx",
  "criterion",

@@ -14,17 +14,12 @@ fn empty_perturbation() {
 
     let mut caches: DynModeCaches = p.generate_caches();
 
-    let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
-    assert_eq!(p.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.p_of_psip(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_dpsip(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psip_dtheta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psip_dzeta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
-    assert_eq!(p.dp_of_psip_dt(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
+    let (psi, theta, zeta, t) = (MagneticFlux::Toroidal(0.01), 1.0, 2.0, 0.0);
+    assert_eq!(p.eval_p(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
+    assert_eq!(p.eval_deriv_flux(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
+    assert_eq!(p.eval_deriv_theta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
+    assert_eq!(p.eval_deriv_zeta(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
+    assert_eq!(p.eval_deriv_t(psi, theta, zeta, t, &mut caches).unwrap(), 0.0);
 }
 
 #[test]
@@ -41,19 +36,20 @@ fn cos_toroidal_lcfs_perturbation() {
     let mut c: DynModeCaches = per.generate_caches();
 
 
-    let (p, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
+    let (psi, theta, zeta, t) = (MagneticFlux::Toroidal(0.01), 1.0, 2.0, 0.0);
 
-    let _: f64 = per.p_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_dpsi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psi_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psi_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psi_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_p(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_flux(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_theta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_zeta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_t(psi, theta, zeta, t, &mut c).unwrap();
 
-    assert!(per.p_of_psip(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_dpsip(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psip_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psip_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psip_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    let psip = MagneticFlux::Poloidal(0.015);
+    assert!(per.eval_p(psip, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_flux(psip, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_theta(psip, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_zeta(psip, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_t(psip, theta, zeta, t, &mut c).is_ok()); // returns zero
 }
 
 #[test]
@@ -70,19 +66,19 @@ fn cos_poloidal_lcfs_perturbation() {
     let mut c: DynModeCaches = per.generate_caches();
 
 
-    let (p, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
+    let (psip, theta, zeta, t) = (MagneticFlux::Poloidal(0.01), 1.0, 2.0, 0.0);
 
-    let _: f64 = per.p_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_dpsip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psip_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psip_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = per.dp_of_psip_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_p(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_flux(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_theta(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_zeta(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = per.eval_deriv_t(psip, theta, zeta, t, &mut c).unwrap();
 
-    assert!(per.p_of_psi(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_dpsi(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psi_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psi_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(per.dp_of_psi_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    let psi = MagneticFlux::Toroidal(0.01);
+    assert!(per.eval_p(psi, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_flux(psi, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_theta(psi, theta, zeta, t, &mut c).is_err());
+    assert!(per.eval_deriv_zeta(psi, theta, zeta, t, &mut c).is_err());
 }
 
 #[test]
@@ -105,17 +101,12 @@ fn nc_perturbation() {
 
     let mut caches: DynModeCaches = per.generate_caches();
 
-    let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
-    let _: f64 = per.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.p_of_psip(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_dpsip(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psip_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psip_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psip_dt(psi, theta, zeta, t, &mut caches).unwrap();
+    let (psi, theta, zeta, t) = (MagneticFlux::Toroidal(0.01), 1.0, 2.0, 0.0);
+    let _: f64 = per.eval_p(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_flux(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_theta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_zeta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_t(psi, theta, zeta, t, &mut caches).unwrap();
 }
 
 #[test]
@@ -134,10 +125,10 @@ fn mixed_perturbation() {
 
     let mut caches: DynModeCaches = per.generate_caches();
 
-    let (psi, theta, zeta, t) = (0.01, 1.0, 2.0, 0.0);
-    let _: f64 = per.p_of_psi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_dpsi(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dtheta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dzeta(psi, theta, zeta, t, &mut caches).unwrap();
-    let _: f64 = per.dp_of_psi_dt(psi, theta, zeta, t, &mut caches).unwrap();
+    let (psi, theta, zeta, t) = (MagneticFlux::Toroidal(0.01), 1.0, 2.0, 0.0);
+    let _: f64 = per.eval_p(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_flux(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_theta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_zeta(psi, theta, zeta, t, &mut caches).unwrap();
+    let _: f64 = per.eval_deriv_t(psi, theta, zeta, t, &mut caches).unwrap();
 }
