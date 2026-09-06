@@ -1,5 +1,6 @@
 //! Representation of a numerical flute mode.
 
+use core::hint::cold_path;
 use ndarray::Array1;
 use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
@@ -10,10 +11,10 @@ use crate::constants::NC_ANALYTICAL_THRESHOLD_INDEX;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{DynModeCache, Interpolation1dType, MachineObject, MachineType, Mode, ModeCache};
 use crate::{EvalError, MachineError};
+use crate::{MagneticFlux, MagneticFlux::*};
 use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    interp_type_getter_impl, mode_cache_getters_impl, netcdf_path_getter_impl,
-    netcdf_version_getter_impl,
+    debug_assert_is_finite, debug_assert_non_negative_flux, interp_type_getter_impl,
+    mode_cache_getters_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
 use dexter_common::{DynInterpolator, make_interp};
 
@@ -212,6 +213,7 @@ impl NcFluteMode {
         if *state == FluxCoordinateState::Good {
             Ok(())
         } else {
+            cold_path();
             Err(EvalError::UndefinedEvaluation(msg.into()))
         }
     }
@@ -353,183 +355,141 @@ impl Mode for NcFluteMode {
         })
     }
 
-    fn ampl_of_psi(
+    fn eval_amplitude(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "α(ψ)")?;
-        self.psi_single.alpha(psi, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "α(ψ)")?;
+                self.psi_single.alpha(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "α(ψp)")?;
+                self.psip_single.alpha(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn ampl_of_psip(
+    fn eval_phase(
         &self,
-        psip: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "α(ψp)")?;
-        self.psip_single.alpha(psip, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "φ(ψ)")?;
+                self.psi_single.phase(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "φ(ψp)")?;
+                self.psip_single.phase(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn phase_of_psi(
+    fn eval_m(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "φ(ψ)")?;
-        self.psi_single.phase(psi, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "m(ψ, θ, ζ, t)")?;
+                self.psi_single.m(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "m(ψp, θ, ζ, t)")?;
+                self.psip_single.m(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn phase_of_psip(
+    fn eval_deriv_flux(
         &self,
-        psip: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "φ(ψp)")?;
-        self.psip_single.phase(psip, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "dm(ψ, θ, ζ, t)/dψ")?;
+                self.psi_single.dm_dflux(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "dm(ψp, θ, ζ, t)/dψp")?;
+                self.psip_single.dm_dflux(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn m_of_psi(
+    fn eval_deriv_theta(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "h(ψ)")?;
-        self.psi_single.m(psi, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "dm(ψ, θ, ζ, t)/dθ")?;
+                self.psi_single.dm_dtheta(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "dm(ψp, θ, ζ, t)/dθ")?;
+                self.psip_single.dm_dtheta(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn m_of_psip(
+    fn eval_deriv_zeta(
         &self,
-        psip: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "h(ψp)")?;
-        self.psip_single.m(psip, theta, zeta, t, cache)
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => {
+                Self::check_if_defined(&self.psi_single.flux.state(), "dm(ψ, θ, ζ, t)/dζ")?;
+                self.psi_single.dm_dzeta(psi, theta, zeta, t, cache)
+            }
+            Poloidal(psip) => {
+                Self::check_if_defined(&self.psip_single.flux.state(), "dm(ψp, θ, ζ, t)/dζ")?;
+                self.psip_single.dm_dzeta(psip, theta, zeta, t, cache)
+            }
+        }
     }
 
-    fn dm_dpsi(
+    fn eval_deriv_t(
         &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dψ")?;
-        self.psi_single.dm_dflux(psi, theta, zeta, t, cache)
-    }
-
-    fn dm_dpsip(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dψp")?;
-        self.psip_single.dm_dflux(psip, theta, zeta, t, cache)
-    }
-
-    fn dm_of_psi_dtheta(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dθ")?;
-        self.psi_single.dm_dtheta(psi, theta, zeta, t, cache)
-    }
-
-    fn dm_of_psip_dtheta(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dθ")?;
-        self.psip_single.dm_dtheta(psip, theta, zeta, t, cache)
-    }
-
-    fn dm_of_psi_dzeta(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Self::check_if_defined(&self.psi_single.flux.state(), "dh(ψ)/dζ")?;
-        self.psi_single.dm_dzeta(psi, theta, zeta, t, cache)
-    }
-
-    fn dm_of_psip_dzeta(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Self::check_if_defined(&self.psip_single.flux.state(), "dh(ψp)/dζ")?;
-        self.psip_single.dm_dzeta(psip, theta, zeta, t, cache)
-    }
-
-    fn dm_of_psi_dt(
-        &self,
-        psi: f64,
+        flux: MagneticFlux,
         _: f64,
         _: f64,
         _: f64,
         _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(0.0)
-    }
-
-    fn dm_of_psip_dt(
-        &self,
-        psip: f64,
-        _: f64,
-        _: f64,
-        _: f64,
-        _: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
+        debug_assert_non_negative_flux!(flux);
         Ok(0.0)
     }
 }
@@ -965,8 +925,14 @@ mod phase_methods {
         assert!(matches!(mode.phase_method(), Zero));
         assert!(mode.psi_single.phase_average.is_none());
 
-        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
-        assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 0.0);
+        assert_eq!(
+            mode.eval_phase(Toroidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
+            0.0
+        );
+        assert_eq!(
+            mode.eval_phase(Poloidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
+            0.0
+        );
     }
 
     #[test]
@@ -983,9 +949,12 @@ mod phase_methods {
         assert!(matches!(mode.phase_method(), Average));
         assert!(mode.psi_single.phase_average.is_some());
 
-        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), expected);
         assert_eq!(
-            mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(),
+            mode.eval_phase(Toroidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
+            expected
+        );
+        assert_eq!(
+            mode.eval_phase(Poloidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
             expected
         );
     }
@@ -1006,7 +975,7 @@ mod phase_methods {
         assert!(mode.psi_single.phase_average.is_none());
 
         assert_relative_eq!(
-            mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap(),
+            mode.eval_phase(Poloidal(0.1), 0.1, 0.1, 0.1, c).unwrap(),
             expected,
             epsilon = 1e-5 // unsure why there is this small difference here.
         );
@@ -1024,8 +993,14 @@ mod phase_methods {
         assert!(matches!(mode.phase_method(), Custom(10.0)));
         assert!(mode.psi_single.phase_average.is_none());
 
-        assert_eq!(mode.phase_of_psi(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
-        assert_eq!(mode.phase_of_psip(0.01, 0.1, 0.1, 0.0, c).unwrap(), 10.0);
+        assert_eq!(
+            mode.eval_phase(Toroidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
+            10.0
+        );
+        assert_eq!(
+            mode.eval_phase(Poloidal(0.01), 0.1, 0.1, 0.0, c).unwrap(),
+            10.0
+        );
     }
 }
 
@@ -1055,13 +1030,14 @@ mod test_toroidal_nc_evals {
     fn good_psi_evals() {
         let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
-        assert!(mode.ampl_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.m_of_psi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_dpsi(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psi_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        let psi = Toroidal(0.1);
+        assert!(mode.eval_amplitude(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_phase(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_m(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_flux(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_theta(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_zeta(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_t(psi, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
@@ -1070,14 +1046,15 @@ mod test_toroidal_nc_evals {
         let mode = create_nc_flute_mode(TOROIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
 
+        let psip = Poloidal(0.1);
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(mode.ampl_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.m_of_psip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_dpsip(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psip_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.eval_amplitude(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_phase(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_m(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_flux(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_theta(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_zeta(psip, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_t(psip, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
@@ -1107,13 +1084,14 @@ mod test_poloidal_nc_evals {
     fn good_psip_evals() {
         let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
-        assert!(mode.ampl_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.phase_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.m_of_psip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_dpsip(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psip_dtheta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psip_dzeta(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
-        assert!(mode.dm_of_psip_dt(0.1, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        let psip = Poloidal(0.1);
+        assert!(mode.eval_amplitude(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_phase(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_m(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_flux(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_theta(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_zeta(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
+        assert!(mode.eval_deriv_t(psip, 0.1, 0.1, 0.1, c).unwrap().is_finite());
     }
 
     #[test]
@@ -1122,14 +1100,15 @@ mod test_poloidal_nc_evals {
         let mode = create_nc_flute_mode(POLOIDAL_TEST_NETCDF_PATH);
         let c = &mut mode.generate_cache();
 
+        let psi = Toroidal(0.1);
         use EvalError::UndefinedEvaluation as err;
-        assert!(matches!(mode.ampl_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.phase_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.m_of_psi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_dpsi(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psi_dtheta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psi_dzeta(0.1, 0.1, 0.1, 0.1, c), Err(err(..))));
-        assert!(matches!(mode.dm_of_psi_dt(0.1, 0.1, 0.1, 0.1, c), Ok(0.0)));
+        assert!(matches!(mode.eval_amplitude(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_phase(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_m(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_flux(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_theta(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_zeta(psi, 0.1, 0.1, 0.1, c), Err(err(..))));
+        assert!(matches!(mode.eval_deriv_t(psi, 0.1, 0.1, 0.1, c), Ok(0.0)));
     }
 }
 
@@ -1154,27 +1133,28 @@ mod nc_flute_mode_cache {
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        mode.phase_of_psi(0.01, 0.1, 0.1, t, c).unwrap();
+        let psi = Toroidal(0.01);
+        mode.eval_phase(psi, 0.1, 0.1, t, c).unwrap();
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
-        mode.dm_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap();
+        mode.eval_deriv_theta(psi, 0.1, 0.1, t, c).unwrap();
         assert_eq!(c.hits(), 1);
         assert_eq!(c.misses(), 1);
 
-        let psi = 0.1;
         let theta = 3.14;
         let zeta = 1.0;
-        mode.ampl_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.phase_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.m_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.dm_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        mode.dm_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.eval_amplitude(psi, theta, zeta, t, c).unwrap();
+        mode.eval_phase(psi, theta, zeta, t, c).unwrap();
+        mode.eval_m(psi, theta, zeta, t, c).unwrap();
+        mode.eval_deriv_flux(psi, theta, zeta, t, c).unwrap();
+        mode.eval_deriv_zeta(psi, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 2);
 
-        mode.dm_dpsi(psi / 2.0, theta, zeta, t, c).unwrap();
+        mode.eval_deriv_flux(Toroidal(0.01 / 2.0), theta, zeta, t, c)
+            .unwrap();
 
         assert_eq!(c.hits(), 5);
         assert_eq!(c.misses(), 3);
@@ -1202,7 +1182,7 @@ mod nc_flute_mode_analytical_threshold {
         assert_eq!(mode.analytical_threshold_index(), 5);
         // set cos=1 and make sure it does go to infinity
         assert!(
-            dbg!(mode.dm_dpsi(1e-20, 0.0, 0.0, 0.0, &mut cache))
+            dbg!(mode.eval_deriv_flux(Toroidal(1e-20), 0.0, 0.0, 0.0, &mut cache))
                 .is_ok_and(|value| value.abs() > 1000.0)
         )
     }
@@ -1220,7 +1200,7 @@ mod nc_flute_mode_analytical_threshold {
 
         let mut cache = mode.generate_cache();
         assert!(
-            mode.m_of_psi(1e-5, 0.0, 0.0, 0.0, &mut cache)
+            mode.eval_m(Toroidal(1e-5), 0.0, 0.0, 0.0, &mut cache)
                 .unwrap()
                 .is_finite()
         );

@@ -1,5 +1,7 @@
 //! Machine representation objects.
 
+use crate::MagneticFlux;
+
 pub(crate) mod getters;
 pub(crate) mod nc_flux;
 
@@ -24,25 +26,9 @@ pub enum MachineType {
     Analytical,
 }
 
-/// Helper struct to define the Last Closed Flux Surface (LCFS) with respect to one of the
+/// Helper type to define the Last Closed Flux Surface (LCFS) with respect to one of the
 /// two fluxes.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum LastClosedFluxSurface {
-    /// Last closed toroidal flux surface.
-    Toroidal(f64),
-    /// Last closed poloidal flux surface.
-    Poloidal(f64),
-}
-
-impl LastClosedFluxSurface {
-    /// Returns the LCFS value, regardless of its kind.
-    #[must_use]
-    pub fn value(&self) -> f64 {
-        match *self {
-            Self::Toroidal(value) | Self::Poloidal(value) => value,
-        }
-    }
-}
+pub type LastClosedFluxSurface = MagneticFlux;
 
 /// Debug-asserts that all values of the slice are finite.
 pub(crate) fn debug_assert_all_finite_values(values: &[f64]) {
@@ -58,6 +44,15 @@ pub(crate) fn debug_assert_all_finite_values(values: &[f64]) {
 macro_rules! debug_assert_non_negative_r {
     ($r: expr) => {
         debug_assert!($r >= 0.0, "Encountered negative r")
+    };
+}
+
+/// Debug-asserts that `flux` is non-negative.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! debug_assert_non_negative_flux {
+    ($flux: expr) => {
+        debug_assert!($flux.value() >= 0.0, "Encountered negative magnetic flux")
     };
 }
 

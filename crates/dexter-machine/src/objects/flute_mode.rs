@@ -1,5 +1,6 @@
 //! Representation of analytical Flute Modes.
 
+use core::hint::cold_path;
 use rsl_interpolation::Accelerator;
 use std::f64::consts::TAU;
 
@@ -7,10 +8,8 @@ use crate::{
     DynModeCache, EvalError, FluxCoordinateState, LastClosedFluxSurface, MachineObject,
     MachineType, Mode, ModeCache,
 };
-use crate::{
-    debug_assert_is_finite, debug_assert_non_negative_psi, debug_assert_non_negative_psip,
-    mode_cache_getters_impl,
-};
+use crate::{MagneticFlux, MagneticFlux::*};
+use crate::{debug_assert_is_finite, debug_assert_non_negative_flux, mode_cache_getters_impl};
 
 // ===============================================================================================
 
@@ -239,266 +238,203 @@ impl Mode for FluteMode {
         })
     }
 
-    fn ampl_of_psi(
+    fn eval_amplitude(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         zeta: f64,
         t: f64,
         cache: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if self.psi_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("α(ψ)".into()))
-        } else {
-            if !cache.is_updated(psi, theta, zeta, t) {
-                cache.update(psi, theta, zeta, t);
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) if self.psi_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psi, theta, zeta, t) {
+                    cache.update(psi, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    self.epsilon * cache.cache()[3] / cache.params()[4]
+                ))
             }
-            Ok(debug_assert_is_finite!(
-                self.epsilon * cache.cache()[3] / cache.params()[4]
-            ))
+            Poloidal(psip) if self.psip_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psip, theta, zeta, t) {
+                    cache.update(psip, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    self.epsilon * cache.cache()[3] / cache.params()[4]
+                ))
+            }
+            _ => {
+                let msg = format!("α({})", flux.kind());
+                Err(EvalError::UndefinedEvaluation(msg))
+            }
         }
     }
 
-    fn ampl_of_psip(
+    fn eval_phase(
         &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if self.psip_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("α(ψp)".into()))
-        } else {
-            if !cache.is_updated(psip, theta, zeta, t) {
-                cache.update(psip, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                self.epsilon * cache.cache()[3] / cache.params()[4]
-            ))
-        }
-    }
-
-    fn phase_of_psi(
-        &self,
-        psi: f64,
+        flux: MagneticFlux,
         _: f64,
         _: f64,
         _: f64,
         _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(debug_assert_is_finite!(self.phase))
+        debug_assert_non_negative_flux!(flux);
+        Ok(self.phase)
     }
 
-    fn phase_of_psip(
+    fn eval_m(
         &self,
-        psip: f64,
+        flux: MagneticFlux,
+        theta: f64,
+        zeta: f64,
+        t: f64,
+        cache: &mut DynModeCache,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) if self.psi_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psi, theta, zeta, t) {
+                    cache.update(psi, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
+                ))
+            }
+            Poloidal(psip) if self.psip_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psip, theta, zeta, t) {
+                    cache.update(psip, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
+                ))
+            }
+            _ => {
+                cold_path();
+                let msg = format!("m({})", flux.kind());
+                Err(EvalError::UndefinedEvaluation(msg))
+            }
+        }
+    }
+
+    fn eval_deriv_flux(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        zeta: f64,
+        t: f64,
+        cache: &mut DynModeCache,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) if self.psi_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psi, theta, zeta, t) {
+                    cache.update(psi, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3])
+                        * cache.cache()[6]
+                ))
+            }
+            Poloidal(psip) if self.psip_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psip, theta, zeta, t) {
+                    cache.update(psip, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3])
+                        * cache.cache()[6]
+                ))
+            }
+            _ => {
+                cold_path();
+                let msg = format!("dm({}, θ, ζ, t)/d{}", flux.kind(), flux.kind());
+                Err(EvalError::UndefinedEvaluation(msg))
+            }
+        }
+    }
+
+    fn eval_deriv_theta(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        zeta: f64,
+        t: f64,
+        cache: &mut DynModeCache,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) if self.psi_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psi, theta, zeta, t) {
+                    cache.update(psi, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                        * cache.cache()[5]
+                ))
+            }
+            Poloidal(psip) if self.psip_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psip, theta, zeta, t) {
+                    cache.update(psip, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                        * cache.cache()[5]
+                ))
+            }
+            _ => {
+                cold_path();
+                let msg = format!("dm({}, θ, ζ, t)/dθ", flux.kind());
+                Err(EvalError::UndefinedEvaluation(msg))
+            }
+        }
+    }
+
+    fn eval_deriv_zeta(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        zeta: f64,
+        t: f64,
+        cache: &mut DynModeCache,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) if self.psi_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psi, theta, zeta, t) {
+                    cache.update(psi, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                        * cache.cache()[5]
+                ))
+            }
+            Poloidal(psip) if self.psip_state() == FluxCoordinateState::Good => {
+                if !cache.is_updated(psip, theta, zeta, t) {
+                    cache.update(psip, theta, zeta, t);
+                }
+                Ok(debug_assert_is_finite!(
+                    cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
+                        * cache.cache()[5]
+                ))
+            }
+            _ => {
+                cold_path();
+                let msg = format!("dm({}, θ, ζ, t)/dζ", flux.kind());
+                Err(EvalError::UndefinedEvaluation(msg))
+            }
+        }
+    }
+
+    fn eval_deriv_t(
+        &self,
+        flux: MagneticFlux,
         _: f64,
         _: f64,
         _: f64,
         _: &mut DynModeCache,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Ok(debug_assert_is_finite!(self.phase))
-    }
-
-    fn m_of_psi(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if self.psi_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("h(ψ)".into()))
-        } else {
-            if !cache.is_updated(psi, theta, zeta, t) {
-                cache.update(psi, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
-            ))
-        }
-    }
-
-    fn m_of_psip(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if self.psip_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("h(ψp)".into()))
-        } else {
-            if !cache.is_updated(psip, theta, zeta, t) {
-                cache.update(psip, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[0] * cache.cache()[3] / cache.params()[4] * cache.cache()[6]
-            ))
-        }
-    }
-
-    fn dm_dpsi(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if self.psi_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψ)/dψ".into()))
-        } else {
-            if !cache.is_updated(psi, theta, zeta, t) {
-                cache.update(psi, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3]) * cache.cache()[6]
-            ))
-        }
-    }
-
-    fn dm_dpsip(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if self.psip_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψp)/dψp".into()))
-        } else {
-            if !cache.is_updated(psip, theta, zeta, t) {
-                cache.update(psip, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[0] / (2.0 * cache.params()[4] * cache.cache()[3]) * cache.cache()[6]
-            ))
-        }
-    }
-
-    fn dm_of_psi_dtheta(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if self.psi_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψ)/dθ".into()))
-        } else {
-            if !cache.is_updated(psi, theta, zeta, t) {
-                cache.update(psi, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
-                    * cache.cache()[5]
-            ))
-        }
-    }
-
-    fn dm_of_psip_dtheta(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if self.psip_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψp)/dθ".into()))
-        } else {
-            if !cache.is_updated(psip, theta, zeta, t) {
-                cache.update(psip, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                -cache.params()[1] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
-                    * cache.cache()[5]
-            ))
-        }
-    }
-
-    fn dm_of_psi_dzeta(
-        &self,
-        psi: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        if self.psi_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψ)/dζ".into()))
-        } else {
-            if !cache.is_updated(psi, theta, zeta, t) {
-                cache.update(psi, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
-                    * cache.cache()[5]
-            ))
-        }
-    }
-
-    fn dm_of_psip_dzeta(
-        &self,
-        psip: f64,
-        theta: f64,
-        zeta: f64,
-        t: f64,
-        cache: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        if self.psip_last.is_none() {
-            Err(EvalError::UndefinedEvaluation("dh(ψp)/dζ".into()))
-        } else {
-            if !cache.is_updated(psip, theta, zeta, t) {
-                cache.update(psip, theta, zeta, t);
-            }
-            Ok(debug_assert_is_finite!(
-                cache.params()[2] * cache.params()[0] * cache.cache()[3] / cache.params()[4]
-                    * cache.cache()[5]
-            ))
-        }
-    }
-
-    fn dm_of_psi_dt(
-        &self,
-        psi: f64,
-        _: f64,
-        _: f64,
-        _: f64,
-        _: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(debug_assert_is_finite!(0.0_f64))
-    }
-
-    fn dm_of_psip_dt(
-        &self,
-        psip: f64,
-        _: f64,
-        _: f64,
-        _: f64,
-        _: &mut DynModeCache,
-    ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        Ok(debug_assert_is_finite!(0.0_f64))
+        debug_assert_non_negative_flux!(flux);
+        Ok(0.0)
     }
 }
 
@@ -517,24 +453,25 @@ mod flute_mode_values {
 
         let c = &mut har.generate_cache();
 
-        let p = 0.1; // not used
         let theta = 0.2;
         let zeta = 0.3;
         let t = 0.0; // not used
-
         let eps = 1e-10;
-        assert_relative_eq!(har.ampl_of_psi(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
-        assert_relative_eq!(har.phase_of_psi(p, theta, zeta, t, c)?, 1.0, epsilon = eps);
-        assert_relative_eq!(har.m_of_psi(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
-        assert_relative_eq!(har.dm_dpsi(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
-        assert_relative_eq!(har.dm_of_psi_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
-        assert_relative_eq!(har.dm_of_psi_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
 
-        assert!(har.ampl_of_psip(p, theta, zeta, t,c).is_err());
-        assert!(har.m_of_psip(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_dpsip(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_of_psip_dtheta(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_of_psip_dzeta(p, theta, zeta, t,c).is_err());
+        let flux = Toroidal(0.1);
+        assert_relative_eq!(har.eval_amplitude(flux, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
+        assert_relative_eq!(har.eval_phase(flux, theta, zeta, t, c)?, 1.0, epsilon = eps);
+        assert_relative_eq!(har.eval_m(flux, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_flux(flux, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_theta(flux, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_zeta(flux, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
+
+        let flux = Poloidal(0.1);
+        assert!(har.eval_amplitude(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_m(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_flux(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_theta(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_zeta(flux, theta, zeta, t,c).is_err());
 
         assert_eq!(c.misses(), 1);
         assert_eq!(c.hits(), 4);
@@ -552,24 +489,25 @@ mod flute_mode_values {
 
         let c = &mut har.generate_cache();
 
-        let p = 0.1; // not used
         let theta = 0.2;
         let zeta = 0.3;
         let t = 0.0; // not used
-
         let eps = 1e-10;
-        assert_relative_eq!(har.ampl_of_psip(p, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
-        assert_relative_eq!(har.phase_of_psip(p, theta, zeta, t, c)?, 1.0, epsilon = eps);
-        assert_relative_eq!(har.m_of_psip(p, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
-        assert_relative_eq!(har.dm_dpsip(p, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
-        assert_relative_eq!(har.dm_of_psip_dtheta(p, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
-        assert_relative_eq!(har.dm_of_psip_dzeta(p, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
 
-        assert!(har.ampl_of_psi(p, theta, zeta, t,c).is_err());
-        assert!(har.m_of_psi(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_dpsi(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_of_psi_dtheta(p, theta, zeta, t,c).is_err());
-        assert!(har.dm_of_psi_dzeta(p, theta, zeta, t,c).is_err());
+        let flux = Poloidal(0.1);
+        assert_relative_eq!(har.eval_amplitude(flux, theta, zeta, t, c)?, 4.71404520791, epsilon = eps);
+        assert_relative_eq!(har.eval_phase(flux, theta, zeta, t, c)?, 1.0, epsilon = eps);
+        assert_relative_eq!(har.eval_m(flux, theta, zeta, t, c)?, 2.5470094958, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_flux(flux, theta, zeta, t, c)?, 12.735047479, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_theta(flux, theta, zeta, t, c)?, -11.9001967906, epsilon = eps);
+        assert_relative_eq!(har.eval_deriv_zeta(flux, theta, zeta, t, c)?, 7.93346452706, epsilon = eps);
+
+        let flux = Toroidal(0.1);
+        assert!(har.eval_amplitude(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_m(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_flux(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_theta(flux, theta, zeta, t,c).is_err());
+        assert!(har.eval_deriv_zeta(flux, theta, zeta, t,c).is_err());
 
         assert_eq!(c.misses(), 1);
         assert_eq!(c.hits(), 4);
@@ -589,30 +527,30 @@ mod flute_mode_cache {
         let lcfs = LastClosedFluxSurface::Toroidal(0.45);
         let mode = dbg!(FluteMode::new(10.0, lcfs, 3, 2, 1.0));
         let c = &mut mode.generate_cache();
-        let psi = 0.01; // not checked
         let t = 0.0; // not checked
+        let flux = Toroidal(0.01); // not checked
 
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        mode.phase_of_psi(psi, 0.1, 0.1, t, c).unwrap(); // Does not check
+        mode.eval_phase(flux, 0.1, 0.1, t, c).unwrap(); // Does not check
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 0);
 
-        mode.dm_of_psi_dtheta(0.01, 0.1, 0.1, t, c).unwrap(); // First check
+        mode.eval_deriv_theta(flux, 0.1, 0.1, t, c).unwrap(); // First check
         assert_eq!(c.hits(), 0);
         assert_eq!(c.misses(), 1);
 
         let theta = 3.14;
         let zeta = 1.0;
-        mode.m_of_psi(psi, theta, zeta, t, c).unwrap();
-        mode.dm_of_psi_dtheta(psi, theta, zeta, t, c).unwrap();
-        mode.dm_of_psi_dzeta(psi, theta, zeta, t, c).unwrap();
+        mode.eval_m(flux, theta, zeta, t, c).unwrap();
+        mode.eval_deriv_theta(flux, theta, zeta, t, c).unwrap();
+        mode.eval_deriv_zeta(flux, theta, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 2);
 
-        mode.dm_of_psi_dzeta(psi, theta / 2.0, zeta, t, c).unwrap();
+        mode.eval_deriv_zeta(flux, theta / 2.0, zeta, t, c).unwrap();
 
         assert_eq!(c.hits(), 2);
         assert_eq!(c.misses(), 3);

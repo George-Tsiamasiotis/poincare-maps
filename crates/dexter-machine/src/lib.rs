@@ -1,11 +1,12 @@
 #![doc = include_str!("../README.md")]
 //!
-//! # Machine
+//! # Machine objects
 //!
 //! + [`Machine`]: Contains all information about the magnetic field, geometry and perturbations of a
 //!   device.
+//! + [`MagneticFlux`]: Representation of the toroidal or poloidal magnetic flux.
 //!
-//! # Machine objects
+//! ---
 //!
 //! + Representations of a machine's general geometry. Provides interpolation methods between `ψ`, `ψp`, `r`, `R`, `Z`, `J`.
 //!     - [`LarGeometry`]: Analytical Large Aspect Ratio Geometry of a circular device.
@@ -73,6 +74,7 @@
 
 mod error;
 mod eval;
+mod flux;
 mod machine;
 mod objects;
 
@@ -85,6 +87,7 @@ pub use rsl_interpolation::{Accelerator, Accelerator2d};
 
 pub mod extract;
 
+pub use flux::MagneticFlux;
 pub use machine::{Machine, MachineBuilder};
 
 pub use error::{EvalError, MachineError, NcError};

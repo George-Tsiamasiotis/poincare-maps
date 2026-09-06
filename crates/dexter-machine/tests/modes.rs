@@ -21,27 +21,28 @@ fn flute_mode_toroidal_lcfs() {
     assert_eq!(mode.n(), 2);
     assert_eq!(mode.phase(), PI);
 
-    let p = 0.01;
+    let psi = MagneticFlux::Toroidal(0.01);
     let theta = 3.14;
     let zeta = 1.0;
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.ampl_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.phase_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.m_of_psi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_dpsi(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psi_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psi_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psi_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_amplitude(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_phase(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_m(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_flux(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_theta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_zeta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_t(psi, theta, zeta, t, &mut c).unwrap();
 
-    assert!(mode.ampl_of_psip(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.phase_of_psip(p, theta, zeta, t, &mut c).is_ok()); // returns a constant
-    assert!(mode.m_of_psip(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_dpsip(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psip_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psip_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psip_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    let psip = MagneticFlux::Poloidal(0.01);
+    assert!(mode.eval_amplitude(psip, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_phase(psip, theta, zeta, t, &mut c).is_ok()); // returns a constant
+    assert!(mode.eval_m(psip, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_flux(psip, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_theta(psip, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_zeta(psip, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_t(psip, theta, zeta, t, &mut c).is_ok()); // returns zero
 
     assert_eq!(c.misses(), 1);
     assert_eq!(c.hits(), 4);
@@ -61,27 +62,28 @@ fn flute_mode_poloidal_lcfs() {
     assert_eq!(mode.n(), 2);
     assert_eq!(mode.phase(), PI);
 
-    let p = 0.01;
+    let psip = MagneticFlux::Poloidal(0.01);
     let theta = 3.14;
     let zeta = 1.0;
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.ampl_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.phase_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.m_of_psip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_dpsip(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psip_dtheta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psip_dzeta(p, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psip_dt(p, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_amplitude(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_phase(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_m(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_flux(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_theta(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_zeta(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_t(psip, theta, zeta, t, &mut c).unwrap();
 
-    assert!(mode.ampl_of_psi(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.phase_of_psi(p, theta, zeta, t, &mut c).is_ok()); // returns a constant
-    assert!(mode.m_of_psi(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_dpsi(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psi_dtheta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psi_dzeta(p, theta, zeta, t, &mut c).is_err());
-    assert!(mode.dm_of_psi_dt(p, theta, zeta, t, &mut c).is_ok()); // returns zero
+    let psi = MagneticFlux::Toroidal(0.01);
+    assert!(mode.eval_amplitude(psi, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_phase(psi, theta, zeta, t, &mut c).is_ok()); // returns a constant
+    assert!(mode.eval_m(psi, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_flux(psi, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_theta(psi, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_zeta(psi, theta, zeta, t, &mut c).is_err());
+    assert!(mode.eval_deriv_t(psi, theta, zeta, t, &mut c).is_ok()); // returns zero
 
     assert_eq!(c.misses(), 1);
     assert_eq!(c.hits(), 4);
@@ -117,28 +119,23 @@ fn nc_flute_mode() {
 
     let phase_average: Option<f64> = mode.phase_average();
 
-    let psi = 0.01;
-    let psip = 0.015;
+    let psi = MagneticFlux::Toroidal(0.01);
+    let psip = MagneticFlux::Poloidal(0.015);
     let theta = 3.14;
     let zeta = 1.0;
     let t = 8.0;
     let mut c = mode.generate_cache();
 
-    let _: f64 = mode.ampl_of_psi(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.ampl_of_psip(psip, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.phase_of_psi(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.phase_of_psip(psip, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.m_of_psi(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.m_of_psip(psip, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psi_dtheta(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode
-        .dm_of_psip_dtheta(psip, theta, zeta, t, &mut c)
-        .unwrap();
-    let _: f64 = mode.dm_of_psi_dzeta(psi, theta, zeta, t, &mut c).unwrap();
-    let _: f64 = mode.dm_of_psip_dzeta(psip, theta, zeta, t, &mut c).unwrap();
-    assert_eq!(mode.dm_of_psi_dt(psi, theta, zeta, t, &mut c).unwrap(), 0.0);
-    assert_eq!(
-        mode.dm_of_psip_dt(psi, theta, zeta, t, &mut c).unwrap(),
-        0.0
-    );
+    let _: f64 = mode.eval_amplitude(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_amplitude(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_phase(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_phase(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_m(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_m(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_theta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_theta(psip, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_zeta(psi, theta, zeta, t, &mut c).unwrap();
+    let _: f64 = mode.eval_deriv_zeta(psip, theta, zeta, t, &mut c).unwrap();
+    assert_eq!(mode.eval_deriv_t(psi, theta, zeta, t, &mut c).unwrap(), 0.0);
+    assert_eq!(mode.eval_deriv_t(psi, theta, zeta, t, &mut c).unwrap(), 0.0);
 }

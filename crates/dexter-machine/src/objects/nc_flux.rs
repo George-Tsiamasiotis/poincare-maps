@@ -99,7 +99,7 @@ impl NcFlux {
     /// here to avoid messing up the interpolation calls, which results in very ugly code.
     ///
     /// This method should only be used in places where we know the values exists, for example
-    /// under an `state != NcFluxState::None` guard.
+    /// under an `state != FluxCoordinateState::NoValues` guard.
     pub(crate) fn uvalues(&self) -> &[f64] {
         match self.values.as_ref() {
             Some(values) => values,

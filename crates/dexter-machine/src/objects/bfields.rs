@@ -1,10 +1,11 @@
 //! Representation of a machine's magnetic field.
 
 use crate::{
-    debug_assert_is_2pi_modulo, debug_assert_is_finite, debug_assert_non_negative_psi,
-    debug_assert_non_negative_psip, fluxes_values_array_getter_impl, interp_type_getter_impl,
-    lcfs_getter_impl, netcdf_path_getter_impl, netcdf_version_getter_impl,
+    debug_assert_is_2pi_modulo, debug_assert_is_finite, debug_assert_non_negative_flux,
+    fluxes_values_array_getter_impl, interp_type_getter_impl, lcfs_getter_impl,
+    netcdf_path_getter_impl, netcdf_version_getter_impl,
 };
+use core::hint::cold_path;
 use ndarray::{Array1, Array2, Axis, Order::ColumnMajor};
 use ndarray::{concatenate, s};
 use rsl_interpolation::Accelerator2d;
@@ -17,6 +18,7 @@ use crate::constants::DEFAULT_THETA_PADDING_WIDTH;
 use crate::objects::nc_flux::{FluxCoordinateState, NcFlux};
 use crate::{Bfield, MachineObject, MachineType};
 use crate::{EvalError, MachineError, NcError};
+use crate::{MagneticFlux, MagneticFlux::*};
 use dexter_common::{DynInterpolator2d, make_interp2d};
 
 // ===============================================================================================
@@ -61,38 +63,54 @@ impl MachineObject for LarBfield {
 }
 
 impl Bfield for LarBfield {
-    fn b_of_psi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(debug_assert_is_finite!(
-            1.0 - (2.0 * psi).sqrt() * theta.cos()
-        ))
-    }
-
-    fn b_of_psip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
-        Err(EvalError::UndefinedEvaluation("B(ψp, θ)".into()))
-    }
-
-    fn db_dpsi(&self, psi: f64, theta: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(debug_assert_is_finite!(-theta.cos() / (2.0 * psi).sqrt()))
-    }
-
-    fn db_dpsip(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
-        Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dψp".into()))
-    }
-
-    fn db_of_psi_dtheta(
+    fn eval_b(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         _: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        Ok(debug_assert_is_finite!((2.0 * psi).sqrt() * theta.sin()))
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => Ok(debug_assert_is_finite!(
+                1.0 - (2.0 * psi).sqrt() * theta.cos()
+            )),
+            Poloidal(_) => {
+                cold_path();
+                Err(EvalError::UndefinedEvaluation("B(ψp, θ)".into()))
+            }
+        }
     }
 
-    fn db_of_psip_dtheta(&self, _: f64, _: f64, _: &mut Accelerator2d) -> Result<f64, EvalError> {
-        Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dθ".into()))
+    fn eval_deriv_flux(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        _: &mut Accelerator2d,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => Ok(debug_assert_is_finite!(-theta.cos() / (2.0 * psi).sqrt())),
+            Poloidal(_) => {
+                cold_path();
+                Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dψp".into()))
+            }
+        }
+    }
+
+    fn eval_deriv_theta(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        _: &mut Accelerator2d,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        match flux {
+            Toroidal(psi) => Ok(debug_assert_is_finite!((2.0 * psi).sqrt() * theta.sin())),
+            Poloidal(_) => {
+                cold_path();
+                Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dθ".into()))
+            }
+        }
     }
 }
 
@@ -353,109 +371,78 @@ impl MachineObject for NcBfield {
 }
 
 impl Bfield for NcBfield {
-    fn b_of_psi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psi.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psi,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("B(ψ, θ)".into())),
-        }
-    }
-
-    fn b_of_psip(&self, psip: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval(
-                self.psip.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psip,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("B(ψp, θ)".into())),
-        }
-    }
-
-    fn db_dpsi(&self, psi: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
-        debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv_x(
-                self.psi.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psi,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dB(ψ, θ)/dψ".into())),
-        }
-    }
-
-    fn db_dpsip(&self, psip: f64, theta: f64, acc: &mut Accelerator2d) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
-        debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv_x(
-                self.psip.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psip,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dψp".into())),
-        }
-    }
-
-    fn db_of_psi_dtheta(
+    fn eval_b(
         &self,
-        psi: f64,
+        flux: MagneticFlux,
         theta: f64,
         acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psi!(psi);
+        debug_assert_non_negative_flux!(flux);
         debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psi_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv_y(
-                self.psi.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psi,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dB(ψ, θ)/dθ".into())),
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.b_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.b_of_psip_interp.as_ref()),
+        };
+        let ya = &self.theta_values;
+        let za = &self.b_values_fortran_flat_padded;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(
+                interp.eval(xa, ya, za, x, theta, acc)?
+            ))
+        } else {
+            cold_path();
+            let msg = format!("B({}, θ)", flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 
-    fn db_of_psip_dtheta(
+    fn eval_deriv_flux(
         &self,
-        psip: f64,
+        flux: MagneticFlux,
         theta: f64,
         acc: &mut Accelerator2d,
     ) -> Result<f64, EvalError> {
-        debug_assert_non_negative_psip!(psip);
+        debug_assert_non_negative_flux!(flux);
         debug_assert_is_2pi_modulo!(theta);
-        match self.b_of_psip_interp.as_ref() {
-            Some(interp) => Ok(debug_assert_is_finite!(interp.eval_deriv_y(
-                self.psip.uvalues(),
-                &self.theta_values_padded,
-                &self.b_values_fortran_flat_padded,
-                psip,
-                theta,
-                acc,
-            )?)),
-            None => Err(EvalError::UndefinedEvaluation("dB(ψp, θ)/dθ".into())),
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.b_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.b_of_psip_interp.as_ref()),
+        };
+        let ya = &self.theta_values;
+        let za = &self.b_values_fortran_flat_padded;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(
+                interp.eval_deriv_x(xa, ya, za, x, theta, acc)?
+            ))
+        } else {
+            cold_path();
+            let msg = format!("dB({}, θ)/d{}", flux.kind(), flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
+        }
+    }
+
+    fn eval_deriv_theta(
+        &self,
+        flux: MagneticFlux,
+        theta: f64,
+        acc: &mut Accelerator2d,
+    ) -> Result<f64, EvalError> {
+        debug_assert_non_negative_flux!(flux);
+        debug_assert_is_2pi_modulo!(theta);
+        let (x, xa, interp) = match flux {
+            Toroidal(v) => (v, self.psi.uvalues(), self.b_of_psi_interp.as_ref()),
+            Poloidal(v) => (v, self.psip.uvalues(), self.b_of_psip_interp.as_ref()),
+        };
+        let ya = &self.theta_values;
+        let za = &self.b_values_fortran_flat_padded;
+        if let Some(interp) = interp {
+            Ok(debug_assert_is_finite!(
+                interp.eval_deriv_y(xa, ya, za, x, theta, acc)?
+            ))
+        } else {
+            cold_path();
+            let msg = format!("dB({}, θ)/dθ", flux.kind());
+            Err(EvalError::UndefinedEvaluation(msg))
         }
     }
 }
@@ -589,23 +576,23 @@ mod test_toroidal_nc_evals {
     fn good_psi_evals() {
         let b = create_nc_bfield(TOROIDAL_TEST_NETCDF_PATH);
         let acc = &mut Accelerator2d::new();
-        let p = 0.01;
         let t = 3.14;
-        assert!(b.b_of_psi(p, t, acc).unwrap().is_finite());
-        assert!(b.db_dpsi(p, t, acc).unwrap().is_finite());
-        assert!(b.db_of_psi_dtheta(p, t, acc).unwrap().is_finite());
+        let flux = Toroidal(0.01);
+        assert!(b.eval_b(flux, t, acc).unwrap().is_finite());
+        assert!(b.eval_deriv_flux(flux, t, acc).unwrap().is_finite());
+        assert!(b.eval_deriv_theta(flux, t, acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psip_evals() {
         let b = create_nc_bfield(TOROIDAL_TEST_NETCDF_PATH);
         let acc = &mut Accelerator2d::new();
-        let p = 0.01;
         let t = 3.14;
+        let flux = Poloidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(b.b_of_psip(p, t, acc), Err(err(..)));
-        matches!(b.db_dpsip(p, t, acc), Err(err(..)));
-        matches!(b.db_of_psip_dtheta(p, t, acc), Err(err(..)));
+        matches!(b.eval_b(flux, t, acc), Err(err(..)));
+        matches!(b.eval_deriv_flux(flux, t, acc), Err(err(..)));
+        matches!(b.eval_deriv_theta(flux, t, acc), Err(err(..)));
     }
 }
 
@@ -635,23 +622,23 @@ mod test_poloidal_nc_evals {
     fn good_psip_evals() {
         let b = create_nc_bfield(POLOIDAL_TEST_NETCDF_PATH);
         let acc = &mut Accelerator2d::new();
-        let p = 0.01;
         let t = 3.14;
-        assert!(b.b_of_psip(p, t, acc).unwrap().is_finite());
-        assert!(b.db_dpsip(p, t, acc).unwrap().is_finite());
-        assert!(b.db_of_psip_dtheta(p, t, acc).unwrap().is_finite());
+        let flux = Poloidal(0.01);
+        assert!(b.eval_b(flux, t, acc).unwrap().is_finite());
+        assert!(b.eval_deriv_flux(flux, t, acc).unwrap().is_finite());
+        assert!(b.eval_deriv_theta(flux, t, acc).unwrap().is_finite());
     }
 
     #[test]
     fn bad_psi_evals() {
         let b = create_nc_bfield(POLOIDAL_TEST_NETCDF_PATH);
         let acc = &mut Accelerator2d::new();
-        let p = 0.01;
         let t = 3.14;
+        let flux = Toroidal(0.01);
         use EvalError::UndefinedEvaluation as err;
-        matches!(b.b_of_psi(p, t, acc), Err(err(..)));
-        matches!(b.db_dpsi(p, t, acc), Err(err(..)));
-        matches!(b.db_of_psi_dtheta(p, t, acc), Err(err(..)));
+        matches!(b.eval_b(flux, t, acc), Err(err(..)));
+        matches!(b.eval_deriv_flux(flux, t, acc), Err(err(..)));
+        matches!(b.eval_deriv_theta(flux, t, acc), Err(err(..)));
     }
 }
 
@@ -667,15 +654,15 @@ mod lar_values {
         let acc = &mut Accelerator2d::new();
         let epsilon = 1e-20;
 
-        let (psi, theta) = (0.2, 0.4);
-        assert_relative_eq!(b.b_of_psi(psi, theta, acc).unwrap(), 0.4174698790024389, epsilon=epsilon);
-        assert_relative_eq!(b.db_dpsi(psi, theta, acc).unwrap(), -1.4563253024939025, epsilon=epsilon);
-        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, acc).unwrap(), 0.24628978486848968, epsilon=epsilon);
+        let (flux, theta) = (Toroidal(0.2), 0.4);
+        assert_relative_eq!(b.eval_b(flux, theta, acc).unwrap(), 0.4174698790024389, epsilon=epsilon);
+        assert_relative_eq!(b.eval_deriv_flux(flux, theta, acc).unwrap(), -1.4563253024939025, epsilon=epsilon);
+        assert_relative_eq!(b.eval_deriv_theta(flux, theta, acc).unwrap(), 0.24628978486848968, epsilon=epsilon);
 
-        let (psi, theta) = (15.0, 1000.0);
-        assert_relative_eq!(b.b_of_psi(psi, theta, acc).unwrap(), -2.0802770595333673, epsilon=epsilon);
-        assert_relative_eq!(b.db_dpsi(psi, theta, acc).unwrap(), -0.10267590198444558, epsilon=epsilon);
-        assert_relative_eq!(b.db_of_psi_dtheta(psi, theta, acc).unwrap(), 4.529005766888851, epsilon=epsilon);
+        let (flux, theta) = (Toroidal(15.0), 1000.0);
+        assert_relative_eq!(b.eval_b(flux, theta, acc).unwrap(), -2.0802770595333673, epsilon=epsilon);
+        assert_relative_eq!(b.eval_deriv_flux(flux, theta, acc).unwrap(), -0.10267590198444558, epsilon=epsilon);
+        assert_relative_eq!(b.eval_deriv_theta(flux, theta, acc).unwrap(), 4.529005766888851, epsilon=epsilon);
     }
 }
 
