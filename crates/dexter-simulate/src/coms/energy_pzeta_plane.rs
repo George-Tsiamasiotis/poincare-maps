@@ -3,6 +3,7 @@
 #![expect(unreachable_pub, reason = "api needs re-write")]
 #![expect(clippy::min_ident_chars, reason = "parabola a, b, c coefficients")]
 
+use dexter_machine::MagneticFlux::*;
 use ndarray::Array1;
 use parabola::Parabola;
 use rsl_interpolation::Accelerator2d;
@@ -56,24 +57,26 @@ impl EnergyPzetaPlane {
     #[must_use]
     fn build_magnetic_axis_parabola(objects: Machine, mu: f64) -> Parabola {
         let acc = &mut Accelerator2d::new();
+        let psi_axis = Toroidal(0.0);
+        let psip_axis = Poloidal(0.0);
 
         // Use `unwrap_or_else` for lazy evaluation.
         let gaxis = objects
             .current()
-            .g_of_psi(0.0, acc.xacc())
+            .eval_g(psi_axis, acc.xacc())
             .unwrap_or_else(|_| {
                 objects
                     .current()
-                    .g_of_psip(0.0, acc.xacc())
+                    .eval_g(psip_axis, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
         let baxis = objects
             .bfield() // This might be redundant
-            .b_of_psi(0.0, 0.0, acc)
+            .eval_b(psi_axis, 0.0, acc)
             .unwrap_or_else(|_| {
                 objects
                     .bfield()
-                    .b_of_psip(0.0, 0.0, acc)
+                    .eval_b(psip_axis, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 
@@ -99,25 +102,25 @@ impl EnergyPzetaPlane {
         // Use `unwrap_or_else` for lazy evaluation.
         let glast = objects
             .current()
-            .g_of_psi(psi_last, acc.xacc())
+            .eval_g(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
                 objects
                     .current()
-                    .g_of_psip(psip_last, acc.xacc())
+                    .eval_g(psi_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
         let blast = objects
             .bfield()
-            .b_of_psi(psi_last, PI, acc)
+            .eval_b(psi_last, PI, acc)
             .unwrap_or_else(|_| {
                 objects
                     .bfield()
-                    .b_of_psip(psip_last, PI, acc)
+                    .eval_b(psip_last, PI, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 
         let a = (blast / glast).powi(2) / 2.0;
-        let h = psip_last;
+        let h = psip_last.value();
         let k = mu * blast;
         Parabola::from_square(a, h, k)
     }
@@ -136,25 +139,25 @@ impl EnergyPzetaPlane {
         // Use `unwrap_or_else` for lazy evaluation.
         let glast = objects
             .current()
-            .g_of_psi(psi_last, acc.xacc())
+            .eval_g(psi_last, acc.xacc())
             .unwrap_or_else(|_| {
                 objects
                     .current()
-                    .g_of_psip(psip_last, acc.xacc())
+                    .eval_g(psip_last, acc.xacc())
                     .expect("At least one of the evaluations will always succeed")
             });
         let blast = objects
             .bfield()
-            .b_of_psi(psi_last, 0.0, acc)
+            .eval_b(psi_last, 0.0, acc)
             .unwrap_or_else(|_| {
                 objects
                     .bfield()
-                    .b_of_psip(psip_last, 0.0, acc)
+                    .eval_b(psip_last, 0.0, acc)
                     .expect("At least one of the evaluations will always succeed")
             });
 
         let a = (blast / glast).powi(2) / 2.0;
-        let h = psip_last;
+        let h = psip_last.value();
         let k = mu * blast;
         Parabola::from_square(a, h, k)
     }

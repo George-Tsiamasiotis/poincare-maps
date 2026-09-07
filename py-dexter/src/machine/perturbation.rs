@@ -48,7 +48,7 @@ impl PyPerturbation {
     pub fn p_of_psi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
         Ok(self
             .0
-            .p_of_psi(psi, theta, zeta, t, &mut self.0.generate_caches())?)
+            .eval_p(psi, theta, zeta, t, &mut self.0.generate_caches())?)
     }
 
     pub fn p_of_psip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
@@ -60,7 +60,7 @@ impl PyPerturbation {
     pub fn dp_dpsi(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
         Ok(self
             .0
-            .dp_dpsi(psi, theta, zeta, t, &mut self.0.generate_caches())?)
+            .eval_deriv_flux(psi, theta, zeta, t, &mut self.0.generate_caches())?)
     }
 
     pub fn dp_dpsip(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
@@ -72,7 +72,7 @@ impl PyPerturbation {
     pub fn dp_of_psi_dtheta(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
         Ok(self
             .0
-            .dp_of_psi_dtheta(psi, theta, zeta, t, &mut self.0.generate_caches())?)
+            .eval_deriv_theta(psi, theta, zeta, t, &mut self.0.generate_caches())?)
     }
 
     pub fn dp_of_psip_dtheta(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
@@ -84,7 +84,7 @@ impl PyPerturbation {
     pub fn dp_of_psi_dzeta(&self, psi: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
         Ok(self
             .0
-            .dp_of_psi_dzeta(psi, theta, zeta, t, &mut self.0.generate_caches())?)
+            .eval_deriv_zeta(psi, theta, zeta, t, &mut self.0.generate_caches())?)
     }
 
     pub fn dp_of_psip_dzeta(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
@@ -102,7 +102,7 @@ impl PyPerturbation {
     pub fn dp_of_psip_dt(&self, psip: f64, theta: f64, zeta: f64, t: f64) -> Result<f64> {
         Ok(self
             .0
-            .dp_of_psip_dt(psip, theta, zeta, t, &mut self.0.generate_caches())?)
+            .eval_deriv_t(psip, theta, zeta, t, &mut self.0.generate_caches())?)
     }
 }
 

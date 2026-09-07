@@ -54,8 +54,8 @@ impl Evolution {
     /// Pushes the calculated quantities of an *evaluated* [`GCState`] in the time series.
     pub(crate) fn push_state(&mut self, state: &GCState) {
         self.t.push(state.t);
-        self.psi.push(state.psi);
-        self.psip.push(state.psip);
+        self.psi.push(state.psi.value());
+        self.psip.push(state.psip.value());
         self.theta.push(state.theta);
         self.zeta.push(state.zeta);
         self.rho.push(state.rho);

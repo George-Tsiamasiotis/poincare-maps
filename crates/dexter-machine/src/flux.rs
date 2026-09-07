@@ -19,6 +19,14 @@ impl MagneticFlux {
         }
     }
 
+    /// Returns the value of `self`, regardless the kind.
+    pub fn value_mut(&mut self) -> &mut f64 {
+        match *self {
+            Self::Toroidal(ref mut value) => value,
+            Self::Poloidal(ref mut value) => value,
+        }
+    }
+
     /// Returns the kind of `self` as a `Box<str>`.
     pub fn kind(&self) -> Box<str> {
         match self {

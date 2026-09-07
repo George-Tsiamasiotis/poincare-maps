@@ -5,7 +5,7 @@ use dexter_machine::{
     Perturbation,
 };
 use dexter_simulate::{
-    InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams, SteppingMethod,
+    InitialConditions, IntegrationStatus, MagneticFlux, Particle, SolverParams, SteppingMethod,
 };
 
 fn main() {
@@ -23,20 +23,21 @@ fn main() {
         .build();
 
     // Particle setup
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.2), 0.0, 0.0, 1e-4, 1e-6);
     let mut particle = Particle::new(&initial);
 
     // Integrate
-    let teval = (0.0, 10.0);
+    let teval = (0.0, 1e20);
     let solver_params = SolverParams {
         method: SteppingMethod::EnergyAdaptiveStep,
-        energy_rel_tol: 1e-17,
-        energy_abs_tol: 1e-18,
-        max_steps: 10_000_000,
+        energy_rel_tol: 1e-13,
+        energy_abs_tol: 1e-14,
+        max_steps: 5_000_000,
         ..Default::default()
     };
     particle.integrate(machine, teval, &solver_params);
     dbg!(&particle);
+    dbg!(&particle.psi_array());
     assert!(
         matches!(
             particle.integration_status(),

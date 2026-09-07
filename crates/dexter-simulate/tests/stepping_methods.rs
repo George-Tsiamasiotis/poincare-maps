@@ -38,7 +38,7 @@ fn different_stepping_methods() {
             ..Default::default()
         };
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.3), 0.0, 0.0, 1e-4, 1e-6);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.3), 0.0, 0.0, 1e-4, 1e-6);
 
     let mut energy_particle = Particle::new(&initial);
     let mut error_particle = Particle::new(&initial);

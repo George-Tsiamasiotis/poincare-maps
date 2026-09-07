@@ -8,7 +8,7 @@ use dexter_machine::{
     Interpolation1dType::Steffen, Interpolation2dType::Bicubic, NcBfieldBuilder, NcCurrentBuilder,
     NcFluteModeBuilder, NcQfactorBuilder, Perturbation, PhaseMethod,
 };
-use dexter_simulate::{InitialConditions, InitialFlux, IntegrationStatus, Particle, SolverParams};
+use dexter_simulate::{InitialConditions, IntegrationStatus, MagneticFlux, Particle, SolverParams};
 use std::path::Path;
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
         .build();
 
     // Particle setup
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.2), 1.0, 0.0, 1e-4, 1e-6);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.2), 1.0, 0.0, 1e-4, 1e-6);
     let mut particle = Particle::new(&initial);
 
     // Integrate

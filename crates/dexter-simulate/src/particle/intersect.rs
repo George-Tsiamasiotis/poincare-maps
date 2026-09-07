@@ -8,9 +8,10 @@ use dexter_machine::Machine;
 
 use crate::constants::ANGLE_INTERSECTION_THRESHOLD;
 use crate::particle::{Evolution, IntegrationCaches, Particle};
+use crate::solve::IntegrationCoordinate;
 use crate::solve::{SolverParams, Stepper};
 use crate::state::GCState;
-use crate::{FluxCoordinate, IntegrationStatus, SimulationError};
+use crate::{IntegrationStatus, SimulationError};
 
 /// Defines the surface of the Poincare section.
 #[derive(Debug, Clone, Copy)]
@@ -271,8 +272,8 @@ pub(crate) fn calculate_mod_state2(
     // NOTE: This is equivalent to adjusting the step-size for the modified system.
     {
         mod_stepper.weights[0] = match mod_state1.coordinate {
-            FluxCoordinate::Toroidal => mod_state1.psi_dot,
-            FluxCoordinate::Poloidal => mod_state1.psip_dot,
+            IntegrationCoordinate::Toroidal => mod_state1.psi_dot,
+            IntegrationCoordinate::Poloidal => mod_state1.psip_dot,
         };
         mod_stepper.weights[1] = mod_state1.theta_dot;
         mod_stepper.weights[2] = mod_state1.zeta_dot;

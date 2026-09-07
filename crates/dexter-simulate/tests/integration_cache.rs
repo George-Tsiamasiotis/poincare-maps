@@ -9,7 +9,7 @@ use dexter_simulate::*;
 
 #[test]
 fn integration_cache_analytical_eq_flute_mode() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     let qfactor = ParabolicQfactor::new(1.1, 3.9, lcfs);
     let current = LarCurrent::new();
@@ -53,7 +53,7 @@ fn integration_cache_analytical_eq_flute_mode() {
 
 #[test]
 fn integration_cache_nc_eq_nc_flute_mode() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     let path = PathBuf::from(TOROIDAL_TEST_NETCDF_PATH);
     let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
     let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();

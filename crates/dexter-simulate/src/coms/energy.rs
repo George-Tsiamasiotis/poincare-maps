@@ -9,6 +9,7 @@ use std::f64::consts::TAU;
 use dexter_machine::Machine;
 
 use crate::COMError;
+use crate::MagneticFlux::*;
 use crate::coms::COMs;
 
 /// Calculation the Energy on a 2D meshgrid of the `ψ` and `θ` arrays, in Normalized Units.
@@ -41,13 +42,13 @@ pub(crate) fn energy_of_psi_grid(
     // Iterate though `psi_array` first to avoid unnecessarily recalculating `rho`.
     // Use `<>_of_psi` evaluation methods to avoid error propagation through double interpolations.
     for i in 0..psi_array.len() {
-        let psi = psi_array[i];
-        let psip = machine.qfactor().psip_of_psi(psi, acc.xacc())?;
-        let g = machine.current().g_of_psi(psi, acc.xacc())?;
-        let rho = (pzeta + psip) / g;
+        let psi = Toroidal(psi_array[i]);
+        let psip = machine.qfactor().eval_other(psi, acc.xacc())?;
+        let g = machine.current().eval_g(psi, acc.xacc())?;
+        let rho = (pzeta + psip.value()) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = machine.bfield().b_of_psi(psi, theta, acc)?;
+            let b = machine.bfield().eval_b(psi, theta, acc)?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -86,12 +87,12 @@ pub(crate) fn energy_of_psip_grid(
 
     // Iterate though `psi_array` first to avoid unnecessarily recalculating `rho`.
     for i in 0..psip_array.len() {
-        let psip = psip_array[i];
-        let g = machine.current().g_of_psip(psip, acc.xacc())?;
-        let rho = (pzeta + psip) / g;
+        let psip = Poloidal(psip_array[i]);
+        let g = machine.current().eval_g(psip, acc.xacc())?;
+        let rho = (pzeta + psip.value()) / g;
         for j in 0..mod_theta_array.len() {
             let theta = mod_theta_array[j];
-            let b = machine.bfield().b_of_psip(psip, theta, acc)?;
+            let b = machine.bfield().eval_b(psip, theta, acc)?;
             grid[[i, j]] = (rho * b).powi(2) / 2.0 + mu * b
         }
     }
@@ -147,7 +148,13 @@ mod test {
         let acc = &mut Accelerator::new();
         let psi_array = arr1(&vec![0.01, 0.02]);
         let theta_array = arr1(&vec![-1.0, 1.0]);
-        let psip_array = psi_array.mapv(|psi| machine.qfactor().psip_of_psi(psi, acc).unwrap());
+        let psip_array = psi_array.mapv(|psi| {
+            machine
+                .qfactor()
+                .eval_other(Toroidal(psi), acc)
+                .unwrap()
+                .value()
+        });
 
         let coms = COMs {
             energy: None,

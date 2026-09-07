@@ -15,7 +15,7 @@ use std::path::PathBuf;
 #[test]
 #[rustfmt::skip]
 fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     let qfactor = UnityQfactor::new(lcfs);
     let current = LarCurrent::new();
@@ -61,7 +61,7 @@ fn gc_toroidal_intersect_uniQ_larC_larB_noP() {
 #[test]
 #[rustfmt::skip]
 fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     let path = PathBuf::from(POLOIDAL_TEST_NETCDF_PATH);
     let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
     let current = NcCurrentBuilder::new(&path, Akima).build().unwrap();
@@ -109,7 +109,7 @@ fn gc_poloidal_intersect_ncdQ_ncdC_ncdB_noP() {
 #[test]
 #[rustfmt::skip]
 fn gc_toroidal_poloidal_equivalence_const_theta() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
@@ -123,10 +123,10 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
 
     let solver_params = SolverParams::default();
 
-    let psi0 = 0.2;
-    let psip0 = machine.qfactor().psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
-    let tor_initial = InitialConditions::boozer(0.0, Toroidal(psi0), 0.0, 0.0, 1e-4, 0.0);
-    let pol_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, 1e-4, 0.0);
+    let psi0 = Toroidal(0.2);
+    let psip0 = machine.qfactor().eval_other(psi0, &mut Accelerator::new()).unwrap();
+    let tor_initial = InitialConditions::boozer(0.0, psi0, 0.0, 0.0, 1e-4, 0.0);
+    let pol_initial = InitialConditions::boozer(0.0, psip0, 0.0, 0.0, 1e-4, 0.0);
 
     let mut tor_particle = Particle::new(&tor_initial);
     let mut pol_particle = Particle::new(&pol_initial);
@@ -166,7 +166,7 @@ fn gc_toroidal_poloidal_equivalence_const_theta() {
 #[test]
 #[rustfmt::skip]
 fn gc_toroidal_poloidal_equivalence_const_zeta() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     use PhaseMethod::Interpolation;
     let path = PathBuf::from(TEST_NETCDF_PATH);
     let qfactor = NcQfactorBuilder::new(&path, Akima).build().unwrap();
@@ -181,10 +181,10 @@ fn gc_toroidal_poloidal_equivalence_const_zeta() {
 
     let solver_params = SolverParams::default();
 
-    let psi0 = 0.2;
-    let psip0 = machine.qfactor().psip_of_psi(psi0, &mut Accelerator::new()).unwrap();
-    let tor_initial = InitialConditions::boozer(0.0, Toroidal(psi0), 0.0, 0.0, 1e-4, 0.0);
-    let pol_initial = InitialConditions::boozer(0.0, Poloidal(psip0), 0.0, 0.0, 1e-4, 0.0);
+    let psi0 = Toroidal(0.2);
+    let psip0 = machine.qfactor().eval_other(psi0, &mut Accelerator::new()).unwrap();
+    let tor_initial = InitialConditions::boozer(0.0, psi0, 0.0, 0.0, 1e-4, 0.0);
+    let pol_initial = InitialConditions::boozer(0.0, psip0, 0.0, 0.0, 1e-4, 0.0);
 
     let mut tor_particle = Particle::new(&tor_initial);
     let mut pol_particle = Particle::new(&pol_initial);

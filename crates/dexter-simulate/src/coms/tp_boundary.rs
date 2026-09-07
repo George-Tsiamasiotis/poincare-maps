@@ -2,7 +2,7 @@
 
 use std::f64::consts::PI;
 
-use dexter_machine::{FluxCoordinateState, Machine};
+use dexter_machine::{FluxCoordinateState, Machine, MagneticFlux::*};
 use ndarray::Array1;
 use rsl_interpolation::{
     Accelerator, Accelerator2d, AkimaInterpolator, BuildInterpolator, Interpolation,
@@ -120,7 +120,9 @@ impl TrappedPassingBoundary {
     /// This method cannot fail since `FluxState` is already checked and `ψp` is always in-bounds.
     fn from_good_psip(machine: Machine, mu: f64) -> Self {
         let psip_last = machine.qfactor().psip_last();
-        let psip_interval = Array1::linspace(psip_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
+        let psip_interval =
+            Array1::linspace(psip_last.value(), 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY)
+                .map(|value| Poloidal(*value));
 
         let acc = &mut Accelerator2d::new();
 
@@ -128,18 +130,18 @@ impl TrappedPassingBoundary {
             * psip_interval.mapv(|psip| {
                 machine
                     .bfield()
-                    .b_of_psip(psip, 0.0, acc)
+                    .eval_b(psip, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psip_interval.mapv(|psip| {
                 machine
                     .bfield()
-                    .b_of_psip(psip, PI, acc)
+                    .eval_b(psip, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
 
-        let pzeta_interval = (-&psip_interval).to_vec();
+        let pzeta_interval = (psip_interval.map(|psip| -psip.value())).to_vec();
         let lower = lower_array.to_vec();
         let upper = upper_array.to_vec();
         let lower_interp = AkimaInterpolator::build(&pzeta_interval, &lower)
@@ -166,7 +168,9 @@ impl TrappedPassingBoundary {
     /// but the values are correct.
     fn from_good_psi(machine: Machine, mu: f64) -> Self {
         let psi_last = machine.qfactor().psi_last();
-        let psi_interval = Array1::linspace(psi_last, 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY);
+        let psi_interval =
+            Array1::linspace(psi_last.value(), 0.0, TRAPPED_PASSING_BOUNDARY_DENSITY)
+                .map(|value| Toroidal(*value));
 
         let acc = &mut Accelerator2d::new();
 
@@ -174,25 +178,25 @@ impl TrappedPassingBoundary {
             * psi_interval.mapv(|psi| {
                 machine
                     .bfield()
-                    .b_of_psi(psi, 0.0, acc)
+                    .eval_b(psi, 0.0, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
         let upper_array = mu
             * psi_interval.mapv(|psi| {
                 machine
                     .bfield()
-                    .b_of_psi(psi, PI, acc)
+                    .eval_b(psi, PI, acc)
                     .expect("-pzeta=psip is always inbound and evaluation is defined")
             });
 
         let psip_interval = psi_interval.mapv(|psi| {
             machine
                 .qfactor()
-                .psip_of_psi(psi, acc.xacc())
+                .eval_other(psi, acc.xacc())
                 .expect("psi is always inbound and evaluation is defined")
         });
 
-        let pzeta_interval = (-&psip_interval).to_vec();
+        let pzeta_interval = (psip_interval.map(|psip| -psip.value())).to_vec();
         let lower = lower_array.to_vec();
         let upper = upper_array.to_vec();
         let lower_interp = AkimaInterpolator::build(&pzeta_interval, &lower)

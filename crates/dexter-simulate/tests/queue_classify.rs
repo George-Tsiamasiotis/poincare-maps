@@ -24,7 +24,7 @@ fn queue_classify_parQ_larC_larB_cosP() -> Result<(), SimulationError> {
 
     // Initial Conditions setup
     let particle_count = 10;
-    let psis = machine.qfactor().psi_last() * Array1::linspace(0.001, 0.5, particle_count);
+    let psis = machine.qfactor().psi_last().value() * Array1::linspace(0.001, 0.5, particle_count);
     let psis = toroidal_fluxes(&psis.to_vec());
     let initial_conditions = QueueInitialConditions::boozer(
         &vec![0.0; particle_count],

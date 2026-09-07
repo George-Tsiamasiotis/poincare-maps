@@ -25,7 +25,7 @@ fn field_line_single_period_uniQ() {
     let bfield = LarBfield::new();
     let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.3), 1.0, 0.0, 1e-12, 0.0);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.3), 1.0, 0.0, 1e-12, 0.0);
     let mut particle = Particle::new(&initial);
     particle.close(machine, 1, &SolverParams::default());
     assert!(matches!(particle.integration_status(), IntegrationStatus::ClosedPeriods(1)));
@@ -56,7 +56,7 @@ fn trapped_particle_single_period_uniQ() {
     let bfield = LarBfield::new();
     let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.02), 1.0, 0.0, 1e-6, 1e-6);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.02), 1.0, 0.0, 1e-6, 1e-6);
     let mut particle = Particle::new(&initial);
     particle.close(machine, 1, &SolverParams::default());
     particle.classify(machine);

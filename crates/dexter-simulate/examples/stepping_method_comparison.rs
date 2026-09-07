@@ -4,7 +4,7 @@ use dexter_machine::*;
 use dexter_simulate::*;
 
 fn main() {
-    use InitialFlux::*;
+    use MagneticFlux::*;
     let lcfs = LastClosedFluxSurface::Toroidal(0.45);
     let qfactor = UnityQfactor::new(lcfs);
     let current = LarCurrent::new();

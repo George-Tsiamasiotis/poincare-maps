@@ -126,11 +126,13 @@ impl PyQfactor {
 #[pymethods] // FluxCommute Trait
 impl PyQfactor {
     pub fn psip_of_psi(&self, psi: f64) -> Result<f64> {
-        Ok(self.inner().psip_of_psi(psi, &mut Accelerator::new())?)
+        Ok(self
+            .inner()
+            .eval_psip_of_psi(psi, &mut Accelerator::new())?)
     }
 
     pub fn psi_of_psip(&self, psip: f64) -> Result<f64> {
-        Ok(self.inner().psi_of_psip(psip, &mut Accelerator::new())?)
+        Ok(self.inner().eval_other(psip, &mut Accelerator::new())?)
     }
 }
 
@@ -165,19 +167,21 @@ impl PyQfactor {
     }
 
     pub fn dpsip_dpsi(&self, psi: f64) -> Result<f64> {
-        Ok(self.inner().dpsip_dpsi(psi, &mut Accelerator::new())?)
+        Ok(self.inner().eval_flux_deriv(psi, &mut Accelerator::new())?)
     }
 
     pub fn dpsi_dpsip(&self, psip: f64) -> Result<f64> {
-        Ok(self.inner().dpsi_dpsip(psip, &mut Accelerator::new())?)
+        Ok(self
+            .inner()
+            .eval_dpsi_dpsip(psip, &mut Accelerator::new())?)
     }
 
     pub fn psi_of_q(&self, q: f64) -> Result<f64> {
-        Ok(self.inner().psi_of_q(q, &mut Accelerator::new())?)
+        Ok(self.inner().eval_psi_of_q(q, &mut Accelerator::new())?)
     }
 
     pub fn psip_of_q(&self, q: f64) -> Result<f64> {
-        Ok(self.inner().psip_of_q(q, &mut Accelerator::new())?)
+        Ok(self.inner().eval_psip_of_q(q, &mut Accelerator::new())?)
     }
 
     pub fn iota_of_psi(&self, psi: f64) -> Result<f64> {

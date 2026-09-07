@@ -54,17 +54,21 @@ mod queue;
 mod solve;
 mod state;
 
+// ============== Re-exports
+
+pub use dexter_machine::MagneticFlux;
+
 // ============== Public API
 
 pub use dexter_common::{get_max_threads, set_num_threads};
 
 pub use error::{COMError, SimulationError};
 
-pub use solve::{FluxCoordinate, SolverParams, SteppingMethod};
+pub use solve::{SolverParams, SteppingMethod};
 
 pub use particle::{
-    CoordinateSet, EnergyPzetaPosition, Frequencies, InitialConditions, InitialFlux,
-    IntegrationStatus, IntersectParams, Intersection, OrbitType, Particle,
+    CoordinateSet, EnergyPzetaPosition, Frequencies, InitialConditions, IntegrationStatus,
+    IntersectParams, Intersection, OrbitType, Particle,
 };
 
 pub use queue::{Queue, QueueInitialConditions, Routine};

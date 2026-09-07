@@ -11,7 +11,7 @@ fn time_out() {
     let bfield = LarBfield::new();
     let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 1e-6);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 1e-6);
     let solver_params = SolverParams {
         max_steps: 10,
         ..Default::default()
@@ -43,7 +43,8 @@ fn out_of_bounds_initialization() {
     let bfield = LarBfield::new();
     let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Poloidal(1e10), 0.0, 0.0, 1e-4, 1e-6);
+    let initial =
+        InitialConditions::boozer(0.0, MagneticFlux::Poloidal(1e10), 0.0, 0.0, 1e-4, 1e-6);
 
     // Particle integration
     let mut particle = Particle::new(&initial);
@@ -70,7 +71,7 @@ fn intersected_time_out() {
     let bfield = LarBfield::new();
     let machine = MachineBuilder::new(&qfactor, &current, &bfield).build();
 
-    let initial = InitialConditions::boozer(0.0, InitialFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 0.0);
+    let initial = InitialConditions::boozer(0.0, MagneticFlux::Toroidal(0.1), 0.0, 0.0, 1e-4, 0.0);
     let solver_params = SolverParams {
         max_steps: 10000,
         ..Default::default()

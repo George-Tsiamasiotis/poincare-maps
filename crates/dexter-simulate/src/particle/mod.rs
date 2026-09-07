@@ -24,35 +24,6 @@ use crate::SolverParams;
 use crate::coms::EnergyPzetaPlane;
 use evolution::Evolution;
 
-/// Helper enum to define an [`InitialConditions`] set with respect to one of the flux
-/// coordinates.
-#[derive(Clone, Copy)]
-pub enum InitialFlux {
-    /// Initial flux `ψ0`.
-    Toroidal(f64),
-    /// Initial flux `ψp0`.
-    Poloidal(f64),
-}
-
-impl InitialFlux {
-    /// Returns the contained value, regardless of which variant.
-    #[must_use]
-    pub fn value(&self) -> f64 {
-        match *self {
-            Self::Toroidal(value) | Self::Poloidal(value) => value,
-        }
-    }
-}
-
-impl std::fmt::Debug for InitialFlux {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Toroidal(psi0) => write!(f, "ψ0: {psi0}"),
-            Self::Poloidal(psip0) => write!(f, "ψp0: {psip0}"),
-        }
-    }
-}
-
 // ===============================================================================================
 
 /// Container for the caching objects needed for the evaluations.

@@ -7,7 +7,8 @@ use std::f64::consts::TAU;
 use dexter_machine::{EvalError, Machine};
 
 use crate::particle::IntegrationCaches;
-use crate::{FluxCoordinate, InitialConditions, InitialFlux, SimulationError};
+use crate::solve::IntegrationCoordinate;
+use crate::{InitialConditions, MagneticFlux, MagneticFlux::*, SimulationError};
 
 /// State of the Guiding Center at each step.
 ///
@@ -19,12 +20,12 @@ use crate::{FluxCoordinate, InitialConditions, InitialFlux, SimulationError};
 #[derive(Debug, Clone)]
 #[expect(clippy::min_ident_chars, reason = "symbols in the Hamiltonian")]
 pub(crate) struct GCState {
-    pub(crate) coordinate: FluxCoordinate,
+    pub(crate) coordinate: IntegrationCoordinate,
     pub(crate) t: f64,
 
     // Dynamic variables
-    pub(crate) psi: f64,
-    pub(crate) psip: f64,
+    pub(crate) psi: MagneticFlux,
+    pub(crate) psip: MagneticFlux,
     pub(crate) theta: f64,
     pub(crate) zeta: f64,
     pub(crate) rho: f64,
@@ -96,15 +97,17 @@ impl GCState {
         machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<Self, SimulationError> {
-        let (psi, psip): (f64, f64);
+        let (psi, psip): (MagneticFlux, MagneticFlux);
         let coordinate = match initial.flux0 {
-            InitialFlux::Toroidal(psi0) => {
-                (psi, psip) = (psi0, f64::NAN);
-                FluxCoordinate::Toroidal
+            Toroidal(psi0) => {
+                psi = Toroidal(psi0);
+                psip = Poloidal(f64::NAN);
+                IntegrationCoordinate::Toroidal
             }
-            InitialFlux::Poloidal(psip0) => {
-                (psi, psip) = (f64::NAN, psip0);
-                FluxCoordinate::Poloidal
+            Poloidal(psip0) => {
+                psi = Toroidal(f64::NAN);
+                psip = Poloidal(psip0);
+                IntegrationCoordinate::Poloidal
             }
         };
         let Some(rho0) = initial.rho0 else {
@@ -168,6 +171,34 @@ impl GCState {
         self.evaluate(machine, caches)?;
         Ok(self)
     }
+
+    fn flux(&self) -> MagneticFlux {
+        match self.coordinate {
+            IntegrationCoordinate::Toroidal => self.psi,
+            IntegrationCoordinate::Poloidal => self.psip,
+        }
+    }
+
+    pub(crate) fn flux_value(&self) -> f64 {
+        match self.coordinate {
+            IntegrationCoordinate::Toroidal => self.psi.value(),
+            IntegrationCoordinate::Poloidal => self.psip.value(),
+        }
+    }
+
+    pub(crate) fn flux_value_mut(&mut self) -> &mut f64 {
+        match self.coordinate {
+            IntegrationCoordinate::Toroidal => self.psi.value_mut(),
+            IntegrationCoordinate::Poloidal => self.psip.value_mut(),
+        }
+    }
+
+    fn other(&mut self) -> &mut MagneticFlux {
+        match self.coordinate {
+            IntegrationCoordinate::Toroidal => &mut self.psip,
+            IntegrationCoordinate::Poloidal => &mut self.psi,
+        }
+    }
 }
 
 /// Field calculations.
@@ -183,19 +214,10 @@ impl GCState {
         machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
-        let qfactor = machine.qfactor();
-        if self.coordinate == FluxCoordinate::Toroidal {
-            self.psip = match qfactor.psip_of_psi(self.psi, caches.flux_acc()) {
-                Ok(psip) => psip,
-                Err(EvalError::UndefinedEvaluation(..)) => f64::NAN,
-                Err(err) => return Err(err.into()),
-            }
-        } else {
-            self.psi = match qfactor.psi_of_psip(self.psip, caches.flux_acc()) {
-                Ok(psi) => psi,
-                Err(EvalError::UndefinedEvaluation(..)) => f64::NAN,
-                Err(err) => return Err(err.into()),
-            }
+        match machine.qfactor().eval_other(self.flux(), caches.flux_acc()) {
+            Ok(other) => *self.other() = other,
+            Err(EvalError::UndefinedEvaluation(..)) => (), // leave other flux as `f64::NAN`
+            Err(err) => return Err(err.into()),            // but catch any other errors
         }
         Ok(())
     }
@@ -205,12 +227,7 @@ impl GCState {
         machine: Machine,
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
-        let qfactor = machine.qfactor();
-        if self.coordinate == FluxCoordinate::Toroidal {
-            self.q = qfactor.q_of_psi(self.psi, caches.flux_acc())?;
-        } else {
-            self.q = qfactor.q_of_psip(self.psip, caches.flux_acc())?;
-        };
+        self.q = machine.qfactor().eval_q(self.flux(), caches.flux_acc())?;
         Ok(())
     }
 
@@ -220,37 +237,24 @@ impl GCState {
         caches: &mut IntegrationCaches,
     ) -> Result<(), SimulationError> {
         let current = machine.current();
-        if self.coordinate == FluxCoordinate::Toroidal {
-            self.g = current.g_of_psi(self.psi, caches.flux_acc())?;
-            self.i = current.i_of_psi(self.psi, caches.flux_acc())?;
-            self.dg_dflux = current.dg_dpsi(self.psi, caches.flux_acc())?;
-            self.di_dflux = current.di_dpsi(self.psi, caches.flux_acc())?;
-        } else {
-            self.g = current.g_of_psip(self.psip, caches.flux_acc())?;
-            self.i = current.i_of_psip(self.psip, caches.flux_acc())?;
-            self.dg_dflux = current.dg_dpsip(self.psip, caches.flux_acc())?;
-            self.di_dflux = current.di_dpsip(self.psip, caches.flux_acc())?;
-        }
+        let flux = self.flux();
+        self.g = current.eval_g(flux, caches.flux_acc())?;
+        self.i = current.eval_i(flux, caches.flux_acc())?;
+        self.dg_dflux = current.eval_g_deriv(flux, caches.flux_acc())?;
+        self.di_dflux = current.eval_i_deriv(flux, caches.flux_acc())?;
         Ok(())
     }
 
-    #[rustfmt::skip]
     fn calculate_bfield_quantities(
         &mut self,
         machine: Machine,
         caches: &mut IntegrationCaches,
-    ) -> Result<(), SimulationError>
-    {
+    ) -> Result<(), SimulationError> {
         let bfield = machine.bfield();
-        if self.coordinate == FluxCoordinate::Toroidal {
-            self.b          = bfield.b_of_psi           (self.psi, self.mod_theta,caches.acc())?;
-            self.db_dflux   = bfield.db_dpsi            (self.psi, self.mod_theta,caches.acc())?;
-            self.db_dtheta  = bfield.db_of_psi_dtheta   (self.psi, self.mod_theta,caches.acc())?;
-        } else {
-            self.b          = bfield.b_of_psip          (self.psip, self.mod_theta, caches.acc())?;
-            self.db_dflux   = bfield.db_dpsip           (self.psip, self.mod_theta, caches.acc())?;
-            self.db_dtheta  = bfield.db_of_psip_dtheta  (self.psip, self.mod_theta, caches.acc())?;
-        }
+        let flux = self.flux();
+        self.b = bfield.eval_b(flux, self.mod_theta, caches.acc())?;
+        self.db_dflux = bfield.eval_deriv_flux(flux, self.mod_theta, caches.acc())?;
+        self.db_dtheta = bfield.eval_deriv_theta(flux, self.mod_theta, caches.acc())?;
         self.db_dzeta = 0.0; // Axisymmetric configuration for now
         Ok(())
     }
@@ -260,23 +264,17 @@ impl GCState {
         &mut self,
         machine: Machine,
         caches: &mut IntegrationCaches,
-    ) -> Result<(), SimulationError>
-    {
+    ) -> Result<(), SimulationError> {
         let perturbation = machine.perturbation();
-        let mode_caches = caches.mode_caches();
-        if self.coordinate == FluxCoordinate::Toroidal {
-            self.p          = perturbation.p_of_psi         (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsi          (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psi_dtheta (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psi_dzeta  (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dt      = perturbation.dp_of_psi_dt     (self.psi, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-        } else {
-            self.p          = perturbation.p_of_psip        (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dflux   = perturbation.dp_dpsip         (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dtheta  = perturbation.dp_of_psip_dtheta(self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dzeta   = perturbation.dp_of_psip_dzeta (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-            self.dp_dt      = perturbation.dp_of_psip_dt    (self.psip, self.mod_theta, self.mod_zeta, self.t, mode_caches)?;
-        }
+        let caches = caches.mode_caches();
+        let flux = self.flux();
+        let theta = self.mod_theta;
+        let zeta = self.mod_zeta;
+        self.p         = perturbation.eval_p          (flux, theta, zeta, self.t, caches)?;
+        self.dp_dflux  = perturbation.eval_deriv_flux (flux, theta, zeta, self.t, caches)?;
+        self.dp_dtheta = perturbation.eval_deriv_theta(flux, theta, zeta, self.t, caches)?;
+        self.dp_dzeta  = perturbation.eval_deriv_zeta (flux, theta, zeta, self.t, caches)?;
+        self.dp_dt     = perturbation.eval_deriv_t    (flux, theta, zeta, self.t, caches)?;
         Ok(())
     }
 
@@ -293,7 +291,7 @@ impl GCState {
     /// Therefore, using the chain rule, we must also multiply the final `flux_dot` with `q` to
     /// obtain `psi_dot`.
     fn adjust_for_flux(&mut self) {
-        if self.coordinate == FluxCoordinate::Toroidal {
+        if self.coordinate == IntegrationCoordinate::Toroidal {
             self.dg_dflux *= self.q;
             self.di_dflux *= self.q;
             self.dp_dflux *= self.q;
@@ -302,8 +300,8 @@ impl GCState {
     }
 
     fn calculate_canonical_momenta(&mut self) {
-        self.ptheta = self.psi + self.rho * self.i;
-        self.pzeta = self.rho * self.g - self.psip;
+        self.ptheta = self.psi.value() + self.rho * self.i;
+        self.pzeta = self.rho * self.g - self.psip.value();
     }
 
     fn calculate_delta_terms(&mut self) {
@@ -410,20 +408,12 @@ impl GCState {
 // ===============================================================================================
 
 impl GCState {
-    /// Returns a mutable reference to the flux coordinate.
-    pub(crate) fn flux(&mut self) -> &mut f64 {
-        match self.coordinate {
-            FluxCoordinate::Toroidal => &mut self.psi,
-            FluxCoordinate::Poloidal => &mut self.psip,
-        }
-    }
-
     /// Returns the array with the final time derivatives.
     pub(crate) fn dots(&self) -> [f64; 5] {
         [
             match self.coordinate {
-                FluxCoordinate::Toroidal => self.psi_dot,
-                FluxCoordinate::Poloidal => self.psip_dot,
+                IntegrationCoordinate::Toroidal => self.psi_dot,
+                IntegrationCoordinate::Poloidal => self.psip_dot,
             },
             self.theta_dot,
             self.zeta_dot,
@@ -441,8 +431,8 @@ impl Default for GCState {
         Self {
             coordinate: Default::default(),
             t: f64::NAN,
-            psi: f64::NAN,
-            psip: f64::NAN,
+            psi: Toroidal(f64::NAN),
+            psip: Poloidal(f64::NAN),
             theta: f64::NAN,
             zeta: f64::NAN,
             rho: f64::NAN,

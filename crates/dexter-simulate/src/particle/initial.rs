@@ -3,7 +3,7 @@
 use dexter_machine::Machine;
 use rsl_interpolation::Accelerator;
 
-use crate::{InitialFlux, SimulationError};
+use crate::{MagneticFlux, SimulationError};
 
 /// The kind of [`InitialConditions`] set.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,7 +32,7 @@ pub struct InitialConditions {
     /// The initial time.
     pub(crate) t0: f64,
     /// The initial toroidal/poloidal flux, depending on the value of [`InitialFlux`].
-    pub(crate) flux0: InitialFlux,
+    pub(crate) flux0: MagneticFlux,
     /// The initial `θ` angle.
     pub(crate) theta0: f64,
     /// The initial `ζ` angle.
@@ -61,15 +61,15 @@ impl InitialConditions {
     #[must_use]
     pub fn boozer(
         t0: f64,
-        flux0: InitialFlux,
+        flux0: MagneticFlux,
         theta0: f64,
         zeta0: f64,
         rho0: f64,
         mu0: f64,
     ) -> Self {
         let coordinate_set = match flux0 {
-            InitialFlux::Toroidal(_) => CoordinateSet::BoozerToroidal,
-            InitialFlux::Poloidal(_) => CoordinateSet::BoozerPoloidal,
+            MagneticFlux::Toroidal(_) => CoordinateSet::BoozerToroidal,
+            MagneticFlux::Poloidal(_) => CoordinateSet::BoozerPoloidal,
         };
         Self {
             t0,
@@ -97,15 +97,15 @@ impl InitialConditions {
     #[must_use]
     pub fn mixed(
         t0: f64,
-        flux0: InitialFlux,
+        flux0: MagneticFlux,
         theta0: f64,
         zeta0: f64,
         pzeta0: f64,
         mu0: f64,
     ) -> Self {
         let coordinate_set = match flux0 {
-            InitialFlux::Toroidal(_) => CoordinateSet::MixedToroidal,
-            InitialFlux::Poloidal(_) => CoordinateSet::MixedPoloidal,
+            MagneticFlux::Toroidal(_) => CoordinateSet::MixedToroidal,
+            MagneticFlux::Poloidal(_) => CoordinateSet::MixedPoloidal,
         };
         Self {
             t0,
@@ -131,27 +131,27 @@ impl InitialConditions {
         match self.coordinate_set {
             // Calculate `pzeta0`
             CoordinateSet::BoozerToroidal => {
-                let psi0 = self.flux0.value();
-                let g_of_psi0 = machine.current().g_of_psi(psi0, acc)?;
-                let psip0 = machine.qfactor().psip_of_psi(psi0, acc)?;
-                self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g_of_psi0 - psip0)
+                let psi0 = self.flux0;
+                let g = machine.current().eval_g(psi0, acc)?;
+                let psip0 = machine.qfactor().eval_other(psi0, acc)?;
+                self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g - psip0.value())
             }
             CoordinateSet::BoozerPoloidal => {
-                let psip0 = self.flux0.value();
-                let g_of_psip0 = machine.current().g_of_psip(psip0, acc)?;
-                self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g_of_psip0 - psip0)
+                let psip0 = self.flux0;
+                let g = machine.current().eval_g(psip0, acc)?;
+                self.pzeta0 = Some(self.rho0.expect("boozer to mixed") * g - psip0.value())
             }
             // Calculate `rho0`
             CoordinateSet::MixedToroidal => {
-                let psi0 = self.flux0.value();
-                let g_of_psi0 = machine.current().g_of_psi(psi0, acc)?;
-                let psip0 = machine.qfactor().psip_of_psi(psi0, acc)?;
-                self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0) / g_of_psi0);
+                let psi0 = self.flux0;
+                let g = machine.current().eval_g(psi0, acc)?;
+                let psip0 = machine.qfactor().eval_other(psi0, acc)?;
+                self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0.value()) / g);
             }
             CoordinateSet::MixedPoloidal => {
-                let psip0 = self.flux0.value();
-                let g_of_psip0 = machine.current().g_of_psip(psip0, acc)?;
-                self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0) / g_of_psip0);
+                let psip0 = self.flux0;
+                let g = machine.current().eval_g(psip0, acc)?;
+                self.rho0 = Some((self.pzeta0.expect("mixed to boozer") + psip0.value()) / g);
             }
         };
         self.assert_integration_ready();
@@ -185,7 +185,7 @@ impl InitialConditions {
 
     /// Returns the initial flux `flux0`.
     #[must_use]
-    pub fn flux0(&self) -> InitialFlux {
+    pub fn flux0(&self) -> MagneticFlux {
         self.flux0
     }
 
@@ -250,7 +250,7 @@ mod test {
 
     use super::*;
     use crate::*;
-    use InitialFlux::*;
+    use MagneticFlux::*;
 
     #[test]
     fn boozer_initial_conditions() {

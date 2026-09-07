@@ -131,7 +131,7 @@ impl Stepper {
         self.state2.coordinate = self.state1.coordinate;
 
         self.state2.t = self.state1.t + dt * C2;
-        *self.state2.flux() = *self.state1.flux() + dt * coef[0];
+        *self.state2.flux_value_mut() = self.state1.flux_value() + dt * coef[0];
         self.state2.theta = self.state1.theta + dt * coef[1];
         self.state2.zeta = self.state1.zeta + dt * coef[2];
         self.state2.rho = self.state1.rho + dt * coef[3];
@@ -159,7 +159,7 @@ impl Stepper {
         self.state3.coordinate = self.state1.coordinate;
 
         self.state3.t = self.state1.t + dt * C3;
-        *self.state3.flux() = *self.state1.flux() + dt * coef[0];
+        *self.state3.flux_value_mut() = self.state1.flux_value() + dt * coef[0];
         self.state3.theta = self.state1.theta + dt * coef[1];
         self.state3.zeta = self.state1.zeta + dt * coef[2];
         self.state3.rho = self.state1.rho + dt * coef[3];
@@ -187,7 +187,7 @@ impl Stepper {
         self.state4.coordinate = self.state1.coordinate;
 
         self.state4.t = self.state1.t + dt * C4;
-        *self.state4.flux() = *self.state1.flux() + dt * coef[0];
+        *self.state4.flux_value_mut() = self.state1.flux_value() + dt * coef[0];
         self.state4.theta = self.state1.theta + dt * coef[1];
         self.state4.zeta = self.state1.zeta + dt * coef[2];
         self.state4.rho = self.state1.rho + dt * coef[3];
@@ -215,7 +215,7 @@ impl Stepper {
         self.state5.coordinate = self.state1.coordinate;
 
         self.state5.t = self.state1.t + dt * C5;
-        *self.state5.flux() = *self.state1.flux() + dt * coef[0];
+        *self.state5.flux_value_mut() = self.state1.flux_value() + dt * coef[0];
         self.state5.theta = self.state1.theta + dt * coef[1];
         self.state5.zeta = self.state1.zeta + dt * coef[2];
         self.state5.rho = self.state1.rho + dt * coef[3];
@@ -244,7 +244,7 @@ impl Stepper {
         self.state6.coordinate = self.state1.coordinate;
 
         self.state6.t = self.state1.t + dt * C6;
-        *self.state6.flux() = *self.state1.flux() + dt * coef[0];
+        *self.state6.flux_value_mut() = self.state1.flux_value() + dt * coef[0];
         self.state6.theta = self.state1.theta + dt * coef[1];
         self.state6.zeta = self.state1.zeta + dt * coef[2];
         self.state6.rho = self.state1.rho + dt * coef[3];
@@ -349,7 +349,7 @@ impl Stepper {
             next.coordinate = self.state1.coordinate;
 
             next.t = self.state1.t + dt;
-            *next.flux() = *self.state1.flux() + dt * self.weights[0];
+            *next.flux_value_mut() = self.state1.flux_value() + dt * self.weights[0];
             next.theta = self.state1.theta + dt * self.weights[1];
             next.zeta = self.state1.zeta + dt * self.weights[2];
             next.rho = self.state1.rho + dt * self.weights[3];
